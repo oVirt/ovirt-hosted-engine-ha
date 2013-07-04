@@ -1,0 +1,43 @@
+# Build output
+*.pyc
+*.pyo
+/ovirt-hosted-engine-ha-*.tar.gz
+/ovirt-hosted-engine-ha.spec
+/ovirt_hosted_engine_ha/agent/config.log
+/ovirt_hosted_engine_ha/agent/constants.py
+/ovirt_hosted_engine_ha/broker/config.log
+/ovirt_hosted_engine_ha/broker/constants.py
+/tmp.repos/
+
+# Autotools
+/Makefile
+/Makefile.in
+/aclocal.m4
+/autom4te.cache/
+/bin/Makefile
+/bin/Makefile.in
+/build/Makefile
+/build/Makefile.in
+/build/build-aux/
+/config.log
+/config.status
+/configure
+/ovirt_hosted_engine_ha/Makefile
+/ovirt_hosted_engine_ha/Makefile.in
+/ovirt_hosted_engine_ha/agent/Makefile
+/ovirt_hosted_engine_ha/agent/Makefile.in
+/ovirt_hosted_engine_ha/broker/Makefile
+/ovirt_hosted_engine_ha/broker/Makefile.in
+/ovirt_hosted_engine_ha/broker/submonitors/Makefile
+/ovirt_hosted_engine_ha/broker/submonitors/Makefile.in
+/ovirt_hosted_engine_ha/lib/Makefile
+/ovirt_hosted_engine_ha/lib/Makefile.in
+
+# PyCharm, IntelliJ IDEA-specific files
+*.iml
+*.idea
+
+# Editor backups
+*.bak
+*.*~
+.*.*.sw?

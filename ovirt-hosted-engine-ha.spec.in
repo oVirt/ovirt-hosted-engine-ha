@@ -1,0 +1,165 @@
+#
+# ovirt-hosted-engine-ha -- ovirt hosted engine high availability
+# Copyright (C) 2012-2013 Red Hat, Inc.
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+#
+
+%global         package_version @PACKAGE_VERSION@
+%global         package_name @PACKAGE_NAME@
+%global         engine_ha_bindir  @ENGINE_HA_BINDIR@
+%global         engine_ha_confdir @ENGINE_HA_CONFDIR@
+%global         engine_ha_libdir  @ENGINE_HA_LIBDIR@
+%global         engine_ha_logdir  @ENGINE_HA_LOGDIR@
+%global         engine_ha_rundir  @ENGINE_HA_RUNDIR@
+
+%if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
+%global with_systemd 1
+%endif
+
+Summary:        oVirt Hosted Engine High Availability Manager
+Name:           @PACKAGE_NAME@
+Version:        @PACKAGE_RPM_VERSION@
+Release:        @PACKAGE_RPM_RELEASE@%{?release_suffix}%{?dist}
+License:        LGPLv2+
+URL:            http://www.ovirt.org
+Source:         http://resources.ovirt.org/releases/stable/3.3/%{name}-%{package_version}.tar.gz
+Group:          Applications/System
+
+BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+BuildArch:      noarch
+
+# FIXME any additional dependencies?
+Requires:       python
+Requires:       python-daemon
+Requires:       vdsm
+Requires:       vdsm-cli
+BuildRequires:  python2-devel
+
+%if 0%{?with_systemd}
+BuildRequires:  systemd
+%endif
+
+
+%description
+Hosted engine manager for oVirt project.
+
+
+%prep
+%setup -q -n %{name}-%{package_version}
+
+
+%build
+%configure \
+        --docdir="%{_docdir}/%{name}-%{version}" \
+        --disable-python-syntax-check \
+        %{?conf}
+make %{?_smp_mflags}
+
+
+%install
+rm -rf "%{buildroot}"
+make %{?_smp_mflags} install DESTDIR="%{buildroot}"
+
+install -dDm 0700 %{buildroot}%{engine_ha_logdir}
+install -dDm 0700 %{buildroot}%{engine_ha_rundir}
+
+%if 0%{?with_systemd}
+# Install the systemd scripts
+install -Dm 0755 initscripts/ovirt-ha-agent.init %{buildroot}/lib/systemd/systemd-ovirt-ha-agent
+install -Dm 0755 initscripts/ovirt-ha-broker.init %{buildroot}/lib/systemd/systemd-ovirt-ha-broker
+install -Dm 0644 initscripts/ovirt-ha-agent.service %{buildroot}%{_unitdir}/ovirt-ha-agent.service
+install -Dm 0644 initscripts/ovirt-ha-broker.service %{buildroot}%{_unitdir}/ovirt-ha-broker.service
+%else
+# Install the SysV init scripts
+install -Dm 0755 initscripts/ovirt-ha-agent.init %{buildroot}%{_initrddir}/ovirt-ha-agent
+install -Dm 0755 initscripts/ovirt-ha-broker.init %{buildroot}%{_initrddir}/ovirt-ha-broker
+%endif
+
+
+%files
+%defattr(-, root, root, -)
+%doc COPYING
+%doc README
+
+%dir %{engine_ha_logdir}
+
+%ghost %dir %{engine_ha_rundir}
+
+%dir %{engine_ha_confdir}
+%config %{engine_ha_confdir}/agent-log.conf
+%config %{engine_ha_confdir}/broker-log.conf
+
+%dir %{engine_ha_bindir}
+%{engine_ha_bindir}/ovirt-ha-agent
+%{engine_ha_bindir}/ovirt-ha-broker
+
+%dir %{engine_ha_libdir}
+%{engine_ha_libdir}/*
+
+%if 0%{?with_systemd}
+/lib/systemd/systemd-ovirt-ha-agent
+/lib/systemd/systemd-ovirt-ha-broker
+%{_unitdir}/ovirt-ha-agent.service
+%{_unitdir}/ovirt-ha-broker.service
+%else
+%{_initrddir}/ovirt-ha-agent
+%{_initrddir}/ovirt-ha-broker
+%endif
+
+
+%post
+%if 0%{?with_systemd}
+%systemd_post ovirt-ha-agent.service
+%systemd_post ovirt-ha-broker.service
+%else
+if [ "$1" -eq 1 ] ; then
+    /sbin/chkconfig --add ovirt-ha-agent
+    /sbin/chkconfig --add ovirt-ha-broker
+fi
+%endif
+
+
+%preun
+%if 0%{?with_systemd}
+%systemd_preun ovirt-ha-agent.service
+%systemd_preun ovirt-ha-broker.service
+%else
+if [ "$1" -eq 0 ]
+then
+    /sbin/service ovirt-ha-agent stop > /dev/null 2>&1 || :
+    /sbin/service ovirt-ha-broker stop > /dev/null 2>&1 || :
+    /sbin/chkconfig --del ovirt-ha-agent
+    /sbin/chkconfig --del ovirt-ha-broker
+fi
+%endif
+
+
+%postun
+%if 0%{?with_systemd}
+%systemd_postun_with_restart ovirt-ha-agent.service
+%systemd_postun_with_restart ovirt-ha-broker.service
+%else
+if [ "$1" -ge 1 ]; then
+    /sbin/service ovirt-ha-agent condrestart > /dev/null 2>&1
+    /sbin/service ovirt-ha-broker condrestart > /dev/null 2>&1
+fi
+exit 0
+%endif
+
+
+%changelog
+* Fri May 31 2013 Greg Padgett <gpadgett@redhat.com> - 0.0.0-0.0.master
+- Initial add.

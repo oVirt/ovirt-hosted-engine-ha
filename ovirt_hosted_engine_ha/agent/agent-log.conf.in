@@ -1,0 +1,32 @@
+[loggers]
+keys=root
+
+[handlers]
+keys=syslog,logfile
+
+[formatters]
+keys=long,sysform
+
+[logger_root]
+level=DEBUG
+handlers=syslog,logfile
+propagate=0
+
+[handler_syslog]
+level=ERROR
+class=handlers.SysLogHandler
+formatter=sysform
+args=('/dev/log', handlers.SysLogHandler.LOG_USER)
+
+[handler_logfile]
+class=logging.handlers.RotatingFileHandler
+args=('@ENGINE_HA_LOGDIR@/agent.log', 'a', 4194304, 4)
+level=DEBUG
+formatter=long
+
+[formatter_long]
+format=%(threadName)s::%(levelname)s::%(asctime)s::%(module)s::%(lineno)d::%(name)s::(%(funcName)s) %(message)s
+
+[formatter_sysform]
+format=ovirt-ha-agent %(name)s %(levelname)s %(message)s
+datefmt=

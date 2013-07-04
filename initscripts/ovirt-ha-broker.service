@@ -1,0 +1,11 @@
+[Unit]
+Description=oVirt Hosted Engine High Availability Communications Broker
+
+[Service]
+Type=forking
+EnvironmentFile=-/etc/sysconfig/ovirt-ha-broker
+ExecStart=/lib/systemd/systemd-ovirt-ha-broker start
+ExecStop=/lib/systemd/systemd-ovirt-ha-broker stop
+
+[Install]
+WantedBy=multi-user.target

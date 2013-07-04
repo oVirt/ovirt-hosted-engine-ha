@@ -1,0 +1,51 @@
+#
+# ovirt-hosted-engine-ha -- ovirt hosted engine high availability
+# Copyright (C) 2013 Red Hat, Inc.
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+#
+
+"""Constants."""
+
+PACKAGE_NAME = '@PACKAGE_NAME@'
+PROGRAM_NAME = 'agent'
+PACKAGE_VERSION = '@PACKAGE_VERSION@'
+FULL_PROG_NAME = '{0} {1} {2}'.format(
+                 PACKAGE_NAME, PROGRAM_NAME, PACKAGE_VERSION)
+
+# Metadata can be parsed by agents as old as METADATA_PARSE_VERSION, but may
+# contain new/additional information as new as METADATA_FEATURE_VERSION.  This
+# allows detection of enhancements without breaking backwards compatibility.
+METADATA_FEATURE_VERSION = 1
+METADATA_PARSE_VERSION = 1
+
+METADATA_BLOCK_BYTES = 512
+SERVICE_TYPE = 'hosted-engine'
+HOST_ALIVE_TIMEOUT_SECS = 60
+ENGINE_RETRY_EXPIRATION_SECS = 600
+ENGINE_RETRY_COUNT = 3
+INTERMITTENT_LOG_INTERVAL_SECS = 900
+MAX_VDSM_WAIT_SECS = 15
+
+# See http://www.gnu.org/software/automake/manual/html_node/Scripts.html
+LOG_CONF_FILE = '@ENGINE_HA_CONFDIR@/agent-log.conf'
+LOG_FILE = '@ENGINE_HA_LOGDIR@/agent.log'
+PID_FILE = '@ENGINE_HA_RUNDIR@/agent.pid'
+BROKER_SOCKET_FILE = '@ENGINE_HA_RUNDIR@/broker.socket'
+
+ENGINE_SETUP_CONF_FILE = '/etc/ovirt-hosted-engine/hosted-engine.conf'
+VM_CONF_FILE = '/etc/ovirt-hosted-engine/vm.conf'
+
+HOSTED_ENGINE_BINARY = '@ENGINE_SETUP_BINDIR@/hosted-engine'
