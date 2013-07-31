@@ -54,7 +54,6 @@ def run_vds_client_cmd(address, use_ssl, command):
         host_port = vdscli.cannonizeHostPort(address)
         serv.do_connect(host_port)
 
-    serv.do_connect(server, server_port)
     log.debug("Connected")
 
     method = getattr(serv.s, command)
