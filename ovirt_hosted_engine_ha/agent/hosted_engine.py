@@ -425,9 +425,9 @@ class HostedEngine(object):
                                 extra=self._get_lf_args(self.LF_HOST_UPDATE))
                 self._all_host_stats[host_id]['alive'] = False
             else:
-                self._log.error("Host %s (id %d) metadata updated",
-                                attr['hostname'], host_id,
-                                extra=self._get_lf_args(self.LF_HOST_UPDATE))
+                self._log.info("Host %s (id %d) metadata updated",
+                               attr['hostname'], host_id,
+                               extra=self._get_lf_args(self.LF_HOST_UPDATE))
                 info_str = "{0}".format(attr)
                 self._log.info("Host %s (id %d): %s",
                                attr['hostname'], host_id, info_str,
