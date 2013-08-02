@@ -52,3 +52,7 @@ ENGINE_SETUP_CONF_FILE = '/etc/ovirt-hosted-engine/hosted-engine.conf'
 VM_CONF_FILE = '/etc/ovirt-hosted-engine/vm.conf'
 
 HOSTED_ENGINE_BINARY = '@ENGINE_SETUP_BINDIR@/hosted-engine'
+
+SD_MOUNT_PARENT = '/rhev/data-center/mnt'
+SD_METADATA_DIR = 'ha_agent'
+LOCKSPACE_NAME = SERVICE_TYPE

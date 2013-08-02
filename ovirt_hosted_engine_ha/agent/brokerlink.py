@@ -90,7 +90,7 @@ class BrokerLink(object):
         self._log.info("Success, status %s", response)
         return response
 
-    def put_stats_on_storage(self, storage_dir, service_type, host, data):
+    def put_stats_on_storage(self, storage_dir, service_type, host_id, data):
         """
         Puts data on the shared storage according to the parameters.
         Data should be passed in as a string.
@@ -99,8 +99,8 @@ class BrokerLink(object):
         # broker expects blocks in hex format
         hex_data = base64.b16encode(data)
         request = ("put-stats"
-                   " storage_dir={0} service_type={1} host={2} data={3}"
-                   .format(storage_dir, service_type, host, hex_data))
+                   " storage_dir={0} service_type={1} host_id={2} data={3}"
+                   .format(storage_dir, service_type, host_id, hex_data))
         self._checked_communicate(request)
 
     def get_stats_from_storage(self, storage_dir, service_type):
@@ -116,8 +116,8 @@ class BrokerLink(object):
         ret = {}
         # broker returns "<host 1>=<hex data 1> [<host 2>=...]"
         while tokens:
-            (host, data) = tokens.pop(0).split('=', 1)
-            ret[host] = base64.b16decode(data)
+            (host_id, data) = tokens.pop(0).split('=', 1)
+            ret[host_id] = base64.b16decode(data)
         return ret
 
     def _checked_communicate(self, request):
@@ -137,7 +137,7 @@ class BrokerLink(object):
                 msg = parts[1]
             else:
                 msg = response
-            raise RequestError("Request failed: %s", msg)
+            raise RequestError("Request failed: {0}".format(msg))
 
     def _communicate(self, request):
         """

@@ -17,11 +17,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
+import errno
 import logging
 import os
 import socket
 import subprocess
 import time
+
+import sanlock
 
 from . import brokerlink
 from . import config
@@ -60,6 +63,11 @@ class HostedEngine(object):
         self._local_monitors = {}
         self._local_state = {}
         self._all_host_stats = {}
+
+        self._sd_path = None
+        self._metadata_path = None
+
+        self._sanlock_initialized = False
 
     def _get_required_monitors(self):
         """
@@ -127,6 +135,7 @@ class HostedEngine(object):
             try:
                 self._initialize_broker()
                 self._initialize_vdsm()
+                self._initialize_sanlock()
 
                 self._collect_local_stats()
                 blocks = self._generate_local_blocks()
@@ -184,24 +193,7 @@ class HostedEngine(object):
 
     def _initialize_vdsm(self):
         # TODO not the most efficient means to maintain vdsmd...
-        self._log.debug("Checking vdsmd status")
-        with open(os.devnull, "w") as devnull:
-            p = subprocess.Popen(['sudo',
-                                  'service', 'vdsmd', 'status'],
-                                 stdout=devnull, stderr=devnull)
-            if p.wait() == 0:
-                self._log.info("VDSM daemon running")
-            else:
-                self._log.error("Starting VDSM daemon")
-                with open(os.devnull, "w") as devnull:
-                    p = subprocess.Popen(['sudo',
-                                          'service', 'vdsmd', 'start'],
-                                         stdout=devnull,
-                                         stderr=subprocess.PIPE)
-                    res = p.communicate()
-                if p.returncode != 0:
-                    raise Exception("Could not start vdsmd: {0}"
-                                    .format(res[1]))
+        self._cond_start_service('vdsmd')
 
         self._log.debug("Verifying storage is attached")
         tries = 0
@@ -227,6 +219,92 @@ class HostedEngine(object):
         if tries == constants.MAX_VDSM_WAIT_SECS:
             self._log.error("Failed trying to connect storage: %s", output[1])
             raise Exception("Failed trying to connect storage")
+
+        # Update to the current mount path for the domain
+        self._sd_path = self._get_domain_path()
+        self._log.debug("Path to storage domain is %s", self._sd_path)
+
+    def _cond_start_service(self, service_name):
+        self._log.debug("Checking %s status", service_name)
+        with open(os.devnull, "w") as devnull:
+            p = subprocess.Popen(['sudo',
+                                  'service', service_name, 'status'],
+                                 stdout=devnull, stderr=devnull)
+            if p.wait() == 0:
+                self._log.info("%s running", service_name)
+            else:
+                self._log.error("Starting %s", service_name)
+                with open(os.devnull, "w") as devnull:
+                    p = subprocess.Popen(['sudo',
+                                          'service', service_name, 'start'],
+                                         stdout=devnull,
+                                         stderr=subprocess.PIPE)
+                    res = p.communicate()
+                if p.returncode != 0:
+                    raise Exception("Could not start {0}: {1}"
+                                    .format(service_name, res[1]))
+
+    def _get_domain_path(self):
+        """
+        Return path of storage domain holding engine vm
+        """
+        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
+        parent = constants.SD_MOUNT_PARENT
+        for dname in os.listdir(parent):
+            path = os.path.join(parent, dname, sd_uuid)
+            if os.access(path, os.F_OK):
+                return path
+        raise Exception("path to storage domain {0} not found in {1}"
+                        .format(sd_uuid, parent))
+
+    def _initialize_sanlock(self):
+        self._cond_start_service('sanlock')
+
+        host_id = int(self._config.get(config.ENGINE, config.HOST_ID))
+        self._metadata_dir = os.path.join(self._sd_path,
+                                          constants.SD_METADATA_DIR)
+        lease_file = os.path.join(self._metadata_dir,
+                                  constants.SERVICE_TYPE + '.lockspace')
+        if not self._sanlock_initialized:
+            lvl = logging.INFO
+        else:
+            lvl = logging.DEBUG
+        self._log.log(lvl, "Ensuring lease for lockspace %s, host id %d"
+                           " is acquired (file: %s)",
+                           constants.LOCKSPACE_NAME, host_id, lease_file)
+
+        try:
+            sanlock.add_lockspace(constants.LOCKSPACE_NAME,
+                                  host_id, lease_file)
+        except sanlock.SanlockException as e:
+            acquired_lock = False
+            msg = None
+            if hasattr(e, 'errno'):
+                if e.errno == errno.EEXIST:
+                    self._log.debug("Host already holds lock")
+                    acquired_lock = True
+                elif e.errno == errno.EINVAL:
+                    msg = ("cannot get lock on host id {0}:"
+                           " host already holds lock on a different host id"
+                           .format(host_id))
+                elif e.errno == errno.EINTR:
+                    msg = ("cannot get lock on host id {0}:"
+                           " sanlock operation interrupted (will retry)"
+                           .format(host_id))
+                elif e.errno == errno.EINPROGRESS:
+                    msg = ("cannot get lock on host id {0}:"
+                           " sanlock operation in progress (will retry)"
+                           .format(host_id))
+            if not acquired_lock:
+                if not msg:
+                    msg = ("cannot get lock on host id {0}: {1}"
+                           .format(host_id, str(e)))
+                self._log.error(msg, exc_info=True)
+                raise Exception("Failed to initialize sanlock: {0}"
+                                .format(msg))
+        else:
+            self._log.info("Acquired lock on host id %d", host_id)
+        self._sanlock_initialized = True
 
     def _collect_local_stats(self):
         """
@@ -356,14 +434,14 @@ class HostedEngine(object):
 
     def _push_to_storage(self, blocks):
         self._broker.put_stats_on_storage(
-            self._config.get(config.ENGINE, config.STORAGE_DIR),
+            self._metadata_dir,
             constants.SERVICE_TYPE,
             self._config.get(config.ENGINE, config.HOST_ID),
             blocks)
 
     def _collect_all_host_stats(self):
         all_stats = self._broker.get_stats_from_storage(
-            self._config.get(config.ENGINE, config.STORAGE_DIR),
+            self._metadata_dir,
             constants.SERVICE_TYPE)
         local_ts = time.time()
         for host_str, data in all_stats.iteritems():
@@ -437,6 +515,7 @@ class HostedEngine(object):
                                extra=self._get_lf_args(self.LF_HOST_UPDATE))
             elif (attr['last-update-local-ts']
                   + constants.HOST_ALIVE_TIMEOUT_SECS) <= local_ts:
+                # TODO newer sanlocks can report this through get_hosts()
                 self._log.error("Host %s (id %d) is no longer updating its"
                                 " metadata", attr['hostname'], host_id,
                                 extra=self._get_lf_args(self.LF_HOST_UPDATE))

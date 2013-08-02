@@ -21,10 +21,10 @@ from . import constants
 
 # constants for hosted-engine.conf options
 ENGINE = 'engine'
-HOST_ID = 'host_id'
-STORAGE_DIR = 'storage_dir'  # FIXME actual value
-GATEWAY_ADDR = 'gateway'
 ENGINE_FQDN = 'fqdn'
+GATEWAY_ADDR = 'gateway'
+HOST_ID = 'host_id'
+SD_UUID = 'sdUUID'
 VDSM_SSL = 'vdsm_use_ssl'
 
 # constants for vm.conf options

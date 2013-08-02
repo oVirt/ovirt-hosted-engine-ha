@@ -18,12 +18,12 @@
 #
 
 import base64
-import errno
 import io
 import logging
 import os
 import threading
 
+from . import constants
 from ..lib.exceptions import RequestError
 from ..lib import util
 
@@ -40,77 +40,77 @@ class StorageBroker(object):
         """
         self._log.info("Getting stats for service %s from %s",
                        service_type, storage_dir)
-        prefix_len = len(service_type) + 1
         str_list = []
         with self._storage_access_lock:
+            path = os.path.join(storage_dir, self._get_filename(service_type))
+            f = None
             try:
-                files = os.listdir(storage_dir)
-            except OSError as e:
-                if e.errno == errno.ENOENT:
-                    self._log.warning("Metadata dir %s does not exist",
-                                      storage_dir)
-                    files = ()
-                else:
-                    self._log.error("Failed to read metadata from %s",
-                                    storage_dir, exc_info=True)
-                    raise RequestError("failed to read metadata: {0}"
-                                       .format(str(e)))
-
-            for f in files:
-                if not f.startswith("{0}_".format(service_type)):
-                    continue
-                host = f[prefix_len:]
-                path = os.path.join(storage_dir, f)
-                f_obj = None
-                try:
-                    f_obj = io.open(path, "r+b")
-                    data = f_obj.read()
-                except IOError as e:
-                    self._log.error("Failed to read metadata from %s",
-                                    path, exc_info=True)
-                    raise RequestError("failed to read metadata: {0}"
-                                       .format(str(e)))
-                finally:
-                    if f_obj:
-                        f_obj.close()
-
-                hex_data = base64.b16encode(data)
-                self._log.debug("Read for host %s: %s", host, hex_data)
-                str_list.append("{0}={1}".format(host, hex_data))
+                f = io.open(path, "r+b")
+                host_id = 0
+                for data in iter(
+                        lambda: f.read(constants.HOST_SEGMENT_BYTES),
+                        ''
+                ):
+                    # TODO it would be better if this was configurable
+                    if host_id > constants.MAX_HOST_ID_SCAN:
+                        break
+                    if data and data[0] != '\0':
+                        hex_data = base64.b16encode(data)
+                        self._log.debug("Read for host id %d: %s",
+                                        host_id, hex_data)
+                        str_list.append("{0}={1}".format(host_id, hex_data))
+                    host_id += 1
+            except IOError as e:
+                self._log.error("Failed to read metadata from %s",
+                                path, exc_info=True)
+                raise RequestError("failed to read metadata: {0}"
+                                   .format(str(e)))
+            finally:
+                if f:
+                    f.close()
 
         return " ".join(str_list)
 
-    def put_stats(self, storage_dir, service_type, host, data):
+    def put_stats(self, storage_dir, service_type, host_id, data):
         """
-        Writes to the storage as file <storage_dir>/<service-type>_<host-id>,
+        Writes to the storage in file <storage_dir>/<service-type>.metadata,
         storing the hex string data (e.g. 01bc4f[...]) in binary format.
+        Data is written at offset 4KiB*host_id.
+
+        In theory, NFS write block sizes and close-to-open cache coherency
+        let us get away with with propagating metadata updates through a
+        segment of a file shared with other clients who update adjacent
+        segments, so long as a) the writes don't overlap, and b) we close
+        the file after the write.
         """
-        path = os.path.join(storage_dir,
-                            self._get_filename(service_type, host))
-        self._log.info("Writing stats for service %s, host %s to file %s",
-                       service_type, host, path)
+        host_id = int(host_id)
+        path = os.path.join(storage_dir, self._get_filename(service_type))
+        offset = host_id * constants.HOST_SEGMENT_BYTES
+        self._log.info("Writing stats for service %s, host id %d"
+                       " to file %s, offset %d",
+                       service_type, host_id, path, offset)
 
         byte_data = base64.b16decode(data)
+        byte_data.ljust(constants.HOST_SEGMENT_BYTES, '\0')
         with self._storage_access_lock:
-            f_obj = None
+            f = None
             try:
                 util.mkdir_recursive(storage_dir)
-                # TODO DirectFile (from vdsm) might be helpful for atomicity,
-                # or can we get a lock on the file?
-                f_obj = io.open(path, "w+b")
-                f_obj.write(byte_data)
+                f = io.open(path, "r+b")
+                f.seek(offset, os.SEEK_SET)
+                f.write(byte_data)
             except IOError as e:
-                self._log.error("Failed to write metadata to %s", path,
-                                exc_info=True)
+                self._log.error("Failed to write metadata for host %d to %s",
+                                host_id, path, exc_info=True)
                 raise RequestError("failed to write metadata: {0}"
                                    .format(str(e)))
             finally:
-                if f_obj:
-                    f_obj.close()
+                if f:
+                    f.close()
 
         self._log.debug("Finished")
 
-    def _get_filename(self, service_type, host):
+    def _get_filename(self, service_type):
         # Nothing special yet
         # FIXME should escape special chars before production deployment
-        return "{0}_{1}".format(service_type, host)
+        return "{0}.{1}".format(service_type, constants.MD_EXTENSION)

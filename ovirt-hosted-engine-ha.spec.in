@@ -47,6 +47,8 @@ BuildArch:      noarch
 # FIXME any additional dependencies?
 Requires:       python
 Requires:       python-daemon
+Requires:       sanlock >= 2.8
+Requires:       sanlock-python
 Requires:       vdsm
 Requires:       vdsm-cli
 BuildRequires:  python2-devel
