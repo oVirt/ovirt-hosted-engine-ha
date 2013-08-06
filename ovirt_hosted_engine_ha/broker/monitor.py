@@ -64,7 +64,8 @@ class Monitor(object):
         # (maybe just serialize params to use as index of {pstr: id} dict)
         self._log.info("Starting submonitor %s", submonitor_type)
         try:
-            sm = self._submonitors[submonitor_type].Submonitor(None, options)
+            sm = self._submonitors[submonitor_type].Submonitor(
+                submonitor_type, None, options)
             sm.start()
         except Exception as e:
             self._log.error("Failed to start submonitor", exc_info=True)

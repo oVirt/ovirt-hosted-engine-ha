@@ -22,6 +22,9 @@ import subprocess
 
 from ovirt_hosted_engine_ha.broker import constants
 from ovirt_hosted_engine_ha.broker import submonitor_base
+from ovirt_hosted_engine_ha.broker import submonitor_util as sm_util
+from ovirt_hosted_engine_ha.lib import util as util
+from ovirt_hosted_engine_ha.lib import exceptions as exceptions
 
 
 def register():
@@ -29,41 +32,51 @@ def register():
 
 
 class Submonitor(submonitor_base.SubmonitorBase):
+    def setup(self, options):
+        self._log = logging.getLogger("EngineHealth")
+
+        self._address = options.get('address')
+        self._use_ssl = util.to_bool(options.get('use_ssl'))
+        self._vm_uuid = options.get('vm_uuid')
+        if (self._address is None
+                or self._use_ssl is None
+                or self._vm_uuid is None):
+            raise Exception("engine-health requires"
+                            " address, use_ssl, and vm_uuid")
+        self._log.debug("address=%s, use_ssl=%r, vm_uuid=%s",
+                        self._address, self._use_ssl, self._vm_uuid)
+
     def action(self, options):
-        # Rely on hosted-engine for status
-        log = logging.getLogger("EngineHealth")
-
-        # FIXME use this when `hosted-engine --vm-status` is implemented
-        """
-        # First see if VM is holding a lock on its storage...
-        p = subprocess.Popen([constants.HOSTED_ENGINE_BINARY, '--vm-status'],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output = p.communicate()
-        if p.returncode != 0:
-            log.warning("Engine VM not running: %s", output[0])
-            self.update_result("down")
+        # First, see if vdsm tells us it's up
+        try:
+            stats = sm_util.run_vds_client_cmd(self._address, self._use_ssl,
+                                               'getVmStats', self._vm_uuid)
+        except Exception as e:
+            if isinstance(e, exceptions.DetailedError) \
+                    and e.detail == "Virtual machine does not exist":
+                # Not on this host
+                self._log.info("VM not on this host")
+                self.update_result('vm-down')
+                return
+            else:
+                self._log.error("Failed to getVmStats: %s", str(e))
+                self.update_result(None)
+                return
+        vm_status = stats['statsList'][0]['status']
+        if vm_status.lower() != 'up':
+            self._log.info("VM not running on this host, status %s", vm_status)
+            self.update_result('vm-down')
             return
 
-        # VM is up, see if the engine inside it is healthy
+        # VM is up, let's see if engine is up by polling health status page
         p = subprocess.Popen([constants.HOSTED_ENGINE_BINARY,
                               '--check-liveliness'],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output = p.communicate()
-        if p.returncode != 0:
-            log.warning("Engine VM up but bad health status: %s", output[0])
-            self.update_result("up bad-health-status")
+        if p.returncode == 0:
+            self._log.info("VM is up on this host with healthy engine")
+            self.update_result("vm-up good-health-status")
             return
-        else:
-            self.update_result("up good-health-status")
-        """
-        # For now, just look at the health status page
-        p = subprocess.Popen([constants.HOSTED_ENGINE_BINARY,
-                              '--check-liveliness'],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output = p.communicate()
-        if p.returncode != 0:
-            log.warning("bad health status: %s", output[0])
-            self.update_result("down")
-            return
-        else:
-            self.update_result("up good-health-status")
+        self._log.warning("bad health status: %s", output[0])
+        self.update_result("vm-up bad-health-status")
+        # FIXME remote db down status

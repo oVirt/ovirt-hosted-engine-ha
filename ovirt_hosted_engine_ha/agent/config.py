@@ -30,6 +30,7 @@ VDSM_SSL = 'vdsm_use_ssl'
 # constants for vm.conf options
 VM = 'vm'
 BRIDGE_NAME = 'bridge'
+VM_UUID = 'vmId'
 
 
 class Config(object):

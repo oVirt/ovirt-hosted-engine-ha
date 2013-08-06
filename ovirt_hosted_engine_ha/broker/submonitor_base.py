@@ -17,6 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
+import logging
 import threading
 import time
 
@@ -30,22 +31,15 @@ class SubmonitorBase(object):
     # Subclasses can override this to provide different default loop intervals
     _default_interval = 10
 
-    def __init__(self, interval=None, options=None):
+    def __init__(self, name, interval=None, options=None):
         if interval is None:
             interval = self._default_interval
+        self._name = name
         self._interval = interval
         self._options = options
         self._last_result = None
         self._initialization_status = None
-
-    def register(self):
-        """
-        Registration for submonitor plugins; must be overridden by subclass.
-        This should return the name that submonitors are referred to by
-        HA configurations requiring results from that submonitor.
-        """
-        raise NotImplementedError("Submonitor plugin error: "
-                                  "register method not implemented")
+        self._baselog = logging.getLogger("SubmonitorBase")
 
     def setup(self, options):
         """
@@ -120,6 +114,8 @@ class SubmonitorBase(object):
                 self.action(self._options)
             except Exception as e:
                 # Don't let the submonitor thread die, just retry later
+                self._baselog.error("Error executing submonitor %s, args %r",
+                                    self._name, self._options, exc_info=True)
                 pass
             time_remaining = next_execution - time.time()
             while time_remaining > 0:

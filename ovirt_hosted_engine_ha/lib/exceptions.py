@@ -28,3 +28,12 @@ class DisconnectionError(Exception):
 
 class RequestError(Exception):
     pass
+
+
+class DetailedError(Exception):
+    """
+    Allows testing for detailed conditions while preserving clean str(e)
+    """
+    def __init__(self, msg, detail):
+        Exception.__init__(self, msg)
+        self.detail = detail

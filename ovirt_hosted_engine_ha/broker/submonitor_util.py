@@ -25,9 +25,10 @@ from otopi import util
 from vdsm import vdscli
 
 from . import constants
+from ..lib.exceptions import DetailedError
 
 
-def run_vds_client_cmd(address, use_ssl, command):
+def run_vds_client_cmd(address, use_ssl, command, *args):
     """
     Run the passed in command name from the vdsClient library and either
     throw an exception with the error message or return the results.
@@ -54,22 +55,26 @@ def run_vds_client_cmd(address, use_ssl, command):
         host_port = vdscli.cannonizeHostPort(address)
         serv.do_connect(host_port)
 
-    log.debug("Connected")
+    log.debug("Connected, running %s, args %r", command, args)
 
     method = getattr(serv.s, command)
     retry = 0
     while retry < constants.VDS_CLIENT_MAX_RETRY:
         try:
-            response = method()
+            response = method(*args)
             break
         except socket.error:
             log.debug("Error", exc_info=True)
             retry += 1
             time.sleep(1)
+
+    log.debug("Response: %r", response)
     if retry >= constants.VDS_CLIENT_MAX_RETRY:
         raise Exception("VDSM initialization timeout")
     if response['status']['code'] != 0:
-        raise Exception("Error {0} from {1}: {2}",
-                        response['status']['code'], command,
-                        response['status']['message'])
+        raise DetailedError("Error {0} from {1}: {2}"
+                            .format(response['status']['code'],
+                                    command,
+                                    response['status']['message']),
+                            response['status']['message'])
     return response

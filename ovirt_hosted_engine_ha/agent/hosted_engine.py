@@ -36,6 +36,13 @@ class HostedEngine(object):
     LF_HOST_UPDATE_DETAIL = 'LF_HOST_UPDATE_DETAIL'
     LF_ENGINE_HEALTH = 'LF_ENGINE_HEALTH'
 
+    engine_status_score_lookup = {
+        'None': 0,
+        'vm-down': 1,
+        'vm-up bad-health-status': 2,
+        'vm-up good-health-status': 3,
+    }
+
     def __init__(self, shutdown_requested_callback):
         """
         Initialize hosted engine monitoring logic.  shutdown_requested_callback
@@ -105,7 +112,9 @@ class HostedEngine(object):
             'field': 'engine-health',
             'monitor': 'engine-health',
             'options': {
-                'address': self._config.get(config.ENGINE, config.ENGINE_FQDN)}
+                'address': '0',
+                'use_ssl': self._config.get(config.ENGINE, config.VDSM_SSL),
+                'vm_uuid': self._config.get(config.VM, config.VM_UUID)}
         })
         return req
 
@@ -243,7 +252,8 @@ class HostedEngine(object):
         Calculates the host score from local monitor info and places the
         score on shared storage in the following format:
 
-          {mdParseVers}|{mdFeatureVers}|{tsInt}|{hostId}|{score}|{name}
+          {md_parse_vers}|{md_feature_vers}|{ts_int}
+            |{host_id}|{score}|{engine_status}|{name}
 
         The compiled score is later read back from the storage, parsed from
         the string above, and used to decide where engine should run (host
@@ -307,13 +317,14 @@ class HostedEngine(object):
 
         ts = int(time.time())
         data = ("{md_parse_vers}|{md_feature_vers}|{ts_int}"
-                "|{host_id}|{score}|{name}"
+                "|{host_id}|{score}|{engine_status}|{name}"
                 .format(md_parse_vers=constants.METADATA_PARSE_VERSION,
                         md_feature_vers=constants.METADATA_FEATURE_VERSION,
                         ts_int=ts,
                         host_id=self._config.get(config.ENGINE,
                                                  config.HOST_ID),
                         score=score,
+                        engine_status=lm['engine-health']['status'],
                         name=socket.gethostname()))
         if len(data) > constants.METADATA_BLOCK_BYTES:
             raise Exception("Output metadata too long ({0} bytes)"
@@ -370,6 +381,7 @@ class HostedEngine(object):
                     'last-update-host-ts': None,
                     'alive': False,
                     'score': 0,
+                    'engine-status': None,
                     'hostname': '(unknown)'}
 
             if len(data) < 512:
@@ -379,10 +391,10 @@ class HostedEngine(object):
                 continue
             data = data[:512].rstrip('\0')
             tokens = data.split('|')
-            if len(tokens) < 6:
+            if len(tokens) < 7:
                 self._log.error("Malformed metadata for host %d:"
                                 " received %d of %d expected tokens",
-                                host_id, len(tokens), 6)
+                                host_id, len(tokens), 7)
                 continue
 
             try:
@@ -402,16 +414,19 @@ class HostedEngine(object):
 
             host_ts = int(tokens[2])
             score = int(tokens[4])
-            hostname = str(tokens[5])  # convert from bytearray
+            engine_status = str(tokens[5])  # convert from bytearray
+            hostname = str(tokens[6])  # convert from bytearray
 
             if host_ts != self._all_host_stats[host_id]['last-update-host-ts']:
                 # Track first update in order to accurately judge liveness
                 if self._all_host_stats[host_id]['last-update-host-ts']:
                     self._all_host_stats[host_id]['first-update'] = False
+
                 self._all_host_stats[host_id]['last-update-host-ts'] = host_ts
                 self._all_host_stats[host_id]['last-update-local-ts'] = \
                     local_ts
                 self._all_host_stats[host_id]['score'] = score
+                self._all_host_stats[host_id]['engine-status'] = engine_status
                 self._all_host_stats[host_id]['hostname'] = hostname
 
         # All updated, now determine if hosts are alive/updating
@@ -441,24 +456,41 @@ class HostedEngine(object):
         """
         Start or stop engine on current host based on hosts' statistics.
         """
-        engine_status = self._local_monitors['engine-health']['status']
+        local_host_id = int(self._config.get(config.ENGINE, config.HOST_ID))
+        engine_status = self._all_host_stats[local_host_id]['engine-status']
+        engine_status_host_id = local_host_id
+        best_score = self._all_host_stats[local_host_id]['score']
+        best_score_host_id = local_host_id
+
         if engine_status == 'None':
-            self._log.info("Unknown engine vm status, no actions taken")
+            self._log.info("Unknown local engine vm status, no actions taken")
             return
 
-        if engine_status[:2] == 'up':
-            self._log.info("Engine vm is running",
-                           extra=self._get_lf_args(self.LF_ENGINE_HEALTH))
+        for host_id, stats in self._all_host_stats.iteritems():
+            if self._engine_status_score(stats['engine-status']) \
+                    > self._engine_status_score(engine_status):
+                engine_status = stats['engine-status']
+                engine_status_host_id = host_id
+            # Prefer local score if equal to remote score
+            if stats['score'] > best_score:
+                best_score_host_id = host_id
+
+        if engine_status[:5] == 'vm-up':
+            # FIXME timeout for bad-host-status: if up and no engine, try to
+            # migrate; if can't migrate, reduce local score and shut down
+            self._log.info(
+                "Engine vm is running on host %s (id %d)",
+                self._all_host_stats[engine_status_host_id]['hostname'],
+                engine_status_host_id,
+                extra=self._get_lf_args(self.LF_ENGINE_HEALTH)
+            )
             return
 
-        # FIXME other statuses: bad health status, remote db down
+        # FIXME remote db down, other statuses
 
         # FIXME cluster-wide engine maintenance bit
 
-        best_score = max((self._all_host_stats[host_id]['score']
-                         for host_id in self._all_host_stats))
-        local_host_id = int(self._config.get(config.ENGINE, config.HOST_ID))
-        if self._all_host_stats[local_host_id]['score'] != best_score:
+        if best_score_host_id != local_host_id:
             self._log.info("Engine down, local host does not have best score",
                            extra=self._get_lf_args(self.LF_ENGINE_HEALTH))
             return
@@ -476,6 +508,17 @@ class HostedEngine(object):
         else:
             self._local_state['last-engine-retry'] = 0
             self._local_state['engine-retries'] = 0
+
+    def _engine_status_score(self, status):
+        """
+        Convert a string engine/vm status to a sortable numeric score;
+        the highest score is a live vm with a healthy engine.
+        """
+        try:
+            return self.engine_status_score_lookup[status]
+        except KeyError:
+            self._log.error("Invalid engine status: %s", status, exc_info=True)
+            return 0
 
     def _start_engine_vm(self):
         self._log.info("Starting vm using `%s --vm-start`",
@@ -499,3 +542,4 @@ class HostedEngine(object):
             raise Exception(output[1])
 
         self._log.error("Engine VM started on localhost")
+        # FIXME record start time in order to track bad-health-status timeout
