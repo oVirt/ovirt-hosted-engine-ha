@@ -43,7 +43,7 @@ def run_vds_client_cmd(address, use_ssl, command):
         serv = vdsClient.ge.GlusterService()
     else:
         serv = vdsClient.service()
-    serv.use_ssl = use_ssl
+    serv.useSSL = use_ssl
 
     if hasattr(vdscli, 'cannonizeAddrPort'):
         server, server_port = vdscli.cannonizeAddrPort(
