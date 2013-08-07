@@ -18,7 +18,7 @@
 #
 
 AUTOMAKE_OPTIONS = foreign 1.9
-ACLOCAL_AMFLAGS = -I m4
+ACLOCAL_AMFLAGS = -I build/m4
 
 include build/var_subst.inc
 
