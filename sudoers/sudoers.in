@@ -1,0 +1,5 @@
+Cmnd_Alias OVIRT_HA = \
+    @SERVICE_PATH@ vdsmd *, \
+    @SERVICE_PATH@ sanlock *
+
+@VDSM_USER@  ALL=(ALL) NOPASSWD: OVIRT_HA

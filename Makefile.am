@@ -50,6 +50,7 @@ SUBDIRS = \
 	initscripts \
 	build \
 	ovirt_hosted_engine_ha \
+	sudoers \
 	$(NULL)
 
 dist_noinst_DATA = \

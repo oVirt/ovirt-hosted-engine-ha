@@ -25,6 +25,9 @@
 %global         engine_ha_logdir  @ENGINE_HA_LOGDIR@
 %global         engine_ha_rundir  @ENGINE_HA_RUNDIR@
 
+%global         vdsm_user @VDSM_USER@
+%global         vdsm_group @VDSM_GROUP@
+
 %if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
 %global with_systemd 1
 %endif
@@ -88,15 +91,14 @@ install -Dm 0755 initscripts/ovirt-ha-agent.init %{buildroot}%{_initrddir}/ovirt
 install -Dm 0755 initscripts/ovirt-ha-broker.init %{buildroot}%{_initrddir}/ovirt-ha-broker
 %endif
 
+install -dDm 0750 %{buildroot}%{_sysconfdir}/sudoers.d
+install -Dm 0440 sudoers/sudoers %{buildroot}%{_sysconfdir}/sudoers.d/60_ovirt-ha
+
 
 %files
 %defattr(-, root, root, -)
 %doc COPYING
 %doc README
-
-%dir %{engine_ha_logdir}
-
-%ghost %dir %{engine_ha_rundir}
 
 %dir %{engine_ha_confdir}
 %config %{engine_ha_confdir}/agent-log.conf
@@ -118,6 +120,13 @@ install -Dm 0755 initscripts/ovirt-ha-broker.init %{buildroot}%{_initrddir}/ovir
 %{_initrddir}/ovirt-ha-agent
 %{_initrddir}/ovirt-ha-broker
 %endif
+
+%{_sysconfdir}/sudoers.d/60_ovirt-ha
+
+
+%defattr(-, %{vdsm_user}, %{vdsm_group}, -)
+%dir %{engine_ha_logdir}
+%ghost %dir %{engine_ha_rundir}
 
 
 %post

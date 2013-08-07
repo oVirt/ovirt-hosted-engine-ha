@@ -177,14 +177,16 @@ class HostedEngine(object):
         # TODO not the most efficient means to maintain vdsmd...
         self._log.debug("Checking vdsmd status")
         with open(os.devnull, "w") as devnull:
-            p = subprocess.Popen(['service', 'vdsmd', 'status'],
+            p = subprocess.Popen(['sudo',
+                                  'service', 'vdsmd', 'status'],
                                  stdout=devnull, stderr=devnull)
             if p.wait() == 0:
                 self._log.info("VDSM daemon running")
             else:
                 self._log.error("Starting VDSM daemon")
                 with open(os.devnull, "w") as devnull:
-                    p = subprocess.Popen(['service', 'vdsmd', 'start'],
+                    p = subprocess.Popen(['sudo',
+                                          'service', 'vdsmd', 'start'],
                                          stdout=devnull,
                                          stderr=subprocess.PIPE)
                     res = p.communicate()
