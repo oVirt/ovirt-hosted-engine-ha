@@ -49,7 +49,7 @@ if test -z "$*" && test -f config.status; then
     ./config.status --recheck
 else
     ./configure $EXTRA_ARGS "$@"
-fi && {
+fi && make clean && {
     echo
     echo "Now type 'make' to compile ovirt-hosted-engine-ha"
 }
