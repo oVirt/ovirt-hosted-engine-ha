@@ -59,6 +59,7 @@ def run_vds_client_cmd(address, use_ssl, command, *args):
 
     method = getattr(serv.s, command)
     retry = 0
+    response = None
     while retry < constants.VDS_CLIENT_MAX_RETRY:
         try:
             response = method(*args)
@@ -71,7 +72,7 @@ def run_vds_client_cmd(address, use_ssl, command, *args):
     log.debug("Response: %r", response)
     if retry >= constants.VDS_CLIENT_MAX_RETRY:
         raise Exception("VDSM initialization timeout")
-    if response['status']['code'] != 0:
+    if response and response['status']['code'] != 0:
         raise DetailedError("Error {0} from {1}: {2}"
                             .format(response['status']['code'],
                                     command,
