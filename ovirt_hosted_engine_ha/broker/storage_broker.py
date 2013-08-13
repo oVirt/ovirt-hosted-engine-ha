@@ -17,6 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
+import base64
 import errno
 import io
 import logging
@@ -73,7 +74,7 @@ class StorageBroker(object):
                     if f_obj:
                         f_obj.close()
 
-                hex_data = ''.join("{0:02X}".format(ord(x)) for x in data)
+                hex_data = base64.b16encode(data)
                 self._log.debug("Read for host %s: %s", host, hex_data)
                 str_list.append("{0}={1}".format(host, hex_data))
 
@@ -89,7 +90,7 @@ class StorageBroker(object):
         self._log.info("Writing stats for service %s, host %s to file %s",
                        service_type, host, path)
 
-        byte_data = bytearray.fromhex(data)
+        byte_data = base64.b16decode(data)
         with self._storage_access_lock:
             f_obj = None
             try:

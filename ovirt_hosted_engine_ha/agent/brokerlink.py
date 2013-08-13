@@ -17,6 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
+import base64
 import logging
 import socket
 
@@ -95,7 +96,7 @@ class BrokerLink(object):
         """
         self._log.info("Storing blocks on storage at %s", storage_dir)
         # broker expects blocks in hex format
-        hex_data = ''.join("{0:02X}".format(ord(x)) for x in data)
+        hex_data = base64.b16encode(data)
         request = ("put-stats"
                    " storage_dir={0} service_type={1} host={2} data={3}"
                    .format(storage_dir, service_type, host, hex_data))
@@ -115,7 +116,7 @@ class BrokerLink(object):
         # broker returns "<host 1>=<hex data 1> [<host 2>=...]"
         while tokens:
             (host, data) = tokens.pop(0).split('=', 1)
-            ret[host] = bytearray.fromhex(data)
+            ret[host] = base64.b16decode(data)
         return ret
 
     def _checked_communicate(self, request):
