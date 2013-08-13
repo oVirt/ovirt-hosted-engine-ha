@@ -46,6 +46,14 @@ class HostedEngine(object):
         'vm-up good-health-status': 3,
     }
 
+    class States(object):
+        ENTRY = 'ENTRY'
+        OFF = 'OFF'
+        START = 'START'
+        ON = 'ON'
+        STOP = 'STOP'
+        MIGRATE = 'MIGRATE'
+
     def __init__(self, shutdown_requested_callback):
         """
         Initialize hosted engine monitoring logic.  shutdown_requested_callback
@@ -62,12 +70,22 @@ class HostedEngine(object):
         self._required_monitors = self._get_required_monitors()
         self._local_monitors = {}
         self._local_state = {}
+        self._init_local_state()
         self._all_host_stats = {}
 
         self._sd_path = None
         self._metadata_path = None
 
         self._sanlock_initialized = False
+
+        self._vm_state_actions = {
+            self.States.ENTRY: self._handle_entry,
+            self.States.OFF: self._handle_off,
+            self.States.START: self._handle_start,
+            self.States.ON: self._handle_on,
+            self.States.STOP: self._handle_stop,
+            self.States.MIGRATE: self._handle_migrate,
+        }
 
     def _get_required_monitors(self):
         """
@@ -125,6 +143,23 @@ class HostedEngine(object):
                 'vm_uuid': self._config.get(config.VM, config.VM_UUID)}
         })
         return req
+
+    def _init_local_state(self):
+        """
+        Initialize self._local_state dict (and document the entries).
+        """
+        # Local timestamp of most recent engine vm startup attempt
+        self._local_state['last-engine-retry'] = 0
+
+        # Count of recent engine vm startup attempts
+        self._local_state['engine-retries'] = 0
+
+        # Host id of local host
+        self._local_state['host-id'] = int(self._config.get(config.ENGINE,
+                                                            config.HOST_ID))
+
+        # Initial state to track engine vm status in state machine
+        self._local_state['current-state'] = self.States.ENTRY
 
     def _get_lf_args(self, lf_class):
         return {'lf_class': lf_class,
@@ -260,7 +295,7 @@ class HostedEngine(object):
     def _initialize_sanlock(self):
         self._cond_start_service('sanlock')
 
-        host_id = int(self._config.get(config.ENGINE, config.HOST_ID))
+        host_id = self._local_state['host-id']
         self._metadata_dir = os.path.join(self._sd_path,
                                           constants.SD_METADATA_DIR)
         lease_file = os.path.join(self._metadata_dir,
@@ -316,10 +351,11 @@ class HostedEngine(object):
                 self._broker.get_monitor_status(v['id']))
         self._log.debug("Refresh complete")
 
-        # (re-)initialize retry status variables if either a) they've not
-        # been initialized yet, or b) the retry window has expired.
-        if ('last-engine-retry' not in self._local_state
-                or self._local_state['last-engine-retry'] + time.time()
+        # re-initialize retry status variables if the retry window
+        # has expired.
+        if ((self._local_state['last-engine-retry'] != 0
+             or self._local_state['engine-retries'] != 0)
+            and self._local_state['last-engine-retry'] + time.time()
                 < constants.ENGINE_RETRY_EXPIRATION_SECS):
             self._local_state['last-engine-retry'] = 0
             self._local_state['engine-retries'] = 0
@@ -399,8 +435,7 @@ class HostedEngine(object):
                 .format(md_parse_vers=constants.METADATA_PARSE_VERSION,
                         md_feature_vers=constants.METADATA_FEATURE_VERSION,
                         ts_int=ts,
-                        host_id=self._config.get(config.ENGINE,
-                                                 config.HOST_ID),
+                        host_id=self._local_state['host-id'],
                         score=score,
                         engine_status=lm['engine-health']['status'],
                         name=socket.gethostname()))
@@ -417,8 +452,7 @@ class HostedEngine(object):
                         md_feature_vers=constants.METADATA_FEATURE_VERSION,
                         ts_int=ts,
                         ts_str=time.ctime(ts),
-                        host_id=self._config.get(config.ENGINE,
-                                                 config.HOST_ID),
+                        host_id=self._local_state['host-id'],
                         score=score))
         for (k, v) in sorted(lm.iteritems()):
             info += "{0}={1}\n".format(k, str(v['status']))
@@ -451,16 +485,6 @@ class HostedEngine(object):
                 self._log.error("Malformed metadata:"
                                 " host id '%s' not an integer", host_id)
                 continue
-
-            if host_id not in self._all_host_stats:
-                self._all_host_stats[host_id] = {
-                    'first-update': True,
-                    'last-update-local-ts': None,
-                    'last-update-host-ts': None,
-                    'alive': False,
-                    'score': 0,
-                    'engine-status': None,
-                    'hostname': '(unknown)'}
 
             if len(data) < 512:
                 self._log.error("Malformed metadata for host %d:"
@@ -495,8 +519,21 @@ class HostedEngine(object):
             engine_status = str(tokens[5])  # convert from bytearray
             hostname = str(tokens[6])  # convert from bytearray
 
+            if host_id not in self._all_host_stats:
+                self._all_host_stats[host_id] = {
+                    'first-update': True,
+                    'last-update-local-ts': local_ts,
+                    'last-update-host-ts': None,
+                    'alive': 'unknown',
+                    'score': 0,
+                    'engine-status': None,
+                    'hostname': '(unknown)'}
+
             if host_ts != self._all_host_stats[host_id]['last-update-host-ts']:
-                # Track first update in order to accurately judge liveness
+                # Track first update in order to accurately judge liveness.
+                # If last-update-host-ts is 0, then first-update stays True
+                # which indicates that we cannot use this last-update-local-ts
+                # as an indication of host liveness.
                 if self._all_host_stats[host_id]['last-update-host-ts']:
                     self._all_host_stats[host_id]['first-update'] = False
 
@@ -509,17 +546,20 @@ class HostedEngine(object):
 
         # All updated, now determine if hosts are alive/updating
         for host_id, attr in self._all_host_stats.iteritems():
-            if attr['first-update']:
-                self._log.info("Watching for update from host %s (id %d)",
-                               attr['hostname'], host_id,
-                               extra=self._get_lf_args(self.LF_HOST_UPDATE))
-            elif (attr['last-update-local-ts']
-                  + constants.HOST_ALIVE_TIMEOUT_SECS) <= local_ts:
+            if (attr['last-update-local-ts']
+                    + constants.HOST_ALIVE_TIMEOUT_SECS) <= local_ts:
+                # Check for timeout regardless of the first-update flag status:
+                # a timeout in this case means we read stale data, but still
+                # must mark the host as dead.
                 # TODO newer sanlocks can report this through get_hosts()
                 self._log.error("Host %s (id %d) is no longer updating its"
                                 " metadata", attr['hostname'], host_id,
                                 extra=self._get_lf_args(self.LF_HOST_UPDATE))
                 self._all_host_stats[host_id]['alive'] = False
+            elif attr['first-update']:
+                self._log.info("Waiting for first update from host %s (id %d)",
+                               attr['hostname'], host_id,
+                               extra=self._get_lf_args(self.LF_HOST_UPDATE))
             else:
                 self._log.info("Host %s (id %d) metadata updated",
                                attr['hostname'], host_id,
@@ -535,60 +575,56 @@ class HostedEngine(object):
         """
         Start or stop engine on current host based on hosts' statistics.
         """
-        local_host_id = int(self._config.get(config.ENGINE, config.HOST_ID))
-        engine_status = self._all_host_stats[local_host_id]['engine-status']
-        engine_status_host_id = local_host_id
-        best_score = self._all_host_stats[local_host_id]['score']
-        best_score_host_id = local_host_id
+        local_host_id = self._local_state['host-id']
 
-        if engine_status == 'None':
+        if self._all_host_stats[local_host_id]['engine-status'] == 'None':
             self._log.info("Unknown local engine vm status, no actions taken")
             return
 
+        cur_stats = {
+            'best-engine-status':
+            self._all_host_stats[local_host_id]['engine-status'],
+            'best-engine-status-host-id': local_host_id,
+            'best-score': self._all_host_stats[local_host_id]['score'],
+            'best-score-host-id': local_host_id,
+        }
+
         for host_id, stats in self._all_host_stats.iteritems():
-            if self._engine_status_score(stats['engine-status']) \
-                    > self._engine_status_score(engine_status):
-                engine_status = stats['engine-status']
-                engine_status_host_id = host_id
+            if stats['alive'] == 'unknown':
+                # TODO probably unnecessary to wait, sanlock will prevent
+                # 2 from starting up accidentally
+                self._log.info("Unknown host state for id %d,"
+                               " waiting for initialization", host_id)
+                return
+            elif not stats['alive']:
+                continue
+
+            if self._get_engine_status_score(stats['engine-status']) \
+                    > self._get_engine_status_score(
+                        cur_stats['best-engine-status']):
+                cur_stats['best-engine-status'] = stats['engine-status']
+                cur_stats['best-engine-status-host-id'] = host_id
             # Prefer local score if equal to remote score
-            if stats['score'] > best_score:
-                best_score_host_id = host_id
+            if stats['score'] > cur_stats['best-score']:
+                cur_stats['best-score'] = stats['score']
+                cur_stats['best-score-host-id'] = host_id
 
-        if engine_status[:5] == 'vm-up':
-            # FIXME timeout for bad-host-status: if up and no engine, try to
-            # migrate; if can't migrate, reduce local score and shut down
-            self._log.info(
-                "Engine vm is running on host %s (id %d)",
-                self._all_host_stats[engine_status_host_id]['hostname'],
-                engine_status_host_id,
-                extra=self._get_lf_args(self.LF_ENGINE_HEALTH)
-            )
-            return
+        # FIXME set maintenance flag
+        cur_stats['maintenance'] = False
 
-        # FIXME remote db down, other statuses
+        self._cur_stats = cur_stats
 
-        # FIXME cluster-wide engine maintenance bit
+        state = self._local_state['current-state']
+        yield_ = False
+        # Process the states until it's time to sleep, indicated by the
+        # state handler returning yield_ as True.
+        while not yield_:
+            self._log.debug("Processing engine state %s", state)
+            state, yield_ = self._vm_state_actions[state]()
+        self._log.debug("Next engine state %s", state)
+        self._local_state['current-state'] = state
 
-        if best_score_host_id != local_host_id:
-            self._log.info("Engine down, local host does not have best score",
-                           extra=self._get_lf_args(self.LF_ENGINE_HEALTH))
-            return
-
-        self._log.error("Engine down and local host has best score (%d),"
-                        " attempting to start engine VM", best_score,
-                        extra=self._get_lf_args(self.LF_ENGINE_HEALTH))
-        try:
-            self._start_engine_vm()
-        except Exception as e:
-            self._log.error("Failed to start engine VM: %s", str(e))
-            self._local_state['last-engine-retry'] = time.time()
-            self._local_state['engine-retries'] += 1
-            # TODO mail for error (each time, or after n retries?)
-        else:
-            self._local_state['last-engine-retry'] = 0
-            self._local_state['engine-retries'] = 0
-
-    def _engine_status_score(self, status):
+    def _get_engine_status_score(self, status):
         """
         Convert a string engine/vm status to a sortable numeric score;
         the highest score is a live vm with a healthy engine.
@@ -598,6 +634,76 @@ class HostedEngine(object):
         except KeyError:
             self._log.error("Invalid engine status: %s", status, exc_info=True)
             return 0
+
+    def _handle_entry(self):
+        """
+        ENTRY state.  Determine current vm state and switch appropriately.
+        """
+        local_host_id = self._local_state['host-id']
+        if self._all_host_stats[local_host_id]['engine-status'][:5] == 'vm-up':
+            return self.States.ON, False
+        else:
+            return self.States.OFF, False
+
+    def _handle_off(self):
+        """
+        OFF state.  Check if any conditions warrant starting the vm, and
+        check if it was started externally.
+        """
+        local_host_id = self._local_state['host-id']
+
+        if self._cur_stats['best-engine-status'][:5] == 'vm-up':
+            # FIXME timeout for bad-host-status: if up and no engine, try to
+            # migrate; if can't migrate, reduce local score and shut down
+            engine_host_id = self._cur_stats['best-engine-status-host-id']
+            if engine_host_id == local_host_id:
+                self._log.info("Engine vm unexpectedly running locally,"
+                               " monitoring vm")
+                # FIXME maintenance bit should prevent this transition; in
+                # fact, it should trigger STOP and then IDLE or similar
+                return self.States.ON, False
+            else:
+                self._log.info(
+                    "Engine vm is running on host %s (id %d)",
+                    self._all_host_stats[engine_host_id]['hostname'],
+                    engine_host_id,
+                    extra=self._get_lf_args(self.LF_ENGINE_HEALTH)
+                )
+                return self.States.OFF, True
+
+        # FIXME remote db down, other statuses
+
+        # FIXME cluster-wide engine maintenance bit
+
+        if self._cur_stats['best-score-host-id'] != local_host_id:
+            self._log.info("Engine down, local host does not have best score",
+                           extra=self._get_lf_args(self.LF_ENGINE_HEALTH))
+            return self.States.OFF, True
+
+        self._log.error("Engine down and local host has best score (%d),"
+                        " attempting to start engine VM",
+                        self._cur_stats['best-score'],
+                        extra=self._get_lf_args(self.LF_ENGINE_HEALTH))
+        return self.States.START, False
+
+    def _handle_start(self):
+        """
+        START state.  Power on VM.
+        """
+        try:
+            self._start_engine_vm()
+        except Exception as e:
+            self._log.error("Failed to start engine VM: %s", str(e))
+            self._local_state['last-engine-retry'] = time.time()
+            self._local_state['engine-retries'] += 1
+            # TODO mail for error (each time, or after n retries?)
+            # OFF handler will retry based on host score
+            return self.States.OFF, True
+        else:
+            self._local_state['last-engine-retry'] = 0
+            self._local_state['engine-retries'] = 0
+            return self.States.ON, True
+            # TODO should we stay in START until success/timeout?
 
     def _start_engine_vm(self):
         self._log.info("Starting vm using `%s --vm-start`",
@@ -622,3 +728,35 @@ class HostedEngine(object):
 
         self._log.error("Engine VM started on localhost")
         # FIXME record start time in order to track bad-health-status timeout
+        return
+
+    def _handle_on(self):
+        """
+        ON state.  See if the VM was stopped or needs to be stopped.
+        """
+        local_host_id = self._local_state['host-id']
+        if self._cur_stats['best-engine-status'][:5] != 'vm-up':
+            self._log.error("Engine vm died unexpectedly")
+            return self.States.OFF, False
+        elif self._cur_stats['best-engine-status-host-id'] != local_host_id:
+            self._log.error("Engine vm unexpectedly running on other host")
+            return self.States.OFF, True
+
+        # FIXME migration if other hosts are found to be significantly better
+        # TODO check for health, just just liveness
+        self._log.info("Engine vm running on localhost")
+        return self.States.ON, True
+
+    def _handle_stop(self):
+        """
+        STOP state.  Shut down the locally-running vm.
+        """
+        # FIXME currently unused
+        return self.States.STOP, True
+
+    def _handle_migrate(self):
+        """
+        MIGRATE state.  Move the VM to the destination host.
+        """
+        # FIXME currently unused
+        return self.States.MIGRATE, True
