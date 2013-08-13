@@ -129,6 +129,7 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
         Handle an incoming connection.
         """
         while not self.server.sp_listener.need_exit:
+            data = None
             try:
                 data = util.socket_readline(self.request, self._log)
                 self._log.debug("Input: %s", data)
@@ -149,6 +150,10 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
                                     exc_info=True)
             except DisconnectionError:
                 self._log.info("Connection closed")
+                return
+            except Exception:
+                self._log.error("Error handling request, data: %r",
+                                data, exc_info=True)
                 return
         if self.server.sp_listener.need_exit:
             self._log.info("Closing connection on server request")
