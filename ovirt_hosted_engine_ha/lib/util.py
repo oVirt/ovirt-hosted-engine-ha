@@ -23,6 +23,7 @@ Utility functions
 
 import errno
 import os
+import socket
 
 from .exceptions import DisconnectionError
 
@@ -38,16 +39,37 @@ def mkdir_recursive(path):
 def socket_readline(sock, log):
     """
     Reads from a socket until newline is received.  Returns string read
-    (without trailing newline), or raises DisconnectionError.
+    (without trailing newline), or raises either DisconnectionError on
+    disconnect or socket.timeout on timeout.
     """
-    sockfile = sock.makefile()
-    msg = sockfile.readline()
+    try:
+        sockfile = sock.makefile()
+        msg = sockfile.readline()
+    except socket.timeout:
+        raise
+    except IOError as e:
+        log.debug("Connection closed while reading from socket: %s", str(e))
+        raise DisconnectionError("Connection closed")
+
     if len(msg) == 0:
         log.debug("Connection closed while reading from socket")
         raise DisconnectionError("Connection closed")
     else:
         msg = msg.strip()
         return msg
+
+
+def socket_sendline(sock, log, data):
+    """
+    Writes data to a socket, appending a newline.  Returns normally, or
+    raises DisconnectionError if the write could not be completed.
+    """
+    try:
+        sock.sendall(data + "\n")
+    except IOError as e:
+        log.debug("Connection closed while writing to socket: %s", str(e))
+        raise DisconnectionError("Connection closed")
+    return
 
 
 def to_bool(string):

@@ -138,7 +138,7 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
                 except RequestError as e:
                     response = "failure " + format(str(e))
                 self._log.debug("Response: %s", response)
-                self.request.sendall(response + "\n")
+                util.socket_sendline(self.request, self._log, response)
             except socket.timeout:
                 pass
             except socket.error as e:

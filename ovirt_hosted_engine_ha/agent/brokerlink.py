@@ -41,7 +41,8 @@ class BrokerLink(object):
             self._socket.connect(constants.BROKER_SOCKET_FILE)
         except socket.error as e:
             self._log.error("Failed to connect to broker: %s", str(e))
-            self._socket.close()
+            if self._socket:
+                self._socket.close()
             self._socket = None
             raise
 
@@ -85,7 +86,7 @@ class BrokerLink(object):
         except Exception as e:
             self._log.error("Exception getting monitor status: %s", str(e))
             raise RequestError("Failed to get monitor status: {0}"
-                               .format(response))
+                               .format(str(e)))
         self._log.info("Success, status %s", response)
         return response
 
@@ -150,8 +151,8 @@ class BrokerLink(object):
             raise DisconnectionError("Not connected to broker")
 
         self._log.debug("Sending request: %s", request)
-        self._socket.sendall(request + "\n")
         try:
+            util.socket_sendline(self._socket, self._log, request)
             response = util.socket_readline(self._socket, self._log)
         except DisconnectionError:
             self._log.error("Connection closed")
