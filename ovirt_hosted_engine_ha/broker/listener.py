@@ -107,7 +107,7 @@ class ThreadedStreamServer(SocketServer.ThreadingMixIn,
 
         SocketServer.UnixStreamServer.__init__(self, socket_file, handler,
                                                bind_and_activate)
-        self.timeout = self.sp_listener.need_exit
+        self.timeout = 0.7
 
 
 class ConnectionHandler(SocketServer.BaseRequestHandler):
