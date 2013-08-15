@@ -7,6 +7,8 @@
 /ovirt_hosted_engine_ha/agent/constants.py
 /ovirt_hosted_engine_ha/broker/config.log
 /ovirt_hosted_engine_ha/broker/constants.py
+/ovirt_hosted_engine_ha/lib/config.log
+/ovirt_hosted_engine_ha/lib/constants.py
 /tmp.repos/
 
 # Autotools

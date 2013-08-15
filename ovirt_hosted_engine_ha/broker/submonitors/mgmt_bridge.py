@@ -20,8 +20,8 @@
 import logging
 
 from ovirt_hosted_engine_ha.broker import submonitor_base
-from ovirt_hosted_engine_ha.broker import submonitor_util as sm_util
 from ovirt_hosted_engine_ha.lib import util as util
+from ovirt_hosted_engine_ha.lib import vds_client as vdsc
 
 
 def register():
@@ -43,8 +43,8 @@ class Submonitor(submonitor_base.SubmonitorBase):
 
     def action(self, options):
         try:
-            response = sm_util.run_vds_client_cmd(self._address, self._use_ssl,
-                                                  'getVdsCapabilities')
+            response = vdsc.run_vds_client_cmd(self._address, self._use_ssl,
+                                               'getVdsCapabilities')
         except Exception as e:
             self._log.error("Failed to getVdsCapabilities: %s", str(e))
             self.update_result(None)

@@ -18,11 +18,13 @@
 #
 
 include $(top_srcdir)/build/python.inc
+include $(top_srcdir)/build/var_subst.inc
 
 MAINTAINERCLEANFILES = \
 	$(srcdir)/Makefile.in \
 	$(NULL)
 CLEANFILES = \
+	constants.py \
 	$(NULL)
 
 halibdir = $(engine_ha_libdir)/lib
@@ -32,6 +34,15 @@ dist_halib_PYTHON = \
 	exceptions.py \
 	log_filter.py \
 	util.py \
+	vds_client.py \
+	$(NULL)
+
+halib_PYTHON = \
+	constants.py \
+	$(NULL)
+
+EXTRA_DIST = \
+	constants.py.in \
 	$(NULL)
 
 clean-local: \

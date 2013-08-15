@@ -24,8 +24,8 @@ import time
 from otopi import util
 from vdsm import vdscli
 
-from . import constants
-from ..lib.exceptions import DetailedError
+import constants
+from exceptions import DetailedError
 
 
 def run_vds_client_cmd(address, use_ssl, command, *args):

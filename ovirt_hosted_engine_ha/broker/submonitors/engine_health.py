@@ -22,9 +22,9 @@ import subprocess
 
 from ovirt_hosted_engine_ha.broker import constants
 from ovirt_hosted_engine_ha.broker import submonitor_base
-from ovirt_hosted_engine_ha.broker import submonitor_util as sm_util
-from ovirt_hosted_engine_ha.lib import util as util
 from ovirt_hosted_engine_ha.lib import exceptions as exceptions
+from ovirt_hosted_engine_ha.lib import util as util
+from ovirt_hosted_engine_ha.lib import vds_client as vdsc
 
 
 def register():
@@ -49,8 +49,8 @@ class Submonitor(submonitor_base.SubmonitorBase):
     def action(self, options):
         # First, see if vdsm tells us it's up
         try:
-            stats = sm_util.run_vds_client_cmd(self._address, self._use_ssl,
-                                               'getVmStats', self._vm_uuid)
+            stats = vdsc.run_vds_client_cmd(self._address, self._use_ssl,
+                                            'getVmStats', self._vm_uuid)
         except Exception as e:
             if isinstance(e, exceptions.DetailedError) \
                     and e.detail == "Virtual machine does not exist":
@@ -63,6 +63,10 @@ class Submonitor(submonitor_base.SubmonitorBase):
                 self.update_result(None)
                 return
         vm_status = stats['statsList'][0]['status']
+        if vm_status.lower() == 'powering up':
+            self._log.info("VM powering up")
+            self.update_result('vm-up bad-health-status')
+            return
         if vm_status.lower() != 'up':
             self._log.info("VM not running on this host, status %s", vm_status)
             self.update_result('vm-down')
