@@ -21,7 +21,7 @@ import base64
 import logging
 import socket
 
-from . import constants
+from ..env import constants
 from ..lib.exceptions import DisconnectionError
 from ..lib.exceptions import RequestError
 from ..lib import util
@@ -114,7 +114,7 @@ class BrokerLink(object):
 
         tokens = result.split()
         ret = {}
-        # broker returns "<host 1>=<hex data 1> [<host 2>=...]"
+        # broker returns "<host_id 1>=<hex data 1> [<host_id 2>=...]"
         while tokens:
             (host_id, data) = tokens.pop(0).split('=', 1)
             ret[host_id] = base64.b16decode(data)

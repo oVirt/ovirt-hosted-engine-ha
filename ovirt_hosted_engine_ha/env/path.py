@@ -17,24 +17,29 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-"""Constants."""
+import os
 
-PACKAGE_NAME = '@PACKAGE_NAME@'
-PROGRAM_NAME = 'broker'
-PACKAGE_VERSION = '@PACKAGE_VERSION@'
-FULL_PROG_NAME = '{0} {1} {2}'.format(
-                 PACKAGE_NAME, PROGRAM_NAME, PACKAGE_VERSION)
+from . import config
+from . import constants
 
-# See http://www.gnu.org/software/automake/manual/html_node/Scripts.html
-LOG_CONF_FILE = '@ENGINE_HA_CONFDIR@/broker-log.conf'
-LOG_FILE = '@ENGINE_HA_LOGDIR@/broker.log'
-PID_FILE = '@ENGINE_HA_RUNDIR@/broker.pid'
 
-VDSM_USER = '@VDSM_USER@'
-VDSM_GROUP = '@VDSM_GROUP@'
+def get_domain_path(config_):
+    """
+    Return path of storage domain holding engine vm
+    """
+    sd_uuid = config_.get(config.ENGINE, config.SD_UUID)
+    parent = constants.SD_MOUNT_PARENT
+    for dname in os.listdir(parent):
+        path = os.path.join(parent, dname, sd_uuid)
+        if os.access(path, os.F_OK):
+            return path
+    raise Exception("path to storage domain {0} not found in {1}"
+                    .format(sd_uuid, parent))
 
-HOSTED_ENGINE_BINARY = '@ENGINE_SETUP_BINDIR@/hosted-engine'
 
-MD_EXTENSION = 'metadata'
-HOST_SEGMENT_BYTES = 4096
-MAX_HOST_ID_SCAN = 64
+def get_metadata_path(config_):
+    """
+    Return path to ha agent metadata
+    """
+    return os.path.join(get_domain_path(config_),
+                        constants.SD_METADATA_DIR)

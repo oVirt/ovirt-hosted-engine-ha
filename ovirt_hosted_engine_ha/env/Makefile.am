@@ -1,6 +1,6 @@
 #
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-# Copyright (C) 2013 Red Hat, Inc.
+# Copyright (C) 2012-2013 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -17,24 +17,37 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-"""Constants."""
+include $(top_srcdir)/build/python.inc
+include $(top_srcdir)/build/var_subst.inc
 
-PACKAGE_NAME = '@PACKAGE_NAME@'
-PROGRAM_NAME = 'broker'
-PACKAGE_VERSION = '@PACKAGE_VERSION@'
-FULL_PROG_NAME = '{0} {1} {2}'.format(
-                 PACKAGE_NAME, PROGRAM_NAME, PACKAGE_VERSION)
+MAINTAINERCLEANFILES = \
+	$(srcdir)/Makefile.in \
+	$(NULL)
+CLEANFILES = \
+	constants.py \
+	$(NULL)
 
-# See http://www.gnu.org/software/automake/manual/html_node/Scripts.html
-LOG_CONF_FILE = '@ENGINE_HA_CONFDIR@/broker-log.conf'
-LOG_FILE = '@ENGINE_HA_LOGDIR@/broker.log'
-PID_FILE = '@ENGINE_HA_RUNDIR@/broker.pid'
+haenvdir = $(engine_ha_libdir)/env
 
-VDSM_USER = '@VDSM_USER@'
-VDSM_GROUP = '@VDSM_GROUP@'
+dist_haenv_PYTHON = \
+	__init__.py \
+	config.py \
+	path.py \
+	$(NULL)
 
-HOSTED_ENGINE_BINARY = '@ENGINE_SETUP_BINDIR@/hosted-engine'
+haenv_PYTHON = \
+	constants.py \
+	$(NULL)
 
-MD_EXTENSION = 'metadata'
-HOST_SEGMENT_BYTES = 4096
-MAX_HOST_ID_SCAN = 64
+EXTRA_DIST = \
+	constants.py.in \
+	$(NULL)
+
+clean-local: \
+	python-clean \
+	$(NULL)
+
+all-local: \
+	$(DISTFILES) \
+	python-syntax-check \
+	$(NULL)

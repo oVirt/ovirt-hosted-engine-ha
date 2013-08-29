@@ -26,6 +26,8 @@ MAINTAINERCLEANFILES = \
 SUBDIRS = \
 	agent \
 	broker \
+	client \
+	env \
 	lib \
 	$(NULL)
 

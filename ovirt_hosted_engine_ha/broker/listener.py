@@ -24,7 +24,7 @@ import socket
 import SocketServer
 import threading
 
-from . import constants
+from ..env import constants
 from ..lib import util
 from ..lib.exceptions import DisconnectionError
 from ..lib.exceptions import RequestError
@@ -47,10 +47,10 @@ class Listener(object):
         self._storage_broker_instance_access_lock = threading.Lock()
         self._need_exit = False
 
-        if os.path.exists(constants.SOCKET_FILE):
-            os.unlink(constants.SOCKET_FILE)
+        if os.path.exists(constants.BROKER_SOCKET_FILE):
+            os.unlink(constants.BROKER_SOCKET_FILE)
         self._server = ThreadedStreamServer(
-            constants.SOCKET_FILE, ConnectionHandler, True, self)
+            constants.BROKER_SOCKET_FILE, ConnectionHandler, True, self)
 
         self._log.info("SocketServer ready")
 

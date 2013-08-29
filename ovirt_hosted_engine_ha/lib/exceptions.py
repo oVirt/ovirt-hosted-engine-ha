@@ -37,3 +37,7 @@ class DetailedError(Exception):
     def __init__(self, msg, detail):
         Exception.__init__(self, msg)
         self.detail = detail
+
+
+class MetadataError(Exception):
+    pass

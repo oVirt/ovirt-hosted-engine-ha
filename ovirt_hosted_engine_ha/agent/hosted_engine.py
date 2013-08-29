@@ -26,11 +26,12 @@ import time
 
 import sanlock
 
-from . import brokerlink
-from . import config
 from . import constants
+from ..env import config
+from ..lib import brokerlink
 from ..lib import exceptions as ex
 from ..lib import log_filter
+from ..lib import metadata
 from ..lib import vds_client as vdsc
 
 
@@ -546,47 +547,15 @@ class HostedEngine(object):
         local_ts = time.time()
         for host_str, data in all_stats.iteritems():
             try:
-                host_id = int(host_str)
-            except ValueError:
-                self._log.error("Malformed metadata:"
-                                " host id '%s' not an integer", host_id)
+                md = metadata.parse_metadata_to_dict(host_str, data)
+            except ex.MetadataError as e:
+                self._log.error(
+                    str(e),
+                    extra=self._get_lf_args(self.LF_MD_ERROR))
                 continue
 
-            if len(data) < 512:
-                self._log.error("Malformed metadata for host %d:"
-                                " received %d of %d expected bytes",
-                                host_id, len(data), 512)
-                continue
-            data = data[:512].rstrip('\0')
-            tokens = data.split('|')
-            if len(tokens) < 7:
-                self._log.error("Malformed metadata for host %d:"
-                                " received %d of %d expected tokens",
-                                host_id, len(tokens), 7)
-                continue
-
-            try:
-                md_parse_vers = int(tokens[0])
-            except ValueError:
-                self._log.error("Malformed metadata for host %d:"
-                                " non-parsable metadata version %s",
-                                host_id, tokens[0])
-                continue
-
-            if md_parse_vers > constants.METADATA_FEATURE_VERSION:
-                self._log.error("Metadata version %s for host %s too new for"
-                                " this agent (%s)", md_parse_vers, host_id,
-                                constants.METADATA_FEATURE_VERSION,
-                                extra=self._get_lf_args(self.LF_MD_ERROR))
-                continue
-
-            host_ts = int(tokens[2])
-            score = int(tokens[4])
-            engine_status = str(tokens[5])  # convert from bytearray
-            hostname = str(tokens[6])  # convert from bytearray
-
-            if host_id not in self._all_host_stats:
-                self._all_host_stats[host_id] = {
+            if md['host-id'] not in self._all_host_stats:
+                self._all_host_stats[md['host-id']] = {
                     'first-update': True,
                     'last-update-local-ts': local_ts,
                     'last-update-host-ts': None,
@@ -595,20 +564,25 @@ class HostedEngine(object):
                     'engine-status': None,
                     'hostname': '(unknown)'}
 
-            if host_ts != self._all_host_stats[host_id]['last-update-host-ts']:
+            if self._all_host_stats[md['host-id']]['last-update-host-ts'] \
+                    != md['host-ts']:
                 # Track first update in order to accurately judge liveness.
                 # If last-update-host-ts is 0, then first-update stays True
                 # which indicates that we cannot use this last-update-local-ts
                 # as an indication of host liveness.
-                if self._all_host_stats[host_id]['last-update-host-ts']:
-                    self._all_host_stats[host_id]['first-update'] = False
+                if self._all_host_stats[md['host-id']]['last-update-host-ts']:
+                    self._all_host_stats[md['host-id']]['first-update'] = False
 
-                self._all_host_stats[host_id]['last-update-host-ts'] = host_ts
-                self._all_host_stats[host_id]['last-update-local-ts'] = \
+                self._all_host_stats[md['host-id']]['last-update-host-ts'] = \
+                    md['host-ts']
+                self._all_host_stats[md['host-id']]['last-update-local-ts'] = \
                     local_ts
-                self._all_host_stats[host_id]['score'] = score
-                self._all_host_stats[host_id]['engine-status'] = engine_status
-                self._all_host_stats[host_id]['hostname'] = hostname
+                self._all_host_stats[md['host-id']]['score'] = \
+                    md['score']
+                self._all_host_stats[md['host-id']]['engine-status'] = \
+                    md['engine-status']
+                self._all_host_stats[md['host-id']]['hostname'] = \
+                    md['hostname']
 
         # All updated, now determine if hosts are alive/updating
         for host_id, attr in self._all_host_stats.iteritems():

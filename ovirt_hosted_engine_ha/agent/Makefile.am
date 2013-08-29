@@ -39,8 +39,6 @@ agentdir = $(engine_ha_libdir)/agent
 dist_agent_PYTHON = \
 	__init__.py \
 	agent.py \
-	brokerlink.py \
-	config.py \
 	hosted_engine.py \
 	$(NULL)
 
