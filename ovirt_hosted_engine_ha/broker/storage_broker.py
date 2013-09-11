@@ -36,11 +36,28 @@ class StorageBroker(object):
     def get_all_stats_for_service_type(self, storage_dir, service_type):
         """
         Reads all files in storage_dir for the given service_type, returning a
-        space-delimited list of "<hostname>=<hex data>" for each host.
+        space-delimited string of "<host_id>=<hex data>" for each host.
+        """
+        d = self.get_raw_stats_for_service_type(storage_dir, service_type)
+        str_list = []
+        for host_id in sorted(d.keys()):
+            hex_data = base64.b16encode(d.get(host_id))
+            self._log.debug("Read for host id %d: %s",
+                            host_id, hex_data)
+            str_list.append("{0}={1}".format(host_id, hex_data))
+        return ' '.join(str_list)
+
+    def get_raw_stats_for_service_type(self, storage_dir, service_type):
+        """
+        Reads all files in storage_dir for the given service_type, returning a
+        dict of "host_id: data" for each host
+
+        Note: this method is called from the client as well as from
+        self.get_all_stats_for_service_type().
         """
         self._log.info("Getting stats for service %s from %s",
                        service_type, storage_dir)
-        str_list = []
+        d = {}
         with self._storage_access_lock:
             path = os.path.join(storage_dir, self._get_filename(service_type))
             f = None
@@ -55,10 +72,7 @@ class StorageBroker(object):
                     if host_id > constants.MAX_HOST_ID_SCAN:
                         break
                     if data and data[0] != '\0':
-                        hex_data = base64.b16encode(data)
-                        self._log.debug("Read for host id %d: %s",
-                                        host_id, hex_data)
-                        str_list.append("{0}={1}".format(host_id, hex_data))
+                        d[host_id] = data
                     host_id += 1
             except IOError as e:
                 self._log.error("Failed to read metadata from %s",
@@ -69,7 +83,7 @@ class StorageBroker(object):
                 if f:
                     f.close()
 
-        return " ".join(str_list)
+        return d
 
     def put_stats(self, storage_dir, service_type, host_id, data):
         """

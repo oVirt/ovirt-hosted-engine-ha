@@ -18,6 +18,7 @@
 #
 
 import logging
+import os
 
 from ..env import config
 from ..env import constants
@@ -37,19 +38,43 @@ class HAClient(object):
             logging.basicConfig(filename='/dev/null', filemode='w+',
                                 level=logging.CRITICAL)
         self._log = logging.getLogger("HAClient")
-        self._config = config.Config()
+        self._config = None
 
     def get_all_host_stats(self):
         """
         Connects to HA broker, reads stats for all hosts, and returns
         them in a dictionary as {host_id: = {key: value, ...}}
         """
+        if self._config is None:
+            self._config = config.Config()
         broker = brokerlink.BrokerLink()
         broker.connect()
         stats = broker.get_stats_from_storage(
             path.get_metadata_path(self._config),
             constants.SERVICE_TYPE)
         broker.disconnect()
+
+        output = {}
+        for host_str, data in stats.iteritems():
+            try:
+                md = metadata.parse_metadata_to_dict(host_str, data)
+            except MetadataError as e:
+                self._log.error(str(e))
+                continue
+            else:
+                output[md['host-id']] = md
+        return output
+
+    def get_all_host_stats_direct(self, dom_path, service_type):
+        """
+        Connects to HA broker, reads stats for all hosts, and returns
+        them in a dictionary as {host_id: = {key: value, ...}}
+        """
+        from ..broker import storage_broker
+
+        sb = storage_broker.StorageBroker()
+        path = os.path.join(dom_path, constants.SD_METADATA_DIR)
+        stats = sb.get_raw_stats_for_service_type(path, service_type)
 
         output = {}
         for host_str, data in stats.iteritems():
