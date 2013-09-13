@@ -9,6 +9,7 @@
 /ovirt_hosted_engine_ha/broker/constants.py
 /ovirt_hosted_engine_ha/lib/config.log
 /ovirt_hosted_engine_ha/lib/constants.py
+/sudoers/sudoers
 /tmp.repos/
 
 # Autotools
@@ -34,6 +35,12 @@
 /ovirt_hosted_engine_ha/broker/submonitors/Makefile.in
 /ovirt_hosted_engine_ha/lib/Makefile
 /ovirt_hosted_engine_ha/lib/Makefile.in
+/initscripts/Makefile
+/initscripts/Makefile.in
+/initscripts/config.log
+/sudoers/Makefile
+/sudoers/Makefile.in
+/sudoers/config.log
 
 # PyCharm, IntelliJ IDEA-specific files
 *.iml

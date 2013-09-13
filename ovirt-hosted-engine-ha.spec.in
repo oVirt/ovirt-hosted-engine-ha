@@ -21,7 +21,7 @@
 %global         package_name @PACKAGE_NAME@
 %global         engine_ha_bindir  @ENGINE_HA_BINDIR@
 %global         engine_ha_confdir @ENGINE_HA_CONFDIR@
-%global         engine_ha_libdir  @ENGINE_HA_LIBDIR@
+%global         engine_ha_libdir  %{python_sitelib}/ovirt_hosted_engine_ha
 %global         engine_ha_logdir  @ENGINE_HA_LOGDIR@
 %global         engine_ha_rundir  @ENGINE_HA_RUNDIR@
 
@@ -38,7 +38,7 @@ Version:        @PACKAGE_RPM_VERSION@
 Release:        @PACKAGE_RPM_RELEASE@%{?release_suffix}%{?dist}
 License:        LGPLv2+
 URL:            http://www.ovirt.org
-Source:         http://resources.ovirt.org/releases/stable/3.3/%{name}-%{package_version}.tar.gz
+Source:         http://resources.ovirt.org/releases/nightly/src/%{name}-%{package_version}.tar.gz
 Group:          Applications/System
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -103,8 +103,8 @@ install -Dm 0440 sudoers/sudoers %{buildroot}%{_sysconfdir}/sudoers.d/60_ovirt-h
 %doc README
 
 %dir %{engine_ha_confdir}
-%config %{engine_ha_confdir}/agent-log.conf
-%config %{engine_ha_confdir}/broker-log.conf
+%config(noreplace) %{engine_ha_confdir}/agent-log.conf
+%config(noreplace) %{engine_ha_confdir}/broker-log.conf
 
 %dir %{engine_ha_bindir}
 %{engine_ha_bindir}/ovirt-ha-agent
@@ -123,7 +123,7 @@ install -Dm 0440 sudoers/sudoers %{buildroot}%{_sysconfdir}/sudoers.d/60_ovirt-h
 %{_initrddir}/ovirt-ha-broker
 %endif
 
-%{_sysconfdir}/sudoers.d/60_ovirt-ha
+%config(noreplace) %{_sysconfdir}/sudoers.d/60_ovirt-ha
 
 
 %defattr(-, %{vdsm_user}, %{vdsm_group}, -)
@@ -172,5 +172,8 @@ exit 0
 
 
 %changelog
+* Fri Sep 13 2013 Sandro Bonazzola <sbonazzo@redhat.com> - 0.1.0-0.1.beta
+- 0.1.0-0.1.beta
+
 * Fri May 31 2013 Greg Padgett <gpadgett@redhat.com> - 0.0.0-0.0.master
 - Initial add.
