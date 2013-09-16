@@ -57,3 +57,6 @@ HOSTED_ENGINE_BINARY = '@ENGINE_SETUP_BINDIR@/hosted-engine'
 SD_MOUNT_PARENT = '/rhev/data-center/mnt'
 SD_METADATA_DIR = 'ha_agent'
 LOCKSPACE_NAME = SERVICE_TYPE
+
+# Maximum request error count
+MAX_ERROR_COUNT = 3

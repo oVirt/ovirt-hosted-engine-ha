@@ -222,6 +222,8 @@ class HostedEngine(object):
                 'interval': constants.INTERMITTENT_LOG_INTERVAL_SECS}
 
     def start_monitoring(self):
+        error_count = 0
+
         while not self._shutdown_requested_callback():
             try:
                 self._initialize_broker()
@@ -242,12 +244,21 @@ class HostedEngine(object):
                     self._log.warning("Unexpected error", exc_info=True)
 
                 delay = 60
-                self._log.info("Sleeping %d seconds", delay)
+                error_count += 1
+                log_level = logging.INFO
 
             else:
                 delay = 10
-                self._log.debug("Sleeping %d seconds", delay)
+                error_count = 0  # All is well, reset the error counter
+                log_level = logging.DEBUG
 
+            if error_count >= constants.MAX_ERROR_COUNT:
+                self._log.error("Shutting down the agent because of "
+                                "%d failures in a row!",
+                                constants.MAX_ERROR_COUNT)
+                break
+
+            self._log.log(log_level, "Sleeping %d seconds", delay)
             time.sleep(delay)
 
         self._log.debug("Disconnecting from ha-broker")
