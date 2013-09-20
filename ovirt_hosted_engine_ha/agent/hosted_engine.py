@@ -136,7 +136,9 @@ class HostedEngine(object):
             'options': {
                 'address': '0',
                 'use_ssl': self._config.get(config.ENGINE, config.VDSM_SSL),
-                'bridge_name': self._config.get(config.VM, config.BRIDGE_NAME)}
+                'bridge_name': self._config.get(
+                    config.ENGINE, config.BRIDGE_NAME
+                )}
         })
         req.append({
             'field': 'mem-free',

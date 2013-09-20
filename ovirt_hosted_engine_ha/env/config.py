@@ -26,10 +26,10 @@ GATEWAY_ADDR = 'gateway'
 HOST_ID = 'host_id'
 SD_UUID = 'sdUUID'
 VDSM_SSL = 'vdsm_use_ssl'
+BRIDGE_NAME = 'bridge'
 
 # constants for vm.conf options
 VM = 'vm'
-BRIDGE_NAME = 'bridge'
 VM_UUID = 'vmId'
 
 
