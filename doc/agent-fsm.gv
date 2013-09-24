@@ -1,0 +1,40 @@
+/**
+ * This file contains the source for a graphviz FSM diagram of the HA agent
+ * state machine.  To create an image, fsm.png in this case, run the following:
+ *
+ *   dot agent-fsm.gv -Tpng -o fsm.png
+ *
+ * A copy of the latest diagram should be available at:
+ *
+ *   http://www.ovirt.org/Features/Self_Hosted_Engine#Agent_State_Diagram
+ */
+
+digraph finite_state_machine {
+    ranksep = 0.3;
+    node [shape = doublecircle]; ENTRY;
+    node [shape = circle]; OFF START ON STOP MIGRATE;
+
+    ENTRY -> OFF [ label = "VM down locally" ];
+    ENTRY -> ON [ label = "VM up  \nlocally  " ];
+
+    OFF -> OFF [ label = "VM down locally" ];
+    OFF -> ON [ label = "VM unexpectedly  \nrunning locally  " ];
+    OFF -> START [ label = "VM down  \nglobally, host has  \nhighest score  " ];
+
+    START -> OFF [ label = "VM startup  \nfailed  " ];
+    START -> ON [ label = "VM powered on" ];
+
+    ON -> ON [ label = "VM up locally" ];
+    ON -> OFF [ label = "VM died  \nunexpectedly  " ];
+    ON -> MIGRATE [ label = "VM up locally,  \nother host has  \nmuch better score  " ];
+    ON -> STOP [ label = "VM timed out  \nwith bad health  \nstatus  " ];
+
+    STOP -> STOP [ label = "VM shutdown\nin progress" ];
+    STOP -> OFF [ label = "VM shutdown\nsuccessful" ];
+    STOP -> ENTRY [ label = "VM failed to stop,\nunknown state" ];
+
+    MIGRATE -> MIGRATE [ label = "VM migration\nin progress" ];
+    MIGRATE -> OFF [ label = "VM migration\nsuccessful" ];
+    MIGRATE -> STOP [ label = "VM migration\nfailed" ];
+}
+
