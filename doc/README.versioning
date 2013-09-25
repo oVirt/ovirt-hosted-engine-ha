@@ -1,0 +1,29 @@
+This document describes the versioning procedure for ovirt-hosted-engine-ha.
+
+The following version formats are used:
+  tarball/source:  X.Y.Z
+  pre-release rpm: X.Y.Z-release.build.<gitid|tag>
+  release rpm:     X.Y.Z-release
+
+Components of the version:
+  X - API version
+  Y - feature change count
+  Z - minor revision
+  release - package release number; typically 0 for pre-release builds
+            of a given source tarball of version X.Y.Z, and incremented
+            to 1 for the first actual release
+  build - incrementing numeric build number, to control sequencing of
+          <gitid|tag> fields
+  <gidid|tag> - alphanumeric identifier; either a git hash denoting the
+                source, or tag such as "alpha", "beta", "rc1", etc.
+
+This is an example of the typical version sequence:
+  1.0.3-0.1.ae1b3c
+  1.0.3-0.2.8d810f
+  1.0.3-0.3.alpha
+  1.0.3-0.4.beta
+  1.0.3-0.5.rc1
+  1.0.3-1
+  1.0.3-2
+  1.0.4-0.1.42a38e
+ [...]
