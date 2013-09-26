@@ -56,6 +56,9 @@ class HostedEngine(object):
     LF_HOST_UPDATE = 'LF_HOST_UPDATE'
     LF_HOST_UPDATE_DETAIL = 'LF_HOST_UPDATE_DETAIL'
     LF_ENGINE_HEALTH = 'LF_ENGINE_HEALTH'
+    LF_GLOBAL_MD_ERROR = 'LF_GLOBAL_MD_ERROR'
+    LF_GLOBAL_MD_UPDATE_DETAIL = 'LF_GLOBAL_MD_UPDATE_DETAIL'
+    LF_MAINTENANCE = 'LF_MAINTENANCE'
 
     MIGRATION_THRESHOLD_SCORE = 800
 
@@ -73,6 +76,7 @@ class HostedEngine(object):
         ON = 'ON'
         STOP = 'STOP'
         MIGRATE = 'MIGRATE'
+        MAINTENANCE = 'MAINTENANCE'
 
     class MigrationStatus(object):
         PENDING = 'PENDING'
@@ -104,6 +108,7 @@ class HostedEngine(object):
         self._rinfo = {}
         self._init_runtime_info()
         self._all_host_stats = {}
+        self._global_stats = {}
 
         self._sd_path = None
         self._metadata_path = None
@@ -117,6 +122,7 @@ class HostedEngine(object):
             self.States.ON: self._handle_on,
             self.States.STOP: self._handle_stop,
             self.States.MIGRATE: self._handle_migrate,
+            self.States.MAINTENANCE: self._handle_maintenance,
         }
 
     def _get_required_monitors(self):
@@ -622,6 +628,23 @@ class HostedEngine(object):
             self._metadata_dir,
             constants.SERVICE_TYPE)
         local_ts = time.time()
+
+        # host_id 0 is a special case, representing global metadata
+        data = all_stats.pop(0, None)
+        md = {}
+        if data is not None:
+            try:
+                md = metadata.parse_global_metadata_to_dict(self._log, data)
+                self._log.info(
+                    'Global metadata: {0}'.format(md),
+                    extra=self._get_lf_args(self.LF_GLOBAL_MD_UPDATE_DETAIL))
+            except ex.MetadataError as e:
+                self._log.error(
+                    str(e),
+                    extra=self._get_lf_args(self.LF_GLOBAL_MD_ERROR))
+                # Continue agent processing, ignoring the bad global metadata
+        self._global_stats = md
+
         for host_id, data in all_stats.iteritems():
             try:
                 md = metadata.parse_metadata_to_dict(host_id, data)
@@ -698,6 +721,8 @@ class HostedEngine(object):
             self._log.info("Unknown local engine vm status, no actions taken")
             return
 
+        # Use a runtime info dict to hold information used by the state
+        # machine, including host statistics and global metadata
         rinfo = {
             'best-engine-status':
             self._all_host_stats[local_host_id]['engine-status'],
@@ -726,8 +751,7 @@ class HostedEngine(object):
                 rinfo['best-score'] = stats['score']
                 rinfo['best-score-host-id'] = host_id
 
-        # FIXME set maintenance flag
-        rinfo['maintenance'] = False
+        rinfo['maintenance'] = self._global_stats.get('maintenance', False)
 
         self._rinfo.update(rinfo)
 
@@ -759,6 +783,7 @@ class HostedEngine(object):
         ENTRY state.  Determine current vm state and switch appropriately.
         """
         local_host_id = self._rinfo['host-id']
+        self._log.info("Determining initial state for host")
         if self._all_host_stats[local_host_id]['engine-status'][:5] == 'vm-up':
             return self.States.ON, False
         else:
@@ -788,7 +813,9 @@ class HostedEngine(object):
 
         # FIXME remote db down, other statuses
 
-        # FIXME cluster-wide engine maintenance bit
+        if self._rinfo['maintenance']:
+            self._log.info("HA maintenance enabled")
+            return self.States.MAINTENANCE, True
 
         if self._rinfo['best-score-host-id'] != local_host_id:
             self._log.info("Engine down, local host does not have best score",
@@ -902,7 +929,9 @@ class HostedEngine(object):
             self._log.error("Engine vm unexpectedly running on other host")
             return self.States.OFF, True
 
-        # FIXME maintenance bit should cause transition to STOP
+        if self._rinfo['maintenance']:
+            self._log.info("HA maintenance enabled")
+            return self.States.MAINTENANCE, True
 
         best_host_id = self._rinfo['best-score-host-id']
         if (best_host_id != local_host_id
@@ -1072,3 +1101,15 @@ class HostedEngine(object):
             del self._rinfo['migration-host-id']
         if 'migration-status' in self._rinfo:
             del self._rinfo['migration-status']
+
+    def _handle_maintenance(self):
+        """
+        MAINTENANCE state.  Allow arbitrary HA VM state while in maintenance
+        mode (i.e. ignore it), and re-init in ENTRY state once complete.
+        """
+        if self._rinfo['maintenance']:
+            self._log.info("HA maintenance enabled",
+                           extra=self._get_lf_args(self.LF_MAINTENANCE))
+            return self.States.MAINTENANCE, True
+        else:
+            return self.States.ENTRY, False

@@ -23,7 +23,7 @@ import logging
 import os
 import threading
 
-from . import constants
+from ..env import constants
 from ..lib.exceptions import RequestError
 from ..lib import util
 

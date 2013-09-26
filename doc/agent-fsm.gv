@@ -20,6 +20,7 @@ digraph finite_state_machine {
     OFF -> OFF [ label = "VM down locally" ];
     OFF -> ON [ label = "VM unexpectedly  \nrunning locally  " ];
     OFF -> START [ label = "VM down  \nglobally, host has  \nhighest score  " ];
+    OFF -> MAINTENANCE [ label = "Maintenance\nmode enabled" ];
 
     START -> OFF [ label = "VM startup  \nfailed  " ];
     START -> ON [ label = "VM powered on" ];
@@ -28,6 +29,7 @@ digraph finite_state_machine {
     ON -> OFF [ label = "VM died  \nunexpectedly  " ];
     ON -> MIGRATE [ label = "VM up locally,  \nother host has  \nmuch better score  " ];
     ON -> STOP [ label = "VM timed out  \nwith bad health  \nstatus  " ];
+    ON -> MAINTENANCE [ label = "Maintenance\nmode enabled" ];
 
     STOP -> STOP [ label = "VM shutdown\nin progress" ];
     STOP -> OFF [ label = "VM shutdown\nsuccessful" ];
@@ -36,5 +38,7 @@ digraph finite_state_machine {
     MIGRATE -> MIGRATE [ label = "VM migration\nin progress" ];
     MIGRATE -> OFF [ label = "VM migration\nsuccessful" ];
     MIGRATE -> STOP [ label = "VM migration\nfailed" ];
-}
 
+    MAINTENANCE -> MAINTENANCE [ label = "Maintenance\nmode enabled" ];
+    MAINTENANCE -> ENTRY [ label = "Maintenance\nmode disabled" ];
+}
