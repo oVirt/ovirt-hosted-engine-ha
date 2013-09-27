@@ -172,6 +172,9 @@ exit 0
 
 
 %changelog
+* Fri Sep 27 2013 Sandro Bonazzola <sbonazzo@redhat.com> - 0.1.0-0.2.beta1
+- 0.1.0-0.2.beta1
+
 * Fri Sep 13 2013 Sandro Bonazzola <sbonazzo@redhat.com> - 0.1.0-0.1.beta
 - 0.1.0-0.1.beta
 
