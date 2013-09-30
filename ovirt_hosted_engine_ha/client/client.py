@@ -48,11 +48,10 @@ class HAClient(object):
         if self._config is None:
             self._config = config.Config()
         broker = brokerlink.BrokerLink()
-        broker.connect()
-        stats = broker.get_stats_from_storage(
-            path.get_metadata_path(self._config),
-            constants.SERVICE_TYPE)
-        broker.disconnect()
+        with broker.connection():
+            stats = broker.get_stats_from_storage(
+                path.get_metadata_path(self._config),
+                constants.SERVICE_TYPE)
 
         output = {}
         for host_str, data in stats.iteritems():

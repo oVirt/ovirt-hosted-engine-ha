@@ -18,6 +18,7 @@
 #
 
 import base64
+import contextlib
 import logging
 import socket
 
@@ -58,6 +59,15 @@ class BrokerLink(object):
             self._log.info("Socket error closing connection")
         finally:
             self._socket = None
+
+    @contextlib.contextmanager
+    def connection(self):
+        was_connected = self.is_connected()
+        if not was_connected:
+            self.connect()
+        yield
+        if not was_connected:
+            self.disconnect()
 
     def start_monitor(self, type, options):
         """
