@@ -791,7 +791,8 @@ class HostedEngine(object):
                 + self.MIGRATION_THRESHOLD_SCORE):
             self._log.error("Host %s (id %d) score is significantly better"
                             " than local score, migrating vm",
-                            self._all_host_stats[best_host_id]['hostname'])
+                            self._all_host_stats[best_host_id]['hostname'],
+                            best_host_id)
             self._rinfo['migration-host-id'] = best_host_id
             self._rinfo['migration-status'] = self.MigrationStatus.PENDING
             return self.States.MIGRATE, False
@@ -895,7 +896,7 @@ class HostedEngine(object):
                     dst=best_host_id,
                 )
             except:
-                self._log.error(exc_info=True)
+                self._log.error("Failed to start migration", exc_info=True)
                 self._rinfo['migration-status'] = self.MigrationStatus.FAILURE
             else:
                 self._log.info("Started migration to host %s (id %d)",
