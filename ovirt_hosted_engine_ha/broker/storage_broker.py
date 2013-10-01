@@ -105,7 +105,7 @@ class StorageBroker(object):
                        service_type, host_id, path, offset)
 
         byte_data = base64.b16decode(data)
-        byte_data.ljust(constants.HOST_SEGMENT_BYTES, '\0')
+        byte_data = byte_data.ljust(constants.HOST_SEGMENT_BYTES, '\0')
         with self._storage_access_lock:
             f = None
             try:
