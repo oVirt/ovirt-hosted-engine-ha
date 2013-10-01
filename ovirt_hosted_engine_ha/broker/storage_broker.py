@@ -57,33 +57,31 @@ class StorageBroker(object):
         """
         self._log.info("Getting stats for service %s from %s",
                        service_type, storage_dir)
-        d = {}
-        with self._storage_access_lock:
-            path = os.path.join(storage_dir, self._get_filename(service_type))
-            f = None
-            try:
-                f = io.open(path, "r+b")
-                host_id = 0
-                for data in iter(
-                        lambda: f.read(constants.HOST_SEGMENT_BYTES),
-                        ''
-                ):
-                    # TODO it would be better if this was configurable
-                    if host_id > constants.MAX_HOST_ID_SCAN:
-                        break
-                    if data and data[0] != '\0':
-                        d[host_id] = data
-                    host_id += 1
-            except IOError as e:
-                self._log.error("Failed to read metadata from %s",
-                                path, exc_info=True)
-                raise RequestError("failed to read metadata: {0}"
-                                   .format(str(e)))
-            finally:
-                if f:
-                    f.close()
+        path = os.path.join(storage_dir, self._get_filename(service_type))
 
-        return d
+        # Use direct I/O if possible, to avoid the local filesystem cache
+        # from hiding metadata file updates from other hosts.  For NFS, we
+        # don't have to worry about alignment; see man open(2) for details.
+        # TODO it would be better if this was configurable
+        direct_flag = (os.O_DIRECT if constants.USE_DIRECT_IO else 0)
+
+        bs = constants.HOST_SEGMENT_BYTES
+        # TODO it would be better if this was configurable
+        read_size = bs * (constants.MAX_HOST_ID_SCAN + 1)
+
+        try:
+            with self._storage_access_lock:
+                f = os.open(path, direct_flag | os.O_RDONLY)
+                data = os.read(f, read_size)
+                os.close(f)
+        except IOError as e:
+            self._log.error("Failed to read metadata from %s",
+                            path, exc_info=True)
+            raise RequestError("failed to read metadata: {0}".format(str(e)))
+
+        return dict(((i / bs, data[i:i+bs])
+                     for i in range(0, len(data), bs)
+                     if data[i] != '\0'))
 
     def put_stats(self, storage_dir, service_type, host_id, data):
         """
