@@ -34,7 +34,7 @@ nodist_noinst_DATA = \
 	$(NULL)
 
 EXTRA_DIST = \
-	sudoers \
+	sudoers.in \
 	$(NULL)
 
 clean-local: \
