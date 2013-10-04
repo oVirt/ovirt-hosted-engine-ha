@@ -32,6 +32,7 @@ from ..lib import brokerlink
 from ..lib import exceptions as ex
 from ..lib import log_filter
 from ..lib import metadata
+from ..lib import util
 from ..lib import vds_client as vdsc
 
 
@@ -746,6 +747,9 @@ class HostedEngine(object):
             return self.States.ON, True
 
     def _start_engine_vm(self):
+        # Ensure there isn't any stale VDSM state from a prior VM lifecycle
+        self._clean_vdsm_state()
+
         self._log.info("Starting vm using `%s --vm-start`",
                        constants.HOSTED_ENGINE_BINARY)
         p = subprocess.Popen([constants.HOSTED_ENGINE_BINARY,
@@ -768,6 +772,48 @@ class HostedEngine(object):
 
         self._log.error("Engine VM started on localhost")
         return
+
+    def _clean_vdsm_state(self):
+        """
+        Query VDSM for stats on hosted engine VM, and if there are stats for
+        the VM but the VM is not running, attempt to clear them using the
+        VDSM 'destroy' verb.  If after 10 tries the state is present, raise
+        an exception indicating the error.
+        """
+        self._log.info("Ensuring VDSM state is clear for engine VM")
+        vm_id = self._config.get(config.VM, config.VM_UUID)
+        use_ssl = util.to_bool(self._config.get(config.ENGINE,
+                                                config.VDSM_SSL))
+
+        for i in range(0, 10):
+            # Loop until state is clear or until timeout
+            try:
+                stats = vdsc.run_vds_client_cmd('0', use_ssl,
+                                                'getVmStats', vm_id)
+            except ex.DetailedError as e:
+                if e.detail == "Virtual machine does not exist":
+                    self._log.info("Vdsm state for VM clean")
+                    return
+                else:
+                    raise
+
+            vm_status = stats['statsList'][0]['status'].lower()
+            if vm_status == 'powering up' or vm_status == 'up':
+                self._log.info("VM is running on host")
+                return
+
+            self._log.info("Cleaning state for non-running VM")
+            try:
+                vdsc.run_vds_client_cmd('0', use_ssl, 'destroy', vm_id)
+            except ex.DetailedError as e:
+                if e.detail == "Virtual machine does not exist":
+                    self._log.info("Vdsm state for VM clean")
+                    return
+                else:
+                    raise
+            time.sleep(1)
+
+        raise Exception("Timed out trying to clean VDSM state for VM")
 
     @handler_cleanup
     def _handle_on(self):
