@@ -1016,17 +1016,19 @@ class HostedEngine(object):
         MIGRATE state.  Move the VM to the destination host.
         """
         vm_id = self._config.get(config.VM, config.VM_UUID)
+        use_ssl = util.to_bool(self._config.get(config.ENGINE,
+                                                config.VDSM_SSL))
         best_host_id = self._rinfo['migration-host-id']
         if self._rinfo['migration-status'] == self.MigrationStatus.PENDING:
             try:
                 vdsc.run_vds_client_cmd(
                     '0',
-                    self._config.get(config.ENGINE, config.VDSM_SSL),
+                    use_ssl,
                     'migrate',
                     vmId=vm_id,
                     method='online',
                     src='localhost',
-                    dst=best_host_id,
+                    dst=self._all_host_stats[best_host_id]['hostname'],
                 )
             except:
                 self._log.error("Failed to start migration", exc_info=True)
@@ -1041,9 +1043,9 @@ class HostedEngine(object):
         else:
             res = vdsc.run_vds_client_cmd(
                 '0',
-                self._config.get(config.ENGINE, config.VDSM_SSL),
-                'migrate',
-                vmId=vm_id
+                use_ssl,
+                'migrateStatus',
+                vm_id,
             )
             self._log.info("Migration status: %s", res['status']['message'])
 
