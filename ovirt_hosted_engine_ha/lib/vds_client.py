@@ -28,7 +28,7 @@ from exceptions import DetailedError
 from ..env import constants
 
 
-def run_vds_client_cmd(address, use_ssl, command, *args):
+def run_vds_client_cmd(address, use_ssl, command, *args, **kwargs):
     """
     Run the passed in command name from the vdsClient library and either
     throw an exception with the error message or return the results.
@@ -55,14 +55,19 @@ def run_vds_client_cmd(address, use_ssl, command, *args):
         host_port = vdscli.cannonizeHostPort(address)
         serv.do_connect(host_port)
 
-    log.debug("Connected, running %s, args %r", command, args)
+    log.debug("Connected, running %s, args %r, kwargs %r",
+              command, args, kwargs)
 
     method = getattr(serv.s, command)
     retry = 0
     response = None
+    new_args = list(args)
+    # Add keyword args to argument list as a dict for vds api compatibility
+    if kwargs:
+        new_args.append(kwargs)
     while retry < constants.VDS_CLIENT_MAX_RETRY:
         try:
-            response = method(*args)
+            response = method(*new_args)
             break
         except socket.error:
             log.debug("Error", exc_info=True)
