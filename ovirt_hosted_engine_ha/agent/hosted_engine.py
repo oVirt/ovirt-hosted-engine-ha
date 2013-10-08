@@ -80,6 +80,11 @@ class HostedEngine(object):
         DONE = 'DONE'
         FAILURE = 'FAILURE'
 
+    class DomainMonitorStatus(object):
+        NONE = 'NONE'
+        PENDING = 'PENDING'
+        ACQUIRED = 'ACQUIRED'
+
     def __init__(self, shutdown_requested_callback):
         """
         Initialize hosted engine monitoring logic.  shutdown_requested_callback
@@ -229,6 +234,7 @@ class HostedEngine(object):
                 self._initialize_broker()
                 self._initialize_vdsm()
                 self._initialize_sanlock()
+                self._initialize_domain_monitor()
 
                 self._collect_local_stats()
                 blocks = self._generate_local_blocks()
@@ -407,6 +413,76 @@ class HostedEngine(object):
         else:
             self._log.info("Acquired lock on host id %d", host_id)
         self._sanlock_initialized = True
+
+    def _initialize_domain_monitor(self):
+        use_ssl = util.to_bool(self._config.get(config.ENGINE,
+                                                config.VDSM_SSL))
+        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
+        host_id = self._rinfo['host-id']
+
+        status = self._get_domain_monitor_status()
+        if status == self.DomainMonitorStatus.NONE:
+            try:
+                vdsc.run_vds_client_cmd(
+                    '0',
+                    use_ssl,
+                    'startMonitoringDomain',
+                    sd_uuid,
+                    host_id,
+                )
+            except Exception as e:
+                msg = ("Failed to start monitoring domain"
+                       " (sd_uuid={0}, host_id={1}): {2}"
+                       .format(sd_uuid, host_id, str(e)))
+                self._log.error(msg, exc_info=True)
+                raise Exception(msg)
+            else:
+                self._log.info("Started VDSM domain monitor for %s", sd_uuid)
+                status = self._get_domain_monitor_status()
+
+        waited = 0
+        while status != self.DomainMonitorStatus.ACQUIRED \
+                and waited <= constants.MAX_DOMAIN_MONITOR_WAIT_SECS:
+            waited += 5
+            time.sleep(5)
+            status = self._get_domain_monitor_status()
+
+        if status == self.DomainMonitorStatus.ACQUIRED:
+            self._log.info("VDSM is monitoring domain %s", sd_uuid)
+        else:
+            msg = ("Failed to start monitoring domain"
+                   " (sd_uuid={0}, host_id={1}): {2}"
+                   .format(sd_uuid, host_id,
+                           "timeout during domain acquisition"))
+            self._log.error(msg, exc_info=True)
+            raise Exception(msg)
+
+    def _get_domain_monitor_status(self):
+        use_ssl = util.to_bool(self._config.get(config.ENGINE,
+                                                config.VDSM_SSL))
+        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
+
+        try:
+            repo_stats = vdsc.run_vds_client_cmd(
+                '0',
+                use_ssl,
+                'repoStats'
+            )
+        except Exception as e:
+            msg = ("Failed to get VDSM domain monitor status: {0}"
+                   .format(str(e)))
+            self._log.error(msg, esc_info=True)
+            raise Exception(msg)
+
+        if sd_uuid not in repo_stats:
+            status = self.DomainMonitorStatus.NONE
+        elif repo_stats[sd_uuid]['acquired']:
+            status = self.DomainMonitorStatus.ACQUIRED
+        else:
+            status = self.DomainMonitorStatus.PENDING
+
+        self._log.info("VDSM domain monitor status: %s", status)
+        return status
 
     def _collect_local_stats(self):
         """
