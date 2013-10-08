@@ -19,7 +19,9 @@
 
 import logging
 import os
+import time
 
+from ..agent import constants as agent_constants
 from ..env import config
 from ..env import constants
 from ..env import path
@@ -85,3 +87,29 @@ class HAClient(object):
             else:
                 output[host_id] = md
         return output
+
+    def get_local_host_score(self):
+        if self._config is None:
+            self._config = config.Config()
+
+        host_id = int(self._config.get(config.ENGINE, config.HOST_ID))
+        broker = brokerlink.BrokerLink()
+        with broker.connection():
+            stats = broker.get_stats_from_storage(
+                path.get_metadata_path(self._config),
+                constants.SERVICE_TYPE)
+
+        score = 0
+        if host_id in stats:
+            try:
+                md = metadata.parse_metadata_to_dict(host_id, stats[host_id])
+            except MetadataError as e:
+                self._log.error(str(e))
+            else:
+                # Only report a non-zero score if the local host has had a
+                # recent update.
+                if (md['host-ts'] + agent_constants.HOST_ALIVE_TIMEOUT_SECS
+                        >= time.time()):
+                    score = md['score']
+
+        return score
