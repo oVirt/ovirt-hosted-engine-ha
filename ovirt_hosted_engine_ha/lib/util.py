@@ -79,4 +79,4 @@ def to_bool(string):
     elif first in ('f', 'n', '0'):
         return False
     else:
-        raise Exception("Invalid value for boolean: {0}".format(string))
+        raise ValueError("Invalid value for boolean: {0}".format(string))

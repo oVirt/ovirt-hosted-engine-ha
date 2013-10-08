@@ -34,6 +34,7 @@ BROKER_SOCKET_FILE = '@ENGINE_HA_RUNDIR@/broker.socket'
 
 ENGINE_SETUP_CONF_FILE = '/etc/ovirt-hosted-engine/hosted-engine.conf'
 VM_CONF_FILE = '/etc/ovirt-hosted-engine/vm.conf'
+HA_AGENT_CONF_FILE = '@ENGINE_HA_STATEDIR@/ha.conf'
 
 SD_MOUNT_PARENT = '/rhev/data-center/mnt'
 SD_METADATA_DIR = 'ha_agent'

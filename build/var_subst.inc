@@ -28,6 +28,7 @@ PATHSUBST = sed \
 	-e "s,[@]ENGINE_HA_LIBDIR[@],$(engine_ha_libdir),g" \
 	-e "s,[@]ENGINE_HA_LOGDIR[@],$(engine_ha_logdir),g" \
 	-e "s,[@]ENGINE_HA_RUNDIR[@],$(engine_ha_rundir),g" \
+	-e "s,[@]ENGINE_HA_STATEDIR[@],$(engine_ha_statedir),g" \
 	-e "s,[@]ENGINE_SETUP_BINDIR[@],$(engine_setup_bindir),g"
 
 CONFIGSUBST = $(top_builddir)/config.status --file=-

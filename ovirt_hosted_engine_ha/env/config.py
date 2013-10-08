@@ -17,6 +17,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
+import fcntl
+
 from . import constants
 
 # constants for hosted-engine.conf options
@@ -33,20 +35,30 @@ BRIDGE_NAME = 'bridge'
 VM = 'vm'
 VM_UUID = 'vmId'
 
+# constants for ha.conf options
+HA = 'ha'
+LOCAL_MAINTENANCE = 'local_maintenance'
+
 
 class Config(object):
+    static_files = {
+        ENGINE: constants.ENGINE_SETUP_CONF_FILE,
+        VM: constants.VM_CONF_FILE,
+    }
+    # Config files in dynamic_files may change at runtime and are re-read
+    # whenever configuration values are retrieved from them.
+    dynamic_files = {
+        HA: constants.HA_AGENT_CONF_FILE,
+    }
+
     def __init__(self):
         self._config = {}
-        self._files = {
-            ENGINE: constants.ENGINE_SETUP_CONF_FILE,
-            VM: constants.VM_CONF_FILE}
+        self._load(Config.static_files)
 
-        self.load()
-
-    def load(self):
+    def _load(self, files):
         conf = {}
 
-        for type, fname in self._files.iteritems():
+        for type, fname in files.iteritems():
             with open(fname, 'r') as f:
                 for line in f:
                     tokens = line.split('=', 1)
@@ -55,9 +67,36 @@ class Config(object):
             self._config[type] = conf
 
     def get(self, type, key):
+        if type in Config.dynamic_files.keys():
+            self._load(dict([(type, Config.dynamic_files[type])]))
+
         try:
             return self._config[type][key]
         except KeyError:
             unknown = "unknown (type={0})".format(type)
             raise Exception("Configuration value not found: file={0}, key={1}"
                             .format(self._files.get(type, unknown), key))
+
+    def set(self, type, key, value):
+        """
+        Writes 'key=value' to the config file for 'type'.
+        Note that this method is not thread safe.
+        """
+        if type not in Config.dynamic_files:
+            raise Exception("Configuration type {0} cannot be updated"
+                            .format(type))
+
+        with open(Config.dynamic_files[type], 'r+') as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+
+            # self._load() can re-open the exclusively-locked file because
+            # it's being called from the same process as the lock holder
+            self._load(dict([(type, Config.dynamic_files[type])]))
+            self._config[type][key] = str(value)
+
+            text = ''
+            for k, v in self._config[type].iteritems():
+                text += '{k}={v}\n'.format(k=k, v=v)
+
+            f.write(text)
+            f.truncate()

@@ -70,6 +70,7 @@ AC_SUBST([engine_ha_confdir], ['${sysconfdir}/${PACKAGE_NAME}'])
 AC_SUBST([engine_ha_libdir], ['${pythondir}/ovirt_hosted_engine_ha'])
 AC_SUBST([engine_ha_logdir], ['${localstatedir}/log/${PACKAGE_NAME}'])
 AC_SUBST([engine_ha_rundir], ['${localstatedir}/run/${PACKAGE_NAME}'])
+AC_SUBST([engine_ha_statedir], ['${localstatedir}/lib/${PACKAGE_NAME}'])
 AC_SUBST([engine_setup_bindir], ['${sbindir}'])
 
 AM_CONDITIONAL([PYTHON_SYNTAX_CHECK], [test "${enable_python_syntax_check}" = "yes"])

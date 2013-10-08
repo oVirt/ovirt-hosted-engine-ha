@@ -90,6 +90,11 @@ class HostedEngine(object):
         PENDING = 'PENDING'
         ACQUIRED = 'ACQUIRED'
 
+    class MaintenanceMode(object):
+        NONE = 'NONE'
+        GLOBAL = 'GLOBAL'
+        LOCAL = 'LOCAL'
+
     def __init__(self, shutdown_requested_callback):
         """
         Initialize hosted engine monitoring logic.  shutdown_requested_callback
@@ -579,6 +584,10 @@ class HostedEngine(object):
         if self._rinfo['bad-health-failure-time']:
             score = 0
 
+        # Hosts in local maintenance mode should not run the vm
+        if self._get_maintenance_mode() == self.MaintenanceMode.LOCAL:
+            score = 0
+
         ts = int(time.time())
         data = ("{md_parse_vers}|{md_feature_vers}|{ts_int}"
                 "|{host_id}|{score}|{engine_status}|{name}"
@@ -751,7 +760,7 @@ class HostedEngine(object):
                 rinfo['best-score'] = stats['score']
                 rinfo['best-score-host-id'] = host_id
 
-        rinfo['maintenance'] = self._global_stats.get('maintenance', False)
+        rinfo['maintenance'] = self._get_maintenance_mode()
 
         self._rinfo.update(rinfo)
 
@@ -777,6 +786,28 @@ class HostedEngine(object):
         except KeyError:
             self._log.error("Invalid engine status: %s", status, exc_info=True)
             return 0
+
+    def _get_maintenance_mode(self):
+        """
+        Returns maintenance mode:
+          NONE - no maintenance, function as usual
+          GLOBAL - HA system in maintenance, ignore VM state and score
+          LOCAL - local host in maintenance, zero score and shut down vm
+        If both LOCAL and GLOBAL modes are set, LOCAL will be returned
+        because is more invasive to the host HA state.
+        """
+        try:
+            if util.to_bool(self._config.get(config.HA,
+                                             config.LOCAL_MAINTENANCE)):
+                return self.MaintenanceMode.LOCAL
+            elif self._global_stats.get('maintenance', False):
+                return self.MaintenanceMode.GLOBAL
+            else:
+                return self.MaintenanceMode.NONE
+        except ValueError:
+            self._log.error("Invalid value for maintenance setting",
+                            exc_info=True)
+            return self.MaintenanceMode.NONE
 
     def _handle_entry(self):
         """
@@ -813,9 +844,12 @@ class HostedEngine(object):
 
         # FIXME remote db down, other statuses
 
-        if self._rinfo['maintenance']:
-            self._log.info("HA maintenance enabled")
+        if self._rinfo['maintenance'] == self.MaintenanceMode.GLOBAL:
+            self._log.info("Global HA maintenance enabled")
             return self.States.MAINTENANCE, True
+        elif self._rinfo['maintenance'] == self.MaintenanceMode.LOCAL:
+            self._log.info("Local HA maintenance enabled")
+            return self.States.OFF, True
 
         if self._rinfo['best-score-host-id'] != local_host_id:
             self._log.info("Engine down, local host does not have best score",
@@ -929,9 +963,12 @@ class HostedEngine(object):
             self._log.error("Engine vm unexpectedly running on other host")
             return self.States.OFF, True
 
-        if self._rinfo['maintenance']:
-            self._log.info("HA maintenance enabled")
+        if self._rinfo['maintenance'] == self.MaintenanceMode.GLOBAL:
+            self._log.info("Global HA maintenance enabled")
             return self.States.MAINTENANCE, True
+        elif self._rinfo['maintenance'] == self.MaintenanceMode.LOCAL:
+            self._log.info("Local HA maintenance enabled")
+            return self.States.STOP, False
 
         best_host_id = self._rinfo['best-score-host-id']
         if (best_host_id != local_host_id
@@ -1107,8 +1144,8 @@ class HostedEngine(object):
         MAINTENANCE state.  Allow arbitrary HA VM state while in maintenance
         mode (i.e. ignore it), and re-init in ENTRY state once complete.
         """
-        if self._rinfo['maintenance']:
-            self._log.info("HA maintenance enabled",
+        if self._rinfo['maintenance'] == self.MaintenanceMode.GLOBAL:
+            self._log.info("Global HA maintenance enabled",
                            extra=self._get_lf_args(self.LF_MAINTENANCE))
             return self.States.MAINTENANCE, True
         else:

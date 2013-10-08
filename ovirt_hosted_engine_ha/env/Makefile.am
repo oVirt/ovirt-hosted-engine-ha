@@ -39,6 +39,12 @@ haenv_PYTHON = \
 	constants.py \
 	$(NULL)
 
+hastatedir = $(engine_ha_statedir)
+
+dist_hastate_DATA = \
+	ha.conf \
+	$(NULL)
+
 EXTRA_DIST = \
 	constants.py.in \
 	$(NULL)

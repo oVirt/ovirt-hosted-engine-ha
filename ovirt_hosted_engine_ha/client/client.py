@@ -27,6 +27,7 @@ from ..env import constants
 from ..env import path
 from ..lib import brokerlink
 from ..lib import metadata
+from ..lib import util
 from ..lib.exceptions import MetadataError
 
 
@@ -40,6 +41,23 @@ class HAClient(object):
         """
         ALL = 'ALL'
         HOST = 'HOST'
+        GLOBAL = 'GLOBAL'
+
+    class GlobalMdFlags(object):
+        """
+        Constants used to refer to global metadata flags:
+          MAINTENANCE - maintenance flag
+        Note that the value here must equal a key in metadata.global_flags
+        """
+        MAINTENANCE = 'maintenance'
+
+    class MaintenanceMode(object):
+        """
+        Constants used in calls to set maintenance mode:
+          LOCAL - local host maintenance
+          GLOBAL - global maintenance
+        """
+        LOCAL = 'LOCAL'
         GLOBAL = 'GLOBAL'
 
     def __init__(self, log=False):
@@ -195,3 +213,18 @@ class HAClient(object):
                     score = md['score']
 
         return score
+
+    def set_maintenance_mode(self, mode, value):
+        if mode == self.MaintenanceMode.GLOBAL:
+            self.set_global_md_flag(self.GlobalMdFlags.MAINTENANCE,
+                                    str(value))
+
+        elif mode == self.MaintenanceMode.LOCAL:
+            if self._config is None:
+                self._config = config.Config()
+            self._config.set(config.HA,
+                             config.LOCAL_MAINTENANCE,
+                             str(util.to_bool(value)))
+
+        else:
+            raise Exception("Invalid maintenance mode: {0}".format(mode))
