@@ -127,7 +127,7 @@ class BrokerLink(object):
         # broker returns "<host_id 1>=<hex data 1> [<host_id 2>=...]"
         while tokens:
             (host_id, data) = tokens.pop(0).split('=', 1)
-            ret[host_id] = base64.b16decode(data)
+            ret[int(host_id)] = base64.b16decode(data)
         return ret
 
     def _checked_communicate(self, request):

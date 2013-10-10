@@ -54,14 +54,14 @@ class HAClient(object):
                 constants.SERVICE_TYPE)
 
         output = {}
-        for host_str, data in stats.iteritems():
+        for host_id, data in stats.iteritems():
             try:
-                md = metadata.parse_metadata_to_dict(host_str, data)
+                md = metadata.parse_metadata_to_dict(host_id, data)
             except MetadataError as e:
                 self._log.error(str(e))
                 continue
             else:
-                output[md['host-id']] = md
+                output[host_id] = md
         return output
 
     def get_all_host_stats_direct(self, dom_path, service_type):
@@ -76,12 +76,12 @@ class HAClient(object):
         stats = sb.get_raw_stats_for_service_type(path, service_type)
 
         output = {}
-        for host_str, data in stats.iteritems():
+        for host_id, data in stats.iteritems():
             try:
-                md = metadata.parse_metadata_to_dict(host_str, data)
+                md = metadata.parse_metadata_to_dict(host_id, data)
             except MetadataError as e:
                 self._log.error(str(e))
                 continue
             else:
-                output[md['host-id']] = md
+                output[host_id] = md
         return output

@@ -635,9 +635,9 @@ class HostedEngine(object):
             self._metadata_dir,
             constants.SERVICE_TYPE)
         local_ts = time.time()
-        for host_str, data in all_stats.iteritems():
+        for host_id, data in all_stats.iteritems():
             try:
-                md = metadata.parse_metadata_to_dict(host_str, data)
+                md = metadata.parse_metadata_to_dict(host_id, data)
             except ex.MetadataError as e:
                 self._log.error(
                     str(e),
