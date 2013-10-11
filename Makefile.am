@@ -43,6 +43,7 @@ CLEANFILES = \
 	$(NULL)
 
 EXTRA_DIST = \
+	ovirt-hosted-engine-ha.spec.in \
 	$(NULL)
 
 SUBDIRS = \
