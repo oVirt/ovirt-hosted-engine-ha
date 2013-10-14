@@ -37,6 +37,11 @@ EXTRA_DIST = \
 	sudoers.in \
 	$(NULL)
 
+sudoers: sudoers.in
+	$(SED) \
+	-e 's|@SERVICE_PATH[@]|$(SERVICE_PATH)|g' \
+	-e 's|@VDSM_USER[@]|$(VDSM_USER)|g' < $< > $@
+
 clean-local: \
 	$(NULL)
 
