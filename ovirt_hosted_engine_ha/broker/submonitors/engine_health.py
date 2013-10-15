@@ -62,12 +62,19 @@ class Submonitor(submonitor_base.SubmonitorBase):
                 self._log.error("Failed to getVmStats: %s", str(e))
                 self.update_result(None)
                 return
-        vm_status = stats['statsList'][0]['status']
-        if vm_status.lower() == 'powering up':
-            self._log.info("VM powering up")
+        vm_status = stats['statsList'][0]['status'].lower()
+        if vm_status in ('powering up',
+                         'powering down',
+                         'waitforlaunch',
+                         'migration source',
+                         'rebootinprogress',
+                         'restoringstate',
+                         'savingstate',
+                         'paused'):
+            self._log.info("VM status: %s", vm_status)
             self.update_result('vm-up bad-health-status')
             return
-        if vm_status.lower() != 'up':
+        if vm_status != 'up':
             self._log.info("VM not running on this host, status %s", vm_status)
             self.update_result('vm-down')
             return
