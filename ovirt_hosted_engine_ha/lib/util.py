@@ -24,8 +24,22 @@ Utility functions
 import errno
 import os
 import socket
+import time
 
 from .exceptions import DisconnectionError
+
+
+def has_elapsed(start, count, end=None):
+    """
+    Returns true if 'count' seconds have elapsed between timestamps 'start'
+    and 'end'.  If 'end' is not specified, defaults to time.time().  A
+    starting time of None results in False.
+    """
+    if start is None:
+        return False
+    if end is None:
+        end = time.time()
+    return (end - start >= count)
 
 
 def mkdir_recursive(path):

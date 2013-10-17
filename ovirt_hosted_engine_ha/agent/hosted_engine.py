@@ -202,6 +202,9 @@ class HostedEngine(object):
         # Local timestamp when health status caused vm shutdown
         self._rinfo['bad-health-failure-time'] = None
 
+        # Local timestamp when vm was unexpectedly shut down
+        self._rinfo['unexpected-shutdown-time'] = None
+
         # Host id of local host
         self._rinfo['host-id'] = int(self._config.get(config.ENGINE,
                                                       config.HOST_ID))
@@ -494,9 +497,8 @@ class HostedEngine(object):
 
         # re-initialize retry status variables if the retry window
         # has expired.
-        if (self._rinfo['engine-vm-retry-time'] is not None
-            and self._rinfo['engine-vm-retry-time']
-                < time.time() - constants.ENGINE_RETRY_EXPIRATION_SECS):
+        if util.has_elapsed(self._rinfo['engine-vm-retry-time'],
+                            constants.ENGINE_RETRY_EXPIRATION_SECS):
             self._rinfo['engine-vm-retry-time'] = None
             self._rinfo['engine-vm-retry-count'] = 0
             self._log.debug("Cleared retry status")
@@ -504,11 +506,16 @@ class HostedEngine(object):
         # reset health status variable after expiration
         # FIXME it would be better to time this based on # of hosts available
         # to run the vm, not just a one-size-fits-all timeout
-        if (self._rinfo['bad-health-failure-time'] is not None
-                and self._rinfo['bad-health-failure-time']
-                < time.time() - constants.ENGINE_BAD_HEALTH_TIMEOUT_SECS):
+        if util.has_elapsed(self._rinfo['bad-health-failure-time'],
+                            constants.ENGINE_BAD_HEALTH_TIMEOUT_SECS):
             self._rinfo['bad-health-failure-time'] = None
             self._log.debug("Cleared bad health status")
+
+        # reset unexpected shutdown time after a specified delay
+        if util.has_elapsed(self._rinfo['unexpected-shutdown-time'],
+                            constants.VM_UNEXPECTED_SHUTDOWN_EXPIRATION_SECS):
+            self._rinfo['unexpected-shutdown-time'] = None
+            self._log.debug("Cleared unexpected shutdown status")
 
     def _generate_local_blocks(self):
         """
@@ -582,6 +589,13 @@ class HostedEngine(object):
 
         # If engine has bad health status, let another host try
         if self._rinfo['bad-health-failure-time']:
+            score = 0
+
+        # If the VM shut down unexpectedly (user command, died, etc.), drop the
+        # score to effectively move it to another host.  This also serves as a
+        # shortcut for the user to start host maintenance mode, though it still
+        # should be set manually lest the score recover after a timeout.
+        if self._rinfo['unexpected-shutdown-time']:
             score = 0
 
         # Hosts in local maintenance mode should not run the vm
@@ -958,9 +972,12 @@ class HostedEngine(object):
         local_host_id = self._rinfo['host-id']
         if self._rinfo['best-engine-status'][:5] != 'vm-up':
             self._log.error("Engine vm died unexpectedly")
-            return self.States.OFF, False
+            self._rinfo['unexpected-shutdown-time'] = time.time()
+            # Switch to OFF after yielding so score can adjust to 0
+            return self.States.OFF, True
         elif self._rinfo['best-engine-status-host-id'] != local_host_id:
             self._log.error("Engine vm unexpectedly running on other host")
+            self._rinfo['unexpected-shutdown-time'] = time.time()
             return self.States.OFF, True
 
         if self._rinfo['maintenance'] == self.MaintenanceMode.GLOBAL:
