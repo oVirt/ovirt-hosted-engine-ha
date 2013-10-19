@@ -78,6 +78,7 @@ AC_CONFIG_FILES([
 	Makefile
 	bin/Makefile
 	build/Makefile
+	doc/Makefile
 	initscripts/Makefile
 	ovirt_hosted_engine_ha/Makefile
 	ovirt_hosted_engine_ha/agent/Makefile

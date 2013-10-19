@@ -48,8 +48,9 @@ EXTRA_DIST = \
 
 SUBDIRS = \
 	bin \
-	initscripts \
 	build \
+	doc \
+	initscripts \
 	ovirt_hosted_engine_ha \
 	sudoers \
 	$(NULL)
