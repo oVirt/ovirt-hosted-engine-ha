@@ -112,6 +112,7 @@ class Broker(object):
 
         # Server shutdown...
         self._log.info("Server shutting down")
+        self._listener.clean_up()
         os.unlink(constants.PID_FILE)
         sys.exit(0)
 

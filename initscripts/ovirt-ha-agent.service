@@ -1,6 +1,7 @@
 [Unit]
 Description=oVirt Hosted Engine High Availability Monitoring Agent
-Requires=ovirt-ha-broker.service
+Wants=ovirt-ha-broker.service
+After=ovirt-ha-broker.service
 
 [Service]
 Type=forking
@@ -10,3 +11,4 @@ ExecStop=/lib/systemd/systemd-ovirt-ha-agent stop
 
 [Install]
 WantedBy=multi-user.target
+Also=ovirt-ha-broker.service

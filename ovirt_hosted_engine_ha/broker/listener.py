@@ -47,8 +47,7 @@ class Listener(object):
         self._storage_broker_instance_access_lock = threading.Lock()
         self._need_exit = False
 
-        if os.path.exists(constants.BROKER_SOCKET_FILE):
-            os.unlink(constants.BROKER_SOCKET_FILE)
+        self._remove_socket_file()
         self._server = ThreadedStreamServer(
             constants.BROKER_SOCKET_FILE, ConnectionHandler, True, self)
 
@@ -97,6 +96,18 @@ class Listener(object):
         This function must remain re-entrant.
         """
         self._need_exit = True
+
+    def clean_up(self):
+        """
+        Perform final listener cleanup.  This is effectively the complement
+        of __init__(), to be called after the final call to listen() and
+        close_connections() have been made.
+        """
+        self._remove_socket_file()
+
+    def _remove_socket_file(self):
+        if os.path.exists(constants.BROKER_SOCKET_FILE):
+            os.unlink(constants.BROKER_SOCKET_FILE)
 
 
 class ThreadedStreamServer(SocketServer.ThreadingMixIn,

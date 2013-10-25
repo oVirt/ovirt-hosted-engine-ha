@@ -293,7 +293,7 @@ class HostedEngine(object):
         if not self._broker:
             self._broker = brokerlink.BrokerLink()
         try:
-            self._broker.connect()
+            self._broker.connect(constants.BROKER_CONNECTION_RETRIES)
         except Exception as e:
             self._log.error("Failed to connect to ha-broker: %s", str(e))
             raise

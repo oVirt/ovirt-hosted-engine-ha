@@ -21,6 +21,7 @@ import base64
 import contextlib
 import logging
 import socket
+import time
 
 from ..env import constants
 from ..lib.exceptions import DisconnectionError
@@ -33,19 +34,43 @@ class BrokerLink(object):
         self._log = logging.getLogger("BrokerLink")
         self._socket = None
 
-    def connect(self):
+    def connect(self, retries=0):
+        """
+        Connect to the HA Broker.  Upon failure, reconnection attempts will
+        be made approximately once per second until the specified number of
+        retries have been made.  An exception will be raised if a connection
+        cannot be established.
+        """
         if self.is_connected():
             return
         self._log.info("Connecting to ha-broker")
+
         try:
             self._socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            self._socket.connect(constants.BROKER_SOCKET_FILE)
         except socket.error as e:
             self._log.error("Failed to connect to broker: %s", str(e))
             if self._socket:
                 self._socket.close()
             self._socket = None
             raise
+
+        attempt = 0
+        while True:
+            try:
+                self._socket.connect(constants.BROKER_SOCKET_FILE)
+            except socket.error as e:
+                if attempt < retries:
+                    self._log.info("Failed to connect to broker: %s", str(e))
+                    self._log.info("Retrying broker connection...")
+                    time.sleep(1)
+                    continue
+                else:
+                    self._log.error("Failed to connect to broker: %s", str(e))
+                    self._socket.close()
+                    self._socket = None
+                    raise
+            self._log.debug("Successfully connected")
+            break
 
     def is_connected(self):
         return self._socket is not None
