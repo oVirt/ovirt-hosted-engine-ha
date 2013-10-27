@@ -54,10 +54,14 @@ class Submonitor(submonitor_base.SubmonitorBase):
 
         if ('bridges' in response['info']
                 and self._bridge in response['info']['bridges']):
-            # FIXME check status of bridge?
-            self._log.info("Found bridge %s", self._bridge,
-                           extra=log_filter.lf_args('status', 60))
-            self.update_result(True)
+            if response['info']['bridges'][self._bridge]['ports']:
+                self._log.info("Found bridge %s with ports", self._bridge,
+                               extra=log_filter.lf_args('status', 60))
+                self.update_result(True)
+            else:
+                self._log.info("Found bridge %s with no ports", self._bridge,
+                               extra=log_filter.lf_args('status', 60))
+                self.update_result(False)
         else:
             self._log.info("Bridge %s not found", self._bridge,
                            extra=log_filter.lf_args('status', 60))
