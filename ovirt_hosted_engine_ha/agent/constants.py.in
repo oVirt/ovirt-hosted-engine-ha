@@ -28,8 +28,16 @@ FULL_PROG_NAME = '{0} {1} {2}'.format(
 # Metadata can be parsed by agents as old as METADATA_PARSE_VERSION, but may
 # contain new/additional information as new as METADATA_FEATURE_VERSION.  This
 # allows detection of enhancements without breaking backwards compatibility.
-METADATA_FEATURE_VERSION = 1
+#
+# Note: The range of valid metadata versions for this host is from
+# METADATA_PARSE_VERSION <= version <= METADATA_FEATURE_VERSION.  If an
+# incompatible change is made to the metadata, both the parse and feature
+# versions should be raised beyond the current feature version.  This will
+# ensure that a) the old agent will recognize that it has been superseded
+# and shut down the vm, and b) the newer agents will ignore the older agents'
+# reported scores, thus assuming control of the vm.
 METADATA_PARSE_VERSION = 1
+METADATA_FEATURE_VERSION = 1
 
 METADATA_BLOCK_BYTES = 512
 SERVICE_TYPE = 'hosted-engine'

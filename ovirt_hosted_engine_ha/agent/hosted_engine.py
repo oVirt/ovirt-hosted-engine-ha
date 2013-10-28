@@ -740,6 +740,10 @@ class HostedEngine(object):
             constants.SERVICE_TYPE)
         local_ts = int(time.time())
 
+        # Flag is set if the local agent discovers metadata too new for it
+        # to parse, in which case the agent will shut down the engine VM.
+        self._rinfo['superseded-agent'] = False
+
         # host_id 0 is a special case, representing global metadata
         data = all_stats.pop(0, None)
         md = {}
@@ -759,6 +763,13 @@ class HostedEngine(object):
         for host_id, data in all_stats.iteritems():
             try:
                 md = metadata.parse_metadata_to_dict(host_id, data)
+            except ex.FatalMetadataError as e:
+                self._log.error(
+                    str(e),
+                    extra=log_filter.lf_args(self.LF_MD_ERROR + str(host_id),
+                                             self.LF_MD_ERROR_INT))
+                self._rinfo['superseded-agent'] = True
+                continue
             except ex.MetadataError as e:
                 self._log.error(
                     str(e),
@@ -993,6 +1004,11 @@ class HostedEngine(object):
             # TODO local maintenance should have its own state
             self._log.info("Local HA maintenance enabled")
             return self.States.OFF, True
+        elif self._rinfo['superseded-agent']:
+            # TODO superseded agent should have its own state
+            self._log.error("Local agent has been superseded by newer"
+                            " agents running in this cluster")
+            return self.States.OFF, True
 
         if self._rinfo['best-score-host-id'] != local_host_id:
             self._log.info("Engine down, local host does not have best score",
@@ -1120,8 +1136,13 @@ class HostedEngine(object):
             self._log.info("Global HA maintenance enabled")
             return self.States.MAINTENANCE, True
         elif self._rinfo['maintenance'] == self.MaintenanceMode.LOCAL:
+            # TODO local maintenance should have its own state
             self._log.info("Local HA maintenance enabled")
-            # TODO local maintenance should have its own state as well
+            return self.States.STOP, False
+        elif self._rinfo['superseded-agent']:
+            # TODO superseded agent should have its own state
+            self._log.error("Local agent has been superseded by newer"
+                            " agents running in this cluster")
             return self.States.STOP, False
 
         best_host_id = self._rinfo['best-score-host-id']

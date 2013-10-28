@@ -41,3 +41,7 @@ class DetailedError(Exception):
 
 class MetadataError(Exception):
     pass
+
+
+class FatalMetadataError(Exception):
+    pass

@@ -16,10 +16,13 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
+
+import re
 import time
 
 from ..env import constants
 from ..lib import util
+from exceptions import FatalMetadataError
 from exceptions import MetadataError
 
 
@@ -122,24 +125,49 @@ def parse_metadata_to_dict(host_str, data):
                             " received {1} of {2} expected bytes"
                             .format(host_id, len(data), 512))
 
-    tokens = data[:512].rstrip('\0').split('|')
+    pdata = data[:512].rstrip('\0')
+
+    try:
+        # The md version is the first string of numbers in the metadata,
+        # which allows for future changes to the delimiter.
+        m = re.match(r'\d+', pdata)
+        md_parse_vers = int(m.group())
+    except (AttributeError, ValueError):
+        raise MetadataError("Malformed metadata for host {0}:"
+                            " non-parsable metadata version {1}"
+                            .format(host_id, pdata))
+
+    if md_parse_vers > constants.METADATA_FEATURE_VERSION:
+        # Another agent in the cluster is writing newer metadata.  Raise a
+        # fatal error so the caller knows to stop processing.
+        raise FatalMetadataError("Metadata version {0} from host {1}"
+                                 " too new for this agent"
+                                 " (highest compatible version: {2})"
+                                 .format(md_parse_vers, host_id,
+                                         constants.METADATA_FEATURE_VERSION))
+
+    tokens = pdata.split('|')
+
     if len(tokens) < 7:
         raise MetadataError("Malformed metadata for host {0}:"
                             " received {1} of {2} expected tokens"
                             .format(host_id, len(tokens), 7))
 
     try:
-        md_parse_vers = int(tokens[0])
+        md_feature_vers = int(tokens[1])
     except ValueError:
         raise MetadataError("Malformed metadata for host {0}:"
                             " non-parsable metadata version {1}"
-                            .format(host_id, tokens[0]))
+                            .format(host_id, tokens[1]))
 
-    if md_parse_vers > constants.METADATA_FEATURE_VERSION:
-        raise MetadataError("Metadata version {0} for host {1}"
-                            " too new for this agent ({2})"
-                            .format(md_parse_vers, host_id,
-                                    constants.METADATA_FEATURE_VERSION))
+    if md_feature_vers < constants.METADATA_PARSE_VERSION:
+        # Our metadata is incompatible; we'll ignore the old agent's metadata
+        # and it will ignore ours.
+        raise MetadataError("Metadata version {0} from host {1}"
+                            " too old for this agent"
+                            " (lowest compatible version: {2})"
+                            .format(md_feature_vers, host_id,
+                                    constants.METADATA_PARSE_VERSION))
 
     ret = {
         'host-id': host_id,
