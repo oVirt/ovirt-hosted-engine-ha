@@ -21,6 +21,7 @@ from . import constants
 
 # constants for hosted-engine.conf options
 ENGINE = 'engine'
+DOMAIN_TYPE = 'domainType'
 ENGINE_FQDN = 'fqdn'
 GATEWAY_ADDR = 'gateway'
 HOST_ID = 'host_id'

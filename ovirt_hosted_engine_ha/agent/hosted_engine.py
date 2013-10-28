@@ -28,6 +28,7 @@ import sanlock
 
 from . import constants
 from ..env import config
+from ..env import path as env_path
 from ..lib import brokerlink
 from ..lib import exceptions as ex
 from ..lib import log_filter
@@ -329,7 +330,7 @@ class HostedEngine(object):
             raise Exception("Failed trying to connect storage")
 
         # Update to the current mount path for the domain
-        self._sd_path = self._get_domain_path()
+        self._sd_path = env_path.get_domain_path(self._config)
         self._log.debug("Path to storage domain is %s", self._sd_path)
 
     def _cond_start_service(self, service_name):
@@ -352,25 +353,11 @@ class HostedEngine(object):
                     raise Exception("Could not start {0}: {1}"
                                     .format(service_name, res[1]))
 
-    def _get_domain_path(self):
-        """
-        Return path of storage domain holding engine vm
-        """
-        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
-        parent = constants.SD_MOUNT_PARENT
-        for dname in os.listdir(parent):
-            path = os.path.join(parent, dname, sd_uuid)
-            if os.access(path, os.F_OK):
-                return path
-        raise Exception("path to storage domain {0} not found in {1}"
-                        .format(sd_uuid, parent))
-
     def _initialize_sanlock(self):
         self._cond_start_service('sanlock')
 
         host_id = self._rinfo['host-id']
-        self._metadata_dir = os.path.join(self._sd_path,
-                                          constants.SD_METADATA_DIR)
+        self._metadata_dir = env_path.get_metadata_path(self._config)
         lease_file = os.path.join(self._metadata_dir,
                                   constants.SERVICE_TYPE + '.lockspace')
         if not self._sanlock_initialized:

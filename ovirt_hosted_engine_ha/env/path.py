@@ -28,7 +28,10 @@ def get_domain_path(config_):
     Return path of storage domain holding engine vm
     """
     sd_uuid = config_.get(config.ENGINE, config.SD_UUID)
+    dom_type = config_.get(config.ENGINE, config.DOMAIN_TYPE)
     parent = constants.SD_MOUNT_PARENT
+    if dom_type == 'glusterfs':
+        parent = os.path.join(parent, 'glusterSD')
     for dname in os.listdir(parent):
         path = os.path.join(parent, dname, sd_uuid)
         if os.access(path, os.F_OK):
