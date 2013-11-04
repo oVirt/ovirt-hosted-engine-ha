@@ -16,6 +16,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
+import time
 
 from ..env import constants
 from ..lib import util
@@ -145,6 +146,10 @@ def parse_metadata_to_dict(host_str, data):
         'engine-status': str(tokens[5]),
         'hostname': str(tokens[6]),
     }
+
+    # check the timestamp to get the hosts liveness
+    last_valid_time = time.time() - constants.HOST_ALIVE_TIMEOUT_SECS
+    ret['live-data'] = ret['host-ts'] >= last_valid_time
 
     # Add human-readable summary from bytes 512+
     extra = data[512:].rstrip('\0')
