@@ -29,6 +29,10 @@ from ..lib.exceptions import RequestError
 from ..lib import util
 
 
+class NotifyEvents(object):
+    STATE_TRANSITION = "state_transition"
+
+
 class BrokerLink(object):
     def __init__(self):
         self._log = logging.getLogger("BrokerLink")
@@ -93,6 +97,25 @@ class BrokerLink(object):
         yield
         if not was_connected:
             self.disconnect()
+
+    def notify(self, event_type, detail, **options):
+        request = ["notify time={0} type={1} detail={2}"
+                   .format(time.time(), event_type, detail, "description")]
+        for k, v in options.iteritems():
+            request.append("{0}={1}".format(k, repr(v)))
+        request = " ".join(request)
+
+        self._log.info("Trying: %s", request)
+
+        try:
+            response = self._checked_communicate(request)
+        except Exception as e:
+            raise RequestError("Failed to start monitor {0}, options {1}: {2}"
+                               .format(type, options, e))
+
+        self._log.info("Success, was notification of "
+                       "%s (%s) sent? %s", event_type, detail, response)
+        return response
 
     def start_monitor(self, type, options):
         """

@@ -32,7 +32,8 @@ CLEANFILES = \
 	$(NULL)
 
 SUBDIRS = \
-	submonitors
+	submonitors \
+	notifications \
 	$(NULL)
 
 brokerdir = $(engine_ha_libdir)/broker
@@ -42,6 +43,7 @@ dist_broker_PYTHON = \
 	broker.py \
 	listener.py \
 	monitor.py \
+	notifications.py \
 	storage_broker.py \
 	submonitor_base.py \
 	$(NULL)
@@ -54,9 +56,11 @@ brokerconfdir = $(engine_ha_confdir)
 
 brokerconf_DATA = \
 	broker-log.conf \
+	broker.conf \
 	$(NULL)
 
 EXTRA_DIST = \
+    broker.conf \
 	broker-log.conf.in \
 	constants.py.in \
 	$(NULL)

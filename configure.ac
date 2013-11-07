@@ -84,6 +84,7 @@ AC_CONFIG_FILES([
 	ovirt_hosted_engine_ha/Makefile
 	ovirt_hosted_engine_ha/agent/Makefile
 	ovirt_hosted_engine_ha/broker/Makefile
+	ovirt_hosted_engine_ha/broker/notifications/Makefile
 	ovirt_hosted_engine_ha/broker/submonitors/Makefile
 	ovirt_hosted_engine_ha/client/Makefile
 	ovirt_hosted_engine_ha/env/Makefile

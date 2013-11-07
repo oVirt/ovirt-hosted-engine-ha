@@ -23,6 +23,7 @@ include $(top_srcdir)/build/var_subst.inc
 MAINTAINERCLEANFILES = \
 	$(srcdir)/Makefile.in \
 	$(NULL)
+
 CLEANFILES = \
 	constants.py \
 	$(NULL)

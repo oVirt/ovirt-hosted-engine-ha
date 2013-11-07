@@ -20,6 +20,7 @@
 import errno
 import logging
 import os
+import shlex
 import socket
 import SocketServer
 import threading
@@ -28,6 +29,7 @@ from ..env import constants
 from ..lib import util
 from ..lib.exceptions import DisconnectionError
 from ..lib.exceptions import RequestError
+from . import notifications
 
 
 class Listener(object):
@@ -201,7 +203,7 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
         On success, output is returned as a string.
         On failure, a RequestError exception is raised (often by dispatchees).
         """
-        tokens = data.split(' ')
+        tokens = shlex.split(data)
         type = tokens.pop(0)
         self._log.debug("Request type %s", type)
 
@@ -241,6 +243,12 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
                 self.server.sp_listener.storage_broker_instance \
                     .put_stats(**options)
             return "ok"
+        elif type == 'notify':
+            options = self._get_options(tokens)
+            if notifications.notify(**options):
+                return "sent"
+            else:
+                return "ignored"
         else:
             self._log.error("Unrecognized request: %s", data)
             raise RequestError("unrecognized request")
