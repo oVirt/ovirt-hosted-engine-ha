@@ -1143,23 +1143,31 @@ class HostedEngine(object):
                     = self.MigrationStatus.IN_PROGRESS
 
         else:
-            res = vdsc.run_vds_client_cmd(
-                '0',
-                use_ssl,
-                'migrateStatus',
-                vm_id,
-            )
-            self._log.info("Migration status: %s", res['status']['message'])
-
-            if res['status']['message'].startswith('Migration in progress'):
-                self._rinfo['migration-status'] \
-                    = self.MigrationStatus.IN_PROGRESS
-            elif res['status']['message'].startswith('Migration done'):
-                self._rinfo['migration-status'] \
-                    = self.MigrationStatus.DONE
-            else:
+            try:
+                res = vdsc.run_vds_client_cmd(
+                    '0',
+                    use_ssl,
+                    'migrateStatus',
+                    vm_id,
+                )
+            except:
+                self._log.error("Failed to migrate", exc_info=True)
                 self._rinfo['migration-status'] \
                     = self.MigrationStatus.FAILURE
+            else:
+                self._log.info("Migration status: %s",
+                               res['status']['message'])
+
+                if res['status']['message'] \
+                        .startswith('Migration in progress'):
+                    self._rinfo['migration-status'] \
+                        = self.MigrationStatus.IN_PROGRESS
+                elif res['status']['message'].startswith('Migration done'):
+                    self._rinfo['migration-status'] \
+                        = self.MigrationStatus.DONE
+                else:
+                    self._rinfo['migration-status'] \
+                        = self.MigrationStatus.FAILURE
 
         self._log.debug("Symbolic migration status is %s",
                         self._rinfo['migration-status'])
