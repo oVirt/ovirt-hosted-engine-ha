@@ -473,7 +473,7 @@ class HostedEngine(object):
         except Exception as e:
             msg = ("Failed to get VDSM domain monitor status: {0}"
                    .format(str(e)))
-            self._log.error(msg, esc_info=True)
+            self._log.error(msg, exc_info=True)
             raise Exception(msg)
 
         if sd_uuid not in repo_stats:
@@ -581,18 +581,25 @@ class HostedEngine(object):
         score += 100 * (1 if float_or_default(lm['mem-load']['status'], 1)
                         < 0.8 else 0)
 
-        # Subtracting a small amount each time causes round-robin attempts
-        # between hosts that are otherwise equally suited to run the engine
-        score -= 50 * self._rinfo['engine-vm-retry-count']
-        score = max(0, score)
-
         # If too many retries occur, give a less-suited host a chance
         if (self._rinfo['engine-vm-retry-count']
                 > constants.ENGINE_RETRY_COUNT):
+            self._log.info('Score is 0 due to {0} engine vm retry attempts',
+                           self._rinfo['engine-vm-retry-count'])
             score = 0
+        elif self._rinfo['engine-vm-retry-count'] > 0:
+            # Subtracting a small amount each time causes round-robin attempts
+            # between hosts that are otherwise equally suited to run the engine
+            penalty = 50 * self._rinfo['engine-vm-retry-count']
+            self._log.info('Penalizing score by {0}'
+                           ' due to {1} engine vm retry attempts',
+                           penalty, self._rinfo['engine-vm-retry-count'])
+            score = max(0, score - penalty)
 
         # If engine has bad health status, let another host try
         if self._rinfo['bad-health-failure-time']:
+            self._log.info('Score is 0 due to bad engine health at {0}',
+                           time.ctime(self._rinfo['bad-health-failure-time']))
             score = 0
 
         # If the VM shut down unexpectedly (user command, died, etc.), drop the
@@ -600,10 +607,13 @@ class HostedEngine(object):
         # shortcut for the user to start host maintenance mode, though it still
         # should be set manually lest the score recover after a timeout.
         if self._rinfo['unexpected-shutdown-time']:
+            self._log.info('Score is 0 due to unexpected vm shutdown at {0}',
+                           time.ctime(self._rinfo['unexpected-shutdown-time']))
             score = 0
 
         # Hosts in local maintenance mode should not run the vm
         if self._get_maintenance_mode() == self.MaintenanceMode.LOCAL:
+            self._log.info('Score is 0 due to local maintenance mode')
             score = 0
 
         ts = int(time.time())
