@@ -22,6 +22,9 @@ import time
 
 
 class IntermittentFilter(logging.Filter):
+    def __init__(self):
+        self._classes = {}
+
     """
     Makes sure a messages in each message class are only logged every
     lf_interval seconds or when the message text changes.
@@ -40,9 +43,14 @@ class IntermittentFilter(logging.Filter):
                 or (self._classes[record.lf_class]['time']
                     + record.lf_interval < now)
                 or (self._classes[record.lf_class]['message']
-                    != record.get_message())):
+                    != record.getMessage())):
             self._classes[record.lf_class]['time'] = now
-            self._classes[record.lf_class]['message'] = record.get_message()
+            self._classes[record.lf_class]['message'] = record.getMessage()
             return True
         else:
             return False
+
+
+def lf_args(lf_class, lf_interval):
+    return {'lf_class': lf_class,
+            'lf_interval': lf_interval}

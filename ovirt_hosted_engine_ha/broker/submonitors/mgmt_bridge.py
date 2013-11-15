@@ -20,6 +20,7 @@
 import logging
 
 from ovirt_hosted_engine_ha.broker import submonitor_base
+from ovirt_hosted_engine_ha.lib import log_filter
 from ovirt_hosted_engine_ha.lib import util as util
 from ovirt_hosted_engine_ha.lib import vds_client as vdsc
 
@@ -31,6 +32,7 @@ def register():
 class Submonitor(submonitor_base.SubmonitorBase):
     def setup(self, options):
         self._log = logging.getLogger("MgmtBridge")
+        self._log.addFilter(log_filter.IntermittentFilter())
         self._address = options.get('address')
         self._use_ssl = util.to_bool(options.get('use_ssl'))
         self._bridge = options.get('bridge_name')
@@ -53,8 +55,10 @@ class Submonitor(submonitor_base.SubmonitorBase):
         if ('bridges' in response['info']
                 and self._bridge in response['info']['bridges']):
             # FIXME check status of bridge?
-            self._log.info("Found bridge %s", self._bridge)
+            self._log.info("Found bridge %s", self._bridge,
+                           extra=log_filter.lf_args('status', 60))
             self.update_result(True)
         else:
-            self._log.info("Bridge %s not found", self._bridge)
+            self._log.info("Bridge %s not found", self._bridge,
+                           extra=log_filter.lf_args('status', 60))
             self.update_result(False)

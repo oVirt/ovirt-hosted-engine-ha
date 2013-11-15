@@ -22,6 +22,7 @@ import os
 import subprocess
 
 from ovirt_hosted_engine_ha.broker import submonitor_base
+from ovirt_hosted_engine_ha.lib import log_filter
 
 
 def register():
@@ -31,6 +32,7 @@ def register():
 class Submonitor(submonitor_base.SubmonitorBase):
     def setup(self, options):
         self._log = logging.getLogger("Ping")
+        self._log.addFilter(log_filter.IntermittentFilter())
         self._addr = options.get('addr')
         self._timeout = str(options.get('timeout', 10))
         if self._addr is None:
@@ -46,5 +48,6 @@ class Submonitor(submonitor_base.SubmonitorBase):
                 self._log.warning("Failed to ping %s", self._addr)
                 self.update_result(False)
             else:
-                self._log.info("Successfully pinged %s", self._addr)
+                self._log.info("Successfully pinged %s", self._addr,
+                               extra=log_filter.lf_args('status', 60))
                 self.update_result(True)

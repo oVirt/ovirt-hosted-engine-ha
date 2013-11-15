@@ -55,8 +55,8 @@ class StorageBroker(object):
         Note: this method is called from the client as well as from
         self.get_all_stats_for_service_type().
         """
-        self._log.info("Getting stats for service %s from %s",
-                       service_type, storage_dir)
+        self._log.debug("Getting stats for service %s from %s",
+                        service_type, storage_dir)
         path = os.path.join(storage_dir, self._get_filename(service_type))
 
         # Use direct I/O if possible, to avoid the local filesystem cache
@@ -98,9 +98,9 @@ class StorageBroker(object):
         host_id = int(host_id)
         path = os.path.join(storage_dir, self._get_filename(service_type))
         offset = host_id * constants.HOST_SEGMENT_BYTES
-        self._log.info("Writing stats for service %s, host id %d"
-                       " to file %s, offset %d",
-                       service_type, host_id, path, offset)
+        self._log.debug("Writing stats for service %s, host id %d"
+                        " to file %s, offset %d",
+                        service_type, host_id, path, offset)
 
         byte_data = base64.b16decode(data)
         byte_data = byte_data.ljust(constants.HOST_SEGMENT_BYTES, '\0')

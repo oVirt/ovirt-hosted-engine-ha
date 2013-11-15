@@ -43,7 +43,7 @@ class BrokerLink(object):
         """
         if self.is_connected():
             return
-        self._log.info("Connecting to ha-broker")
+        self._log.debug("Connecting to ha-broker")
 
         try:
             self._socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -76,7 +76,7 @@ class BrokerLink(object):
         return self._socket is not None
 
     def disconnect(self):
-        self._log.info("Closing connection to ha-broker")
+        self._log.debug("Closing connection to ha-broker")
         try:
             if self._socket:
                 self._socket.close()
@@ -122,7 +122,7 @@ class BrokerLink(object):
             self._log.error("Exception getting monitor status: %s", str(e))
             raise RequestError("Failed to get monitor status: {0}"
                                .format(str(e)))
-        self._log.info("Success, status %s", response)
+        self._log.debug("Success, status %s", response)
         return response
 
     def put_stats_on_storage(self, storage_dir, service_type, host_id, data):
@@ -130,7 +130,7 @@ class BrokerLink(object):
         Puts data on the shared storage according to the parameters.
         Data should be passed in as a string.
         """
-        self._log.info("Storing blocks on storage at %s", storage_dir)
+        self._log.debug("Storing blocks on storage at %s", storage_dir)
         # broker expects blocks in hex format
         hex_data = base64.b16encode(data)
         request = ("put-stats"

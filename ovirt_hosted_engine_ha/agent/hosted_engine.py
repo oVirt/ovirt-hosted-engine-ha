@@ -53,12 +53,13 @@ def handler_cleanup(f):
 
 class HostedEngine(object):
     LF_MD_ERROR = 'LF_MD_ERROR'
-    LF_HOST_UPDATE = 'LF_HOST_UPDATE'
-    LF_HOST_UPDATE_DETAIL = 'LF_HOST_UPDATE_DETAIL'
+    LF_MD_ERROR_INT = 900
     LF_ENGINE_HEALTH = 'LF_ENGINE_HEALTH'
+    LF_ENGINE_HEALTH_INT = 60
     LF_GLOBAL_MD_ERROR = 'LF_GLOBAL_MD_ERROR'
-    LF_GLOBAL_MD_UPDATE_DETAIL = 'LF_GLOBAL_MD_UPDATE_DETAIL'
+    LF_GLOBAL_MD_ERROR_INT = 900
     LF_MAINTENANCE = 'LF_MAINTENANCE'
+    LF_MAINTENANCE_INT = 900
 
     MIGRATION_THRESHOLD_SCORE = 800
 
@@ -113,6 +114,7 @@ class HostedEngine(object):
         self._rinfo = {}
         self._init_runtime_info()
         self._all_host_stats = {}
+        self._prior_host_stats = {}
         self._global_stats = {}
 
         self._sd_path = None
@@ -205,6 +207,9 @@ class HostedEngine(object):
         # Local timestamp when vm was unexpectedly shut down
         self._rinfo['unexpected-shutdown-time'] = None
 
+        # Local timestamp of last metadata logging
+        self._rinfo['last-metadata-log-time'] = 0
+
         # Host id of local host
         self._rinfo['host-id'] = int(self._config.get(config.ENGINE,
                                                       config.HOST_ID))
@@ -215,31 +220,27 @@ class HostedEngine(object):
         # The following are initialized when needed to process engine actions
 
         # Used to denote best-ranked engine status of all live hosts
-        # 'best-engine-status'
-        # 'best-engine-status-host-id'
+        # self._rinfo['best-engine-status']
+        # self._rinfo['best-engine-status-host-id']
 
         # Highest score of all hosts, and host-id with that score
-        # 'best-score'
-        # 'best-score-host-id'
+        # self._rinfo['best-score']
+        # self._rinfo['best-score-host-id']
 
         # Current state machine state, member of self.States
-        # 'current-state'
+        # self._rinfo['current-state']
 
         # State of maintenance bit, True/False
-        # 'maintenance'
+        # self._rinfo['maintenance']
 
         # Used by ON state; tracks time when bad status first seen, cleanred
         # on either state change due to healthy state or timeout
-        # 'first-bad-status-time'
+        # self._rinfo['first-bad-status-time']
 
         # Used by ON and MIGRATE state, tracks status of migration (element of
         # self.MigrationStatus) and host id to which migration is occurring
-        # 'migration-host-id'
-        # 'migration-status'
-
-    def _get_lf_args(self, lf_class):
-        return {'lf_class': lf_class,
-                'interval': constants.INTERMITTENT_LOG_INTERVAL_SECS}
+        # self._rinfo['migration-host-id']
+        # self._rinfo['migration-status']
 
     def start_monitoring(self):
         error_count = 0
@@ -336,8 +337,8 @@ class HostedEngine(object):
             self._log.debug("stdout: %s", output[0])
             self._log.debug("stderr: %s", output[1])
             if p.returncode == 0:
-                self._log.info("Successfully verified that VDSM"
-                               " is attached to storage")
+                self._log.debug("Successfully verified that VDSM"
+                                " is attached to storage")
                 break
         if tries == constants.MAX_VDSM_WAIT_SECS:
             self._log.error("Failed trying to connect storage: %s", output[1])
@@ -354,9 +355,9 @@ class HostedEngine(object):
                                   'service', service_name, 'status'],
                                  stdout=devnull, stderr=devnull)
             if p.wait() == 0:
-                self._log.info("%s running", service_name)
+                self._log.debug("%s running", service_name)
             else:
-                self._log.error("Starting %s", service_name)
+                self._log.info("Starting %s", service_name)
                 with open(os.devnull, "w") as devnull:
                     p = subprocess.Popen(['sudo',
                                           'service', service_name, 'start'],
@@ -449,7 +450,7 @@ class HostedEngine(object):
             status = self._get_domain_monitor_status()
 
         if status == self.DomainMonitorStatus.ACQUIRED:
-            self._log.info("VDSM is monitoring domain %s", sd_uuid)
+            self._log.debug("VDSM is monitoring domain %s", sd_uuid)
         else:
             msg = ("Failed to start monitoring domain"
                    " (sd_uuid={0}, host_id={1}): {2}"
@@ -477,12 +478,15 @@ class HostedEngine(object):
 
         if sd_uuid not in repo_stats:
             status = self.DomainMonitorStatus.NONE
+            log_level = logging.INFO
         elif repo_stats[sd_uuid]['acquired']:
             status = self.DomainMonitorStatus.ACQUIRED
+            log_level = logging.DEBUG
         else:
             status = self.DomainMonitorStatus.PENDING
+            log_level = logging.INFO
 
-        self._log.info("VDSM domain monitor status: %s", status)
+        self._log.log(log_level, "VDSM domain monitor status: %s", status)
         return status
 
     def _collect_local_stats(self):
@@ -632,8 +636,8 @@ class HostedEngine(object):
 
         info_count = int((len(info) + constants.METADATA_BLOCK_BYTES - 1)
                          / constants.METADATA_BLOCK_BYTES)
-        self._log.info("Generated %d blocks:\n%s\n<\\0 padding>\n%s",
-                       info_count + 1, data, info)
+        self._log.debug("Generated %d blocks:\n%s\n<\\0 padding>\n%s",
+                        info_count + 1, data, info)
         data = data.ljust(constants.METADATA_BLOCK_BYTES, '\0')
         info = info.ljust(constants.METADATA_BLOCK_BYTES * info_count, '\0')
         out = data + info
@@ -650,7 +654,7 @@ class HostedEngine(object):
         all_stats = self._broker.get_stats_from_storage(
             self._metadata_dir,
             constants.SERVICE_TYPE)
-        local_ts = time.time()
+        local_ts = int(time.time())
 
         # host_id 0 is a special case, representing global metadata
         data = all_stats.pop(0, None)
@@ -658,15 +662,15 @@ class HostedEngine(object):
         if data is not None:
             try:
                 md = metadata.parse_global_metadata_to_dict(self._log, data)
-                self._log.info(
-                    'Global metadata: {0}'.format(md),
-                    extra=self._get_lf_args(self.LF_GLOBAL_MD_UPDATE_DETAIL))
             except ex.MetadataError as e:
                 self._log.error(
                     str(e),
-                    extra=self._get_lf_args(self.LF_GLOBAL_MD_ERROR))
+                    extra=log_filter.lf_args(self.LF_GLOBAL_MD_ERROR,
+                                             self.LF_GLOBAL_MD_ERROR_INT))
                 # Continue agent processing, ignoring the bad global metadata
-        self._global_stats = md
+        if self._global_stats != md:
+            self._log.info('Global metadata changed: {0}'.format(md))
+            self._global_stats = md
 
         for host_id, data in all_stats.iteritems():
             try:
@@ -674,7 +678,8 @@ class HostedEngine(object):
             except ex.MetadataError as e:
                 self._log.error(
                     str(e),
-                    extra=self._get_lf_args(self.LF_MD_ERROR))
+                    extra=log_filter.lf_args(self.LF_MD_ERROR + str(host_id),
+                                             self.LF_MD_ERROR_INT))
                 continue
 
             if md['host-id'] not in self._all_host_stats:
@@ -689,6 +694,8 @@ class HostedEngine(object):
 
             if self._all_host_stats[md['host-id']]['last-update-host-ts'] \
                     != md['host-ts']:
+                self._prior_host_stats[md['host-id']] = \
+                    self._all_host_stats[md['host-id']]
                 # Track first update in order to accurately judge liveness.
                 # If last-update-host-ts is 0, then first-update stays True
                 # which indicates that we cannot use this last-update-local-ts
@@ -715,24 +722,34 @@ class HostedEngine(object):
                 # a timeout in this case means we read stale data, but still
                 # must mark the host as dead.
                 # TODO newer sanlocks can report this through get_hosts()
-                self._log.error("Host %s (id %d) is no longer updating its"
-                                " metadata", attr['hostname'], host_id,
-                                extra=self._get_lf_args(self.LF_HOST_UPDATE))
-                self._all_host_stats[host_id]['alive'] = False
+                if self._all_host_stats[host_id]['alive']:
+                    self._log.error("Host %s (id %d) is no longer updating its"
+                                    " metadata", attr['hostname'], host_id)
+                    self._all_host_stats[host_id]['alive'] = False
             elif attr['first-update']:
                 self._log.info("Waiting for first update from host %s (id %d)",
-                               attr['hostname'], host_id,
-                               extra=self._get_lf_args(self.LF_HOST_UPDATE))
+                               attr['hostname'], host_id)
             else:
-                self._log.info("Host %s (id %d) metadata updated",
-                               attr['hostname'], host_id,
-                               extra=self._get_lf_args(self.LF_HOST_UPDATE))
+                self._log.debug("Host %s (id %d) metadata updated",
+                                attr['hostname'], host_id)
+                self._all_host_stats[host_id]['alive'] = True
+
+            # Log any changed stats
+            if (any((self._all_host_stats[host_id][k]
+                     != self._prior_host_stats[host_id][k]
+                     for k in ['alive', 'engine-status', 'score']))):
+                info_str = "{0}".format(attr)
+                self._log.info("Host %s (id %d) changed: %s",
+                               attr['hostname'], host_id, info_str)
+
+        if util.has_elapsed(self._rinfo['last-metadata-log-time'],
+                            constants.METADATA_LOG_PERIOD_SECS):
+            self._rinfo['last-metadata-log-time'] = int(time.time())
+            self._log.info('Global metadata: {0}'.format(self._global_stats))
+            for host_id, attr in self._all_host_stats.iteritems():
                 info_str = "{0}".format(attr)
                 self._log.info("Host %s (id %d): %s",
-                               attr['hostname'], host_id, info_str,
-                               extra=self._get_lf_args(
-                                   self.LF_HOST_UPDATE_DETAIL))
-                self._all_host_stats[host_id]['alive'] = True
+                               attr['hostname'], host_id, info_str)
 
     def _perform_engine_actions(self):
         """
@@ -852,7 +869,8 @@ class HostedEngine(object):
                     "Engine vm is running on host %s (id %d)",
                     self._all_host_stats[engine_host_id]['hostname'],
                     engine_host_id,
-                    extra=self._get_lf_args(self.LF_ENGINE_HEALTH)
+                    extra=log_filter.lf_args(self.LF_ENGINE_HEALTH,
+                                             self.LF_ENGINE_HEALTH_INT)
                 )
                 return self.States.OFF, True
 
@@ -867,13 +885,15 @@ class HostedEngine(object):
 
         if self._rinfo['best-score-host-id'] != local_host_id:
             self._log.info("Engine down, local host does not have best score",
-                           extra=self._get_lf_args(self.LF_ENGINE_HEALTH))
+                           extra=log_filter.lf_args(self.LF_ENGINE_HEALTH,
+                                                    self.LF_ENGINE_HEALTH_INT))
             return self.States.OFF, True
 
         self._log.error("Engine down and local host has best score (%d),"
                         " attempting to start engine VM",
                         self._rinfo['best-score'],
-                        extra=self._get_lf_args(self.LF_ENGINE_HEALTH))
+                        extra=log_filter.lf_args(self.LF_ENGINE_HEALTH,
+                                                 self.LF_ENGINE_HEALTH_INT))
         return self.States.START, False
 
     def _handle_start(self):
@@ -972,12 +992,12 @@ class HostedEngine(object):
         local_host_id = self._rinfo['host-id']
         if self._rinfo['best-engine-status'][:5] != 'vm-up':
             self._log.error("Engine vm died unexpectedly")
-            self._rinfo['unexpected-shutdown-time'] = time.time()
+            self._rinfo['unexpected-shutdown-time'] = int(time.time())
             # Switch to OFF after yielding so score can adjust to 0
             return self.States.OFF, True
         elif self._rinfo['best-engine-status-host-id'] != local_host_id:
             self._log.error("Engine vm unexpectedly running on other host")
-            self._rinfo['unexpected-shutdown-time'] = time.time()
+            self._rinfo['unexpected-shutdown-time'] = int(time.time())
             return self.States.OFF, True
 
         if self._rinfo['maintenance'] == self.MaintenanceMode.GLOBAL:
@@ -1018,7 +1038,9 @@ class HostedEngine(object):
                 # FIXME how do we avoid this for cases like vm running fsck?
                 return self.States.STOP, False
 
-        self._log.info("Engine vm running on localhost")
+        self._log.info("Engine vm running on localhost",
+                       extra=log_filter.lf_args(self.LF_ENGINE_HEALTH,
+                                                self.LF_ENGINE_HEALTH_INT))
         return self.States.ON, True
 
     def _handle_on_cleanup(self):
@@ -1163,7 +1185,8 @@ class HostedEngine(object):
         """
         if self._rinfo['maintenance'] == self.MaintenanceMode.GLOBAL:
             self._log.info("Global HA maintenance enabled",
-                           extra=self._get_lf_args(self.LF_MAINTENANCE))
+                           extra=log_filter.lf_args(self.LF_MAINTENANCE,
+                                                    self.LF_MAINTENANCE_INT))
             return self.States.MAINTENANCE, True
         else:
             return self.States.ENTRY, False

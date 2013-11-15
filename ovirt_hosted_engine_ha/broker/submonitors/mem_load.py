@@ -20,6 +20,7 @@
 import logging
 
 from ovirt_hosted_engine_ha.broker import submonitor_base
+from ovirt_hosted_engine_ha.lib import log_filter
 from ovirt_hosted_engine_ha.lib import util as util
 from ovirt_hosted_engine_ha.lib import vds_client as vdsc
 
@@ -31,6 +32,7 @@ def register():
 class Submonitor(submonitor_base.SubmonitorBase):
     def setup(self, options):
         self._log = logging.getLogger("MemLoad")
+        self._log.addFilter(log_filter.IntermittentFilter())
         self._address = options.get('address')
         self._use_ssl = util.to_bool(options.get('use_ssl'))
         if self._address is None or self._use_ssl is None:
@@ -52,5 +54,6 @@ class Submonitor(submonitor_base.SubmonitorBase):
         mem_used = int(stats['info']['memUsed'])
         mem_load = float(mem_used) / mem_size
         self._log.info("memSize: %d, memUsed: %d, Load: %f",
-                       mem_size, mem_used, mem_load)
+                       mem_size, mem_used, mem_load,
+                       extra=log_filter.lf_args('status', 60))
         self.update_result(str(mem_load))

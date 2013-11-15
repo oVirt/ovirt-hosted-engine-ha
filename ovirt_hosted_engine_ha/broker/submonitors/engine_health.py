@@ -23,6 +23,7 @@ import subprocess
 from ovirt_hosted_engine_ha.broker import constants
 from ovirt_hosted_engine_ha.broker import submonitor_base
 from ovirt_hosted_engine_ha.lib import exceptions as exceptions
+from ovirt_hosted_engine_ha.lib import log_filter
 from ovirt_hosted_engine_ha.lib import util as util
 from ovirt_hosted_engine_ha.lib import vds_client as vdsc
 
@@ -34,6 +35,7 @@ def register():
 class Submonitor(submonitor_base.SubmonitorBase):
     def setup(self, options):
         self._log = logging.getLogger("EngineHealth")
+        self._log.addFilter(log_filter.IntermittentFilter())
 
         self._address = options.get('address')
         self._use_ssl = util.to_bool(options.get('use_ssl'))
@@ -55,7 +57,8 @@ class Submonitor(submonitor_base.SubmonitorBase):
             if isinstance(e, exceptions.DetailedError) \
                     and e.detail == "Virtual machine does not exist":
                 # Not on this host
-                self._log.info("VM not on this host")
+                self._log.info("VM not on this host",
+                               extra=log_filter.lf_args('status', 60))
                 self.update_result('vm-down')
                 return
             else:
@@ -71,11 +74,13 @@ class Submonitor(submonitor_base.SubmonitorBase):
                          'restoringstate',
                          'savingstate',
                          'paused'):
-            self._log.info("VM status: %s", vm_status)
+            self._log.info("VM status: %s", vm_status,
+                           extra=log_filter.lf_args('status', 60))
             self.update_result('vm-up bad-health-status')
             return
         if vm_status != 'up':
-            self._log.info("VM not running on this host, status %s", vm_status)
+            self._log.info("VM not running on this host, status %s", vm_status,
+                           extra=log_filter.lf_args('status', 60))
             self.update_result('vm-down')
             return
 
@@ -85,7 +90,8 @@ class Submonitor(submonitor_base.SubmonitorBase):
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output = p.communicate()
         if p.returncode == 0:
-            self._log.info("VM is up on this host with healthy engine")
+            self._log.info("VM is up on this host with healthy engine",
+                           extra=log_filter.lf_args('status', 60))
             self.update_result("vm-up good-health-status")
             return
         self._log.warning("bad health status: %s", output[0])

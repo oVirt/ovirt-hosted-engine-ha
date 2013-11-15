@@ -20,7 +20,7 @@ args=('/dev/log', handlers.SysLogHandler.LOG_USER)
 
 [handler_logfile]
 class=logging.handlers.RotatingFileHandler
-args=('@ENGINE_HA_LOGDIR@/agent.log', 'a', 4194304, 4)
+args=('@ENGINE_HA_LOGDIR@/agent.log', 'a', 4194304, 8)
 level=DEBUG
 formatter=long
 
