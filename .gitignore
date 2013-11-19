@@ -37,6 +37,8 @@
 /ovirt_hosted_engine_ha/broker/broker-log.conf
 /ovirt_hosted_engine_ha/broker/Makefile
 /ovirt_hosted_engine_ha/broker/Makefile.in
+/ovirt_hosted_engine_ha/broker/notifications/Makefile
+/ovirt_hosted_engine_ha/broker/notifications/Makefile.in
 /ovirt_hosted_engine_ha/broker/submonitors/Makefile
 /ovirt_hosted_engine_ha/broker/submonitors/Makefile.in
 /ovirt_hosted_engine_ha/env/Makefile
