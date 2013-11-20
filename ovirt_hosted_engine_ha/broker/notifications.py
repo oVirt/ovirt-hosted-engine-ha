@@ -1,3 +1,5 @@
+import socket
+
 __author__ = 'msivak'
 
 import smtplib
@@ -24,7 +26,7 @@ def send_email(cfg, message):
                         message)
         server.quit()
         return True
-    except smtplib.SMTPException as e:
+    except (smtplib.SMTPException, socket.error) as e:
         logging.getLogger("Notifications").exception(e)
         return False
 

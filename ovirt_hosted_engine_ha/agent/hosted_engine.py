@@ -806,19 +806,24 @@ class HostedEngine(object):
         self._rinfo.update(rinfo)
 
         yield_ = False
-        old_state = "<initial_state>"
         # Process the states until it's time to sleep, indicated by the
         # state handler returning yield_ as True.
         while not yield_:
             self._log.debug("Processing engine state %s",
                             self._rinfo['current-state'])
-            self._broker.notify(brokerlink.NotifyEvents.STATE_TRANSITION,
-                                "%s-%s" % (old_state,
-                                           self._rinfo['current-state']),
-                                hostname=socket.gethostname())
+
+            # save the current state
             old_state = self._rinfo['current-state']
+
             self._rinfo['current-state'], yield_ \
                 = self._vm_state_actions[self._rinfo['current-state']]()
+
+            # notify on state change
+            if old_state != self._rinfo['current-state']:
+                self._broker.notify(brokerlink.NotifyEvents.STATE_TRANSITION,
+                                    "%s-%s" % (old_state,
+                                               self._rinfo['current-state']),
+                                    hostname=socket.gethostname())
 
         self._log.debug("Next engine state %s",
                         self._rinfo['current-state'])
