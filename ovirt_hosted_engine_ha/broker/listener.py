@@ -136,6 +136,21 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
         SocketServer.BaseRequestHandler.setup(self)
         self._init_monitors_for_conn()
 
+    def recover(self, e):
+        """
+        Try to recover from exception e by reporting failure to the agent.
+        Returns True if the recovery was successful and False otherwise.
+        """
+        response = "failure %s" % type(e)
+        try:
+            util.socket_sendline(self.request, self._log, response)
+            return True
+        except Exception:
+            # we failed sending the exception report.. oops bad bad
+            self._log.error("Error sending exception notification",
+                            exc_info=True)
+            return False
+
     def handle(self):
         """
         Overridden method.
@@ -159,15 +174,23 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
                     self._log.info("Connection closed")
                     return
                 else:
+                    # non-fatal? socket exception, try to recover by reporting
+                    # a failure to the agent
                     self._log.error("Error while serving connection",
                                     exc_info=True)
+                    if not self.recover(e):
+                        return
             except DisconnectionError:
                 self._log.info("Connection closed")
                 return
-            except Exception:
+            except Exception as e:
+                # socket unrelated exception, report failure to the agent
+                # log everything and wait for another command
                 self._log.error("Error handling request, data: %r",
                                 data, exc_info=True)
-                return
+                if not self.recover(e):
+                    return
+
         if self.server.sp_listener.need_exit:
             self._log.info("Closing connection on server request")
 
