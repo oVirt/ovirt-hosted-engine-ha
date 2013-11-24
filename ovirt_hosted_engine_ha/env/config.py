@@ -34,6 +34,7 @@ BRIDGE_NAME = 'bridge'
 # constants for vm.conf options
 VM = 'vm'
 VM_UUID = 'vmId'
+MEM_SIZE = 'memSize'
 
 # constants for ha.conf options
 HA = 'ha'

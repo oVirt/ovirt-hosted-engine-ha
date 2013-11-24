@@ -28,6 +28,10 @@ def register():
 
 class Submonitor(submonitor_base.SubmonitorBase):
     def action(self, options):
+        """
+        Return the one-minute load average, normalized as a ratio of load
+        to number of CPUs.
+        """
         load_per_thread = 1.0
         p = subprocess.Popen(['cat', '/proc/cpuinfo'], stdout=subprocess.PIPE)
         out = p.communicate()[0]

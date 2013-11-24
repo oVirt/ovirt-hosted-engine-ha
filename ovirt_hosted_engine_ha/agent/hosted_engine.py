@@ -17,6 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
+import copy
 import errno
 import logging
 import os
@@ -60,6 +61,7 @@ class HostedEngine(object):
     LF_GLOBAL_MD_ERROR_INT = 900
     LF_MAINTENANCE = 'LF_MAINTENANCE'
     LF_MAINTENANCE_INT = 900
+    LF_PENALTY_INT = 60
 
     MIGRATION_THRESHOLD_SCORE = 800
 
@@ -171,17 +173,11 @@ class HostedEngine(object):
         })
         req.append({
             'field': 'cpu-load',
-            'monitor': 'cpu-load',
+            'monitor': 'cpu-load-no-engine',
             'options': {
                 'address': '0',
-                'use_ssl': self._config.get(config.ENGINE, config.VDSM_SSL)}
-        })
-        req.append({
-            'field': 'mem-load',
-            'monitor': 'mem-load',
-            'options': {
-                'address': '0',
-                'use_ssl': self._config.get(config.ENGINE, config.VDSM_SSL)}
+                'use_ssl': self._config.get(config.ENGINE, config.VDSM_SSL),
+                'vm_uuid': self._config.get(config.VM, config.VM_UUID)}
         })
         req.append({
             'field': 'engine-health',
@@ -211,6 +207,10 @@ class HostedEngine(object):
 
         # Local timestamp of last metadata logging
         self._rinfo['last-metadata-log-time'] = 0
+
+        # CPU load tracking info
+        self._rinfo['last-load-update-time'] = 0
+        self._rinfo['cpu-load-history'] = []
 
         # Host id of local host
         self._rinfo['host-id'] = int(self._config.get(config.ENGINE,
@@ -570,38 +570,99 @@ class HostedEngine(object):
                 return default
 
         lm = self._local_monitors
+        ts = int(time.time())
 
-        score = 0
+        score = constants.BASE_SCORE
         # FIXME score needed for vdsm storage pool connection?
         # (depending on storage integration, may not be able to report...)
-        score += 1000 * (1 if lm['gateway']['status'] == 'True' else 0)
-        score += 800 * (1 if lm['bridge']['status'] == 'True' else 0)
-        score += 400 * (1 if float_or_default(lm['mem-free']['status'], 0)
-                        >= 4096.0 else 0)
-        score += 100 * (1 if float_or_default(lm['cpu-load']['status'], 1)
-                        < 0.8 else 0)
-        score += 100 * (1 if float_or_default(lm['mem-load']['status'], 1)
-                        < 0.8 else 0)
+
+        if lm['gateway']['status'] == 'False':
+            self._log.info("Penalizing score by %d due to gateway status",
+                           constants.GATEWAY_SCORE_PENALTY,
+                           extra=log_filter.lf_args('score-gateway',
+                                                    self.LF_PENALTY_INT))
+            score -= constants.GATEWAY_SCORE_PENALTY
+
+        if lm['bridge']['status'] == 'False':
+            self._log.info("Penalizing score by %d due to mgmt bridge status",
+                           constants.MGMT_BRIDGE_SCORE_PENALTY,
+                           extra=log_filter.lf_args('score-mgmtbridge',
+                                                    self.LF_PENALTY_INT))
+            score -= constants.MGMT_BRIDGE_SCORE_PENALTY
+
+        # Record 15 minute cpu load history (not counting load caused by
+        # the engine vm.  The default load penalty is:
+        #   load 0-40% : 0
+        #   load 40-90%: 0 to 1000 (rising linearly with increasing load)
+        #   load 90%+  : 1000
+        # Thus, a load of 80% causes an 800 point penalty
+        if util.has_elapsed(self._rinfo['last-load-update-time'], 60) \
+                and lm['cpu-load']['status'] != 'None':
+            if len(self._rinfo['cpu-load-history']) == 15:
+                self._rinfo['cpu-load-history'].pop(0)
+            self._rinfo['cpu-load-history'] \
+                .append(float(lm['cpu-load']['status']))
+            self._rinfo['last-load-update-time'] = ts
+        load_factor = sum(self._rinfo['cpu-load-history']) / 15
+
+        if constants.CPU_LOAD_PENALTY_MAX == constants.CPU_LOAD_PENALTY_MIN:
+            # Avoid divide by 0 in penalty calculation below
+            if load_factor < constants.CPU_LOAD_PENALTY_MIN:
+                penalty = 0
+            else:
+                penalty = constants.CPU_LOAD_SCORE_PENALTY
+        else:
+            # Penalty is normalized to [0, max penalty] and is linear based on
+            # (magnitude of value within penalty range) / (size of range)
+            penalty = int((load_factor - constants.CPU_LOAD_PENALTY_MIN)
+                          / (constants.CPU_LOAD_PENALTY_MAX
+                             - constants.CPU_LOAD_PENALTY_MIN)
+                          * constants.CPU_LOAD_SCORE_PENALTY)
+            penalty = max(0, min(constants.CPU_LOAD_SCORE_PENALTY, penalty))
+
+        if penalty > 0:
+            self._log.info("Penalizing score by %d due to cpu load",
+                           penalty,
+                           extra=log_filter.lf_args('score-cpu',
+                                                    self.LF_PENALTY_INT))
+            score -= penalty
+
+        # Penalize for free mem only if the VM is not on this host
+        vm_mem = int(self._config.get(config.VM, config.MEM_SIZE))
+        if self._rinfo['current-state'] != self.States.ON \
+                and float_or_default(lm['mem-free']['status'], 0) < vm_mem:
+            self._log.info('Penalizing score by %d due to low free memory',
+                           constants.FREE_VM_MEMORY_SCORE_PENALTY,
+                           extra=log_filter.lf_args('score-memory',
+                                                    self.LF_PENALTY_INT))
+            score -= constants.FREE_VM_MEMORY_SCORE_PENALTY
 
         # If too many retries occur, give a less-suited host a chance
         if (self._rinfo['engine-vm-retry-count']
-                > constants.ENGINE_RETRY_COUNT):
-            self._log.info('Score is 0 due to {0} engine vm retry attempts',
-                           self._rinfo['engine-vm-retry-count'])
+                > constants.ENGINE_RETRY_MAX_ATTEMPTS):
+            self._log.info('Score is 0 due to %d engine vm retry attempts',
+                           self._rinfo['engine-vm-retry-count'],
+                           extra=log_filter.lf_args('score-retries',
+                                                    self.LF_PENALTY_INT))
             score = 0
         elif self._rinfo['engine-vm-retry-count'] > 0:
             # Subtracting a small amount each time causes round-robin attempts
             # between hosts that are otherwise equally suited to run the engine
-            penalty = 50 * self._rinfo['engine-vm-retry-count']
-            self._log.info('Penalizing score by {0}'
-                           ' due to {1} engine vm retry attempts',
-                           penalty, self._rinfo['engine-vm-retry-count'])
-            score = max(0, score - penalty)
+            penalty = constants.ENGINE_RETRY_SCORE_PENALTY \
+                * self._rinfo['engine-vm-retry-count']
+            self._log.info('Penalizing score by %d'
+                           ' due to %d engine vm retry attempts',
+                           penalty, self._rinfo['engine-vm-retry-count'],
+                           extra=log_filter.lf_args('score-retries',
+                                                    self.LF_PENALTY_INT))
+            score -= penalty
 
         # If engine has bad health status, let another host try
         if self._rinfo['bad-health-failure-time']:
-            self._log.info('Score is 0 due to bad engine health at {0}',
-                           time.ctime(self._rinfo['bad-health-failure-time']))
+            self._log.info('Score is 0 due to bad engine health at %s',
+                           time.ctime(self._rinfo['bad-health-failure-time']),
+                           extra=log_filter.lf_args('score-health',
+                                                    self.LF_PENALTY_INT))
             score = 0
 
         # If the VM shut down unexpectedly (user command, died, etc.), drop the
@@ -609,18 +670,23 @@ class HostedEngine(object):
         # shortcut for the user to start host maintenance mode, though it still
         # should be set manually lest the score recover after a timeout.
         if self._rinfo['unexpected-shutdown-time']:
-            self._log.info('Score is 0 due to unexpected vm shutdown at {0}',
-                           time.ctime(self._rinfo['unexpected-shutdown-time']))
+            self._log.info('Score is 0 due to unexpected vm shutdown at %s',
+                           time.ctime(self._rinfo['unexpected-shutdown-time']),
+                           extra=log_filter.lf_args('score-shutdown',
+                                                    self.LF_PENALTY_INT))
             score = 0
 
         # Hosts in local maintenance mode should not run the vm
         local_maintenance = (self._get_maintenance_mode()
                              == self.MaintenanceMode.LOCAL)
         if local_maintenance:
-            self._log.info('Score is 0 due to local maintenance mode')
+            self._log.info('Score is 0 due to local maintenance mode',
+                           extra=log_filter.lf_args('score-maintenance',
+                                                    self.LF_PENALTY_INT))
             score = 0
 
-        ts = int(time.time())
+        score = max(0, score)
+
         data = ("{md_parse_vers}|{md_feature_vers}|{ts_int}"
                 "|{host_id}|{score}|{engine_status}|{name}|{maintenance}"
                 .format(md_parse_vers=constants.METADATA_PARSE_VERSION,
@@ -709,10 +775,11 @@ class HostedEngine(object):
                     'engine-status': None,
                     'hostname': '(unknown)'}
 
+            self._prior_host_stats[md['host-id']] = \
+                copy.copy(self._all_host_stats[md['host-id']])
+
             if self._all_host_stats[md['host-id']]['last-update-host-ts'] \
                     != md['host-ts']:
-                self._prior_host_stats[md['host-id']] = \
-                    self._all_host_stats[md['host-id']]
                 # Track first update in order to accurately judge liveness.
                 # If last-update-host-ts is 0, then first-update stays True
                 # which indicates that we cannot use this last-update-local-ts

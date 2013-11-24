@@ -29,6 +29,7 @@ brokersubmonitorsdir = $(engine_ha_libdir)/broker/submonitors
 
 dist_brokersubmonitors_PYTHON = \
 	cpu_load.py \
+	cpu_load_no_engine.py \
 	engine_health.py \
 	mem_free.py \
 	mem_load.py \
