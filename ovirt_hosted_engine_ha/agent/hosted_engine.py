@@ -130,6 +130,8 @@ class HostedEngine(object):
             self.States.STOP: self._handle_stop,
             self.States.MIGRATE: self._handle_migrate,
             self.States.MAINTENANCE: self._handle_maintenance,
+            # TODO local maintenance state
+            # TODO unexpected crash state
         }
 
     def _get_required_monitors(self):
@@ -612,20 +614,23 @@ class HostedEngine(object):
             score = 0
 
         # Hosts in local maintenance mode should not run the vm
-        if self._get_maintenance_mode() == self.MaintenanceMode.LOCAL:
+        local_maintenance = (self._get_maintenance_mode()
+                             == self.MaintenanceMode.LOCAL)
+        if local_maintenance:
             self._log.info('Score is 0 due to local maintenance mode')
             score = 0
 
         ts = int(time.time())
         data = ("{md_parse_vers}|{md_feature_vers}|{ts_int}"
-                "|{host_id}|{score}|{engine_status}|{name}"
+                "|{host_id}|{score}|{engine_status}|{name}|{maintenance}"
                 .format(md_parse_vers=constants.METADATA_PARSE_VERSION,
                         md_feature_vers=constants.METADATA_FEATURE_VERSION,
                         ts_int=ts,
                         host_id=self._rinfo['host-id'],
                         score=score,
                         engine_status=lm['engine-health']['status'],
-                        name=socket.gethostname()))
+                        name=socket.gethostname(),
+                        maintenance=1 if local_maintenance else 0))
         if len(data) > constants.METADATA_BLOCK_BYTES:
             raise Exception("Output metadata too long ({0} bytes)"
                             .format(data))
@@ -635,12 +640,14 @@ class HostedEngine(object):
                 "timestamp={ts_int} ({ts_str})\n"
                 "host-id={host_id}\n"
                 "score={score}\n"
+                "maintenance={maintenance}\n"
                 .format(md_parse_vers=constants.METADATA_PARSE_VERSION,
                         md_feature_vers=constants.METADATA_FEATURE_VERSION,
                         ts_int=ts,
                         ts_str=time.ctime(ts),
                         host_id=self._rinfo['host-id'],
-                        score=score))
+                        score=score,
+                        maintenance=local_maintenance))
         for (k, v) in sorted(lm.iteritems()):
             info += "{0}={1}\n".format(k, str(v['status']))
 
@@ -901,6 +908,7 @@ class HostedEngine(object):
             self._log.info("Global HA maintenance enabled")
             return self.States.MAINTENANCE, True
         elif self._rinfo['maintenance'] == self.MaintenanceMode.LOCAL:
+            # TODO local maintenance should have its own state
             self._log.info("Local HA maintenance enabled")
             return self.States.OFF, True
 
@@ -1015,10 +1023,12 @@ class HostedEngine(object):
             self._log.error("Engine vm died unexpectedly")
             self._rinfo['unexpected-shutdown-time'] = int(time.time())
             # Switch to OFF after yielding so score can adjust to 0
+            # TODO make this into new state that keeps track of the time
             return self.States.OFF, True
         elif self._rinfo['best-engine-status-host-id'] != local_host_id:
             self._log.error("Engine vm unexpectedly running on other host")
             self._rinfo['unexpected-shutdown-time'] = int(time.time())
+            # TODO make this into new state that keeps track of the time
             return self.States.OFF, True
 
         if self._rinfo['maintenance'] == self.MaintenanceMode.GLOBAL:
@@ -1026,6 +1036,7 @@ class HostedEngine(object):
             return self.States.MAINTENANCE, True
         elif self._rinfo['maintenance'] == self.MaintenanceMode.LOCAL:
             self._log.info("Local HA maintenance enabled")
+            # TODO local maintenance should have its own state as well
             return self.States.STOP, False
 
         best_host_id = self._rinfo['best-score-host-id']

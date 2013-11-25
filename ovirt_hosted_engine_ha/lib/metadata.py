@@ -100,6 +100,8 @@ def parse_metadata_to_dict(host_str, data):
             (see HostedEngine:engine_status_score_lookup for full/updated
             list of possibilities)
          name - hostname of described host
+         maintenance - 0 or 1 representing host is operational or in
+            local maintenance
      - Next 3584 bytes (for a total of 4096): human-readable description of
        data to aid in debugging, including factors considered in the host score
 
@@ -146,6 +148,10 @@ def parse_metadata_to_dict(host_str, data):
         'engine-status': str(tokens[5]),
         'hostname': str(tokens[6]),
     }
+
+    # support maintenance flag if present, but ignore if it isn't
+    if len(tokens) >= 8:
+        ret['maintenance'] = int(tokens[7]) > 0
 
     # check the timestamp to get the hosts liveness
     last_valid_time = time.time() - constants.HOST_ALIVE_TIMEOUT_SECS
