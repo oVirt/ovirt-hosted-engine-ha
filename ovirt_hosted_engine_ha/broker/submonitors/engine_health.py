@@ -78,7 +78,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
                            extra=log_filter.lf_args('status', 60))
             self.update_result('vm-up bad-health-status')
             return
-        if vm_status != 'up':
+        if vm_status not in ('up', 'running'):
             self._log.info("VM not running on this host, status %s", vm_status,
                            extra=log_filter.lf_args('status', 60))
             self.update_result('vm-down')
