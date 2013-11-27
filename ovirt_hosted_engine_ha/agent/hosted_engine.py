@@ -19,6 +19,7 @@
 
 import copy
 import errno
+import json
 import logging
 import os
 import socket
@@ -78,11 +79,11 @@ class HostedEngine(object):
         START = 'START'
         ON = 'ON'
         STOP = 'STOP'
-        MIGRATE = 'MIGRATE'
+        MIGRATE_START = 'MIGRATE_START'
+        MIGRATE_MONITOR = 'MIGRATE_MONITOR'
         MAINTENANCE = 'MAINTENANCE'
 
     class MigrationStatus(object):
-        PENDING = 'PENDING'
         STARTED = 'STARTED'
         IN_PROGRESS = 'IN_PROGRESS'
         DONE = 'DONE'
@@ -130,7 +131,8 @@ class HostedEngine(object):
             self.States.START: self._handle_start,
             self.States.ON: self._handle_on,
             self.States.STOP: self._handle_stop,
-            self.States.MIGRATE: self._handle_migrate,
+            self.States.MIGRATE_START: self._handle_migrate_start,
+            self.States.MIGRATE_MONITOR: self._handle_migrate_monitor,
             self.States.MAINTENANCE: self._handle_maintenance,
             # TODO local maintenance state
             # TODO unexpected crash state
@@ -239,10 +241,9 @@ class HostedEngine(object):
         # on either state change due to healthy state or timeout
         # self._rinfo['first-bad-status-time']
 
-        # Used by ON and MIGRATE state, tracks status of migration (element of
-        # self.MigrationStatus) and host id to which migration is occurring
+        # Used by ON, MIGRATE_START, and MIGRATE_MONITOR states, tracks host
+        # to which the vm is migrating
         # self._rinfo['migration-host-id']
-        # self._rinfo['migration-status']
 
     def start_monitoring(self):
         error_count = 0
@@ -772,7 +773,7 @@ class HostedEngine(object):
                     'last-update-host-ts': None,
                     'alive': 'unknown',
                     'score': 0,
-                    'engine-status': None,
+                    'engine-status': {'vm': 'unknown'},
                     'hostname': '(unknown)'}
 
             self._prior_host_stats[md['host-id']] = \
@@ -793,10 +794,17 @@ class HostedEngine(object):
                     local_ts
                 self._all_host_stats[md['host-id']]['score'] = \
                     md['score']
-                self._all_host_stats[md['host-id']]['engine-status'] = \
-                    md['engine-status']
                 self._all_host_stats[md['host-id']]['hostname'] = \
                     md['hostname']
+
+                if md['engine-status'] != 'None':
+                    # Convert the json unicode strings back to ascii:
+                    # it makes the output and logs much easier to read
+                    d = dict([(str(k), str(v)) for (k, v)
+                              in json.loads(md['engine-status']).iteritems()])
+                else:
+                    d = {'vm': 'unknown'}
+                self._all_host_stats[md['host-id']]['engine-status'] = d
 
         # All updated, now determine if hosts are alive/updating
         for host_id, attr in self._all_host_stats.iteritems():
@@ -841,7 +849,8 @@ class HostedEngine(object):
         """
         local_host_id = self._rinfo['host-id']
 
-        if self._all_host_stats[local_host_id]['engine-status'] == 'None':
+        if self._all_host_stats[local_host_id]['engine-status']['vm'] \
+                == 'unknown':
             self._log.info("Unknown local engine vm status, no actions taken")
             return
 
@@ -904,13 +913,19 @@ class HostedEngine(object):
 
     def _get_engine_status_score(self, status):
         """
-        Convert a string engine/vm status to a sortable numeric score;
+        Convert a dict engine/vm status to a sortable numeric score;
         the highest score is a live vm with a healthy engine.
         """
-        try:
-            return self.engine_status_score_lookup[status]
-        except KeyError:
-            self._log.error("Invalid engine status: %s", status, exc_info=True)
+        if status['vm'] == 'unknown':
+            return 0
+        elif status['vm'] == 'down':
+            return 1
+        elif status['health'] == 'bad':
+            return 2
+        elif status['health'] == 'good':
+            return 3
+        else:
+            self._log.error("Invalid engine status: %r", status, exc_info=True)
             return 0
 
     def _get_maintenance_mode(self):
@@ -941,7 +956,7 @@ class HostedEngine(object):
         """
         local_host_id = self._rinfo['host-id']
         self._log.info("Determining initial state for host")
-        if self._all_host_stats[local_host_id]['engine-status'][:5] == 'vm-up':
+        if self._all_host_stats[local_host_id]['engine-status']['vm'] == 'up':
             return self.States.ON, False
         else:
             return self.States.OFF, False
@@ -953,7 +968,7 @@ class HostedEngine(object):
         """
         local_host_id = self._rinfo['host-id']
 
-        if self._rinfo['best-engine-status'][:5] == 'vm-up':
+        if self._rinfo['best-engine-status']['vm'] == 'up':
             engine_host_id = self._rinfo['best-engine-status-host-id']
             if engine_host_id == local_host_id:
                 self._log.info("Engine vm unexpectedly running locally,"
@@ -1086,7 +1101,7 @@ class HostedEngine(object):
         ON state.  See if the VM was stopped or needs to be stopped.
         """
         local_host_id = self._rinfo['host-id']
-        if self._rinfo['best-engine-status'][:5] != 'vm-up':
+        if self._rinfo['best-engine-status']['vm'] != 'up':
             self._log.error("Engine vm died unexpectedly")
             self._rinfo['unexpected-shutdown-time'] = int(time.time())
             # Switch to OFF after yielding so score can adjust to 0
@@ -1097,6 +1112,9 @@ class HostedEngine(object):
             self._rinfo['unexpected-shutdown-time'] = int(time.time())
             # TODO make this into new state that keeps track of the time
             return self.States.OFF, True
+        elif self._rinfo['best-engine-status']['detail'] == 'migration source':
+            self._log.info("Engine VM found migrating away")
+            return self.States.MIGRATE_MONITOR, True
 
         if self._rinfo['maintenance'] == self.MaintenanceMode.GLOBAL:
             self._log.info("Global HA maintenance enabled")
@@ -1116,10 +1134,10 @@ class HostedEngine(object):
                             self._all_host_stats[best_host_id]['hostname'],
                             best_host_id)
             self._rinfo['migration-host-id'] = best_host_id
-            self._rinfo['migration-status'] = self.MigrationStatus.PENDING
-            return self.States.MIGRATE, False
+            return self.States.MIGRATE_START, False
 
-        if self._rinfo['best-engine-status'] == 'vm-up bad-health-status':
+        if self._rinfo['best-engine-status']['vm'] == 'up' \
+                and self._rinfo['best-engine-status']['health'] == 'bad':
             now = int(time.time())
             if 'first-bad-status-time' not in self._rinfo:
                 self._rinfo['first-bad-status-time'] = now
@@ -1152,24 +1170,34 @@ class HostedEngine(object):
         STOP state.  Shut down the locally-running vm.
         """
         local_host_id = self._rinfo['host-id']
-        if (self._rinfo['best-engine-status'][:5] != 'vm-up'
+        if (self._rinfo['best-engine-status']['vm'] != 'up'
                 or self._rinfo['best-engine-status-host-id'] != local_host_id):
             self._log.info("Engine vm not running on local host")
             return self.States.OFF, True
 
         force = False
+        run_stop_cmd = False
         if self._rinfo.get('engine-vm-shutdown-time'):
             elapsed = int(time.time()) - self._rinfo['engine-vm-shutdown-time']
             if elapsed > constants.ENGINE_BAD_HEALTH_TIMEOUT_SECS:
                 force = True
+                run_stop_cmd = True
+            else:
+                self._log.info("Waiting on shutdown to complete"
+                               " (%d of %d seconds)",
+                               elapsed,
+                               constants.ENGINE_BAD_HEALTH_TIMEOUT_SECS)
+        else:
+            run_stop_cmd = True
 
-        try:
-            self._stop_engine_vm(force)
-        except Exception as e:
-            self._log.error("Failed to stop engine VM: %s", str(e))
-            # Allow rediscovery of vm state.  Yield in case the state
-            # machine ends up immediately in the STOP state again.
-            return self.States.ENTRY, True
+        if run_stop_cmd:
+            try:
+                self._stop_engine_vm(force)
+            except Exception as e:
+                self._log.error("Failed to stop engine VM: %s", str(e))
+                # Allow rediscovery of vm state.  Yield in case the state
+                # machine ends up immediately in the STOP state again.
+                return self.States.ENTRY, True
 
         if force:
             return self.States.OFF, True
@@ -1201,89 +1229,87 @@ class HostedEngine(object):
         self._log.error("Engine VM stopped on localhost")
         return
 
-    @handler_cleanup
-    def _handle_migrate(self):
+    def _handle_migrate_start(self):
         """
-        MIGRATE state.  Move the VM to the destination host.
+        MIGRATE_START state.  Move the VM to the destination host.
         """
         vm_id = self._config.get(config.VM, config.VM_UUID)
         use_ssl = util.to_bool(self._config.get(config.ENGINE,
                                                 config.VDSM_SSL))
-        best_host_id = self._rinfo['migration-host-id']
-        if self._rinfo['migration-status'] == self.MigrationStatus.PENDING:
-            try:
-                vdsc.run_vds_client_cmd(
-                    '0',
-                    use_ssl,
-                    'migrate',
-                    vmId=vm_id,
-                    method='online',
-                    src='localhost',
-                    dst=self._all_host_stats[best_host_id]['hostname'],
-                )
-            except:
-                self._log.error("Failed to start migration", exc_info=True)
-                self._rinfo['migration-status'] = self.MigrationStatus.FAILURE
-            else:
-                self._log.info("Started migration to host %s (id %d)",
-                               self._all_host_stats[best_host_id]['hostname'],
-                               best_host_id)
-                self._rinfo['migration-status'] \
-                    = self.MigrationStatus.IN_PROGRESS
+        dest_host_id = self._rinfo['migration-host-id']
 
-        else:
-            try:
-                res = vdsc.run_vds_client_cmd(
-                    '0',
-                    use_ssl,
-                    'migrateStatus',
-                    vm_id,
-                )
-            except:
-                self._log.error("Failed to migrate", exc_info=True)
-                self._rinfo['migration-status'] \
-                    = self.MigrationStatus.FAILURE
-            else:
-                self._log.info("Migration status: %s",
-                               res['status']['message'])
-
-                if res['status']['message'] \
-                        .startswith('Migration in progress'):
-                    self._rinfo['migration-status'] \
-                        = self.MigrationStatus.IN_PROGRESS
-                elif res['status']['message'].startswith('Migration done'):
-                    self._rinfo['migration-status'] \
-                        = self.MigrationStatus.DONE
-                else:
-                    self._rinfo['migration-status'] \
-                        = self.MigrationStatus.FAILURE
-
-        self._log.debug("Symbolic migration status is %s",
-                        self._rinfo['migration-status'])
-
-        if self._rinfo['migration-status'] == self.MigrationStatus.IN_PROGRESS:
-            self._log.info("Continuing to monitor migration")
-            return self.States.MIGRATE, True
-        elif self._rinfo['migration-status'] == self.MigrationStatus.DONE:
-            self._log.info("Migration to host %s (id %d) complete,"
-                           " no longer monitoring vm",
-                           self._all_host_stats[best_host_id]['hostname'],
-                           best_host_id)
-            return self.States.OFF, True
-        elif self._rinfo['migration-status'] == self.MigrationStatus.FAILURE:
-            self._log.error("Migration to host %s (id %d) failed",
-                            self._all_host_stats[best_host_id]['hostname'],
-                            best_host_id)
+        try:
+            vdsc.run_vds_client_cmd(
+                '0',
+                use_ssl,
+                'migrate',
+                vmId=vm_id,
+                method='online',
+                src='localhost',
+                dst=self._all_host_stats[dest_host_id]['hostname'],
+            )
+        except:
+            self._log.error("Migration to host %s (id %d) failed to start",
+                            self._all_host_stats[dest_host_id]['hostname'],
+                            dest_host_id,
+                            exc_info=True)
+            del self._rinfo['migration-host-id']
             return self.States.STOP, False
         else:
-            self._log.error("Unexpected migration state, migration failed")
-            return self.States.STOP, False
+            self._log.info("Started migration to host %s (id %d)",
+                           self._all_host_stats[dest_host_id]['hostname'],
+                           dest_host_id)
+            return self.States.MIGRATE_MONITOR, True
 
-    def _handle_migrate_cleanup(self):
+    @handler_cleanup
+    def _handle_migrate_monitor(self):
+        """
+        MIGRATE_MONITOR state.  Monitor an existing migration.
+        """
+        vm_id = self._config.get(config.VM, config.VM_UUID)
+        use_ssl = util.to_bool(self._config.get(config.ENGINE,
+                                                config.VDSM_SSL))
+        if 'migration-host-id' in self._rinfo:
+            # The agent requested the migration thus knows its destination
+            dest_host_id = self._rinfo['migration-host-id']
+            host_str = 'host {0} (id {1})'.format(
+                self._all_host_stats[dest_host_id]['hostname'],
+                dest_host_id)
+        else:
+            # Migration was not performed by this agent
+            host_str = 'unknown host'
+
+        try:
+            res = vdsc.run_vds_client_cmd(
+                '0',
+                use_ssl,
+                'migrateStatus',
+                vm_id,
+            )
+        except:
+            # Log the exception; the failure is handled below
+            self._log.error("Failed to migrate", exc_info=True)
+        else:
+            self._log.info("Migration status: %s",
+                           res['status']['message'])
+
+            if res['status']['message'].startswith('Migration in progress'):
+                self._log.info("Continuing to monitor migration")
+                return self.States.MIGRATE_MONITOR, True
+
+            elif res['status']['message'].startswith('Migration done'):
+                self._log.info("Migration to %s complete,"
+                               " no longer monitoring vm",
+                               host_str)
+                return self.States.OFF, True
+
+        # Failure cases from above are handled here
+        self._log.error("Migration to %s failed", host_str)
+        return self.States.STOP, False
+
+    def _handle_migrate_monitor_cleanup(self):
         if 'migration-host-id' in self._rinfo:
             del self._rinfo['migration-host-id']
-        if 'migration-status' in self._rinfo:
-            del self._rinfo['migration-status']
 
     def _handle_maintenance(self):
         """

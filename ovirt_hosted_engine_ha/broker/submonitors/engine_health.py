@@ -17,6 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
+import json
 import logging
 import subprocess
 
@@ -34,7 +35,7 @@ def register():
 
 class Submonitor(submonitor_base.SubmonitorBase):
     def setup(self, options):
-        self._log = logging.getLogger("EngineHealth")
+        self._log = logging.getLogger("CpuLoadNoEngine")
         self._log.addFilter(log_filter.IntermittentFilter())
 
         self._address = options.get('address')
@@ -59,11 +60,15 @@ class Submonitor(submonitor_base.SubmonitorBase):
                 # Not on this host
                 self._log.info("VM not on this host",
                                extra=log_filter.lf_args('status', 60))
-                self.update_result('vm-down')
+                d = {'vm': 'down', 'health': 'bad', 'detail': 'unknown',
+                     'reason': 'vm not running on this host'}
+                self.update_result(json.dumps(d))
                 return
             else:
                 self._log.error("Failed to getVmStats: %s", str(e))
-                self.update_result(None)
+                d = {'vm': 'unknown', 'health': 'unknown', 'detail': 'unknown',
+                     'reason': 'failed to getVmStats'}
+                self.update_result(json.dumps(d))
                 return
         vm_status = stats['statsList'][0]['status'].lower()
         if vm_status in ('powering up',
@@ -76,12 +81,16 @@ class Submonitor(submonitor_base.SubmonitorBase):
                          'paused'):
             self._log.info("VM status: %s", vm_status,
                            extra=log_filter.lf_args('status', 60))
-            self.update_result('vm-up bad-health-status')
+            d = {'vm': 'up', 'health': 'bad', 'detail': vm_status,
+                 'reason': 'bad vm status'}
+            self.update_result(json.dumps(d))
             return
         if vm_status not in ('up', 'running'):
             self._log.info("VM not running on this host, status %s", vm_status,
                            extra=log_filter.lf_args('status', 60))
-            self.update_result('vm-down')
+            d = {'vm': 'down', 'health': 'bad', 'detail': vm_status,
+                 'reason': 'bad vm status'}
+            self.update_result(json.dumps(d))
             return
 
         # VM is up, let's see if engine is up by polling health status page
@@ -92,8 +101,12 @@ class Submonitor(submonitor_base.SubmonitorBase):
         if p.returncode == 0:
             self._log.info("VM is up on this host with healthy engine",
                            extra=log_filter.lf_args('status', 60))
-            self.update_result("vm-up good-health-status")
-            return
-        self._log.warning("bad health status: %s", output[0])
-        self.update_result("vm-up bad-health-status")
+            d = {'vm': 'up', 'health': 'good', 'detail': vm_status}
+            self.update_result(json.dumps(d))
+        else:
+            self._log.warning("bad health status: %s", output[0])
+            d = {'vm': 'up', 'health': 'bad', 'detail': vm_status,
+                 'reason': 'failed liveliness check'}
+            self.update_result(json.dumps(d))
+
         # FIXME remote db down status
