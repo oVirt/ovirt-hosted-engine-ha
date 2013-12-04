@@ -17,6 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
+import ConfigParser
 import copy
 import errno
 import json
@@ -111,6 +112,8 @@ class HostedEngine(object):
         self._shutdown_requested_callback = shutdown_requested_callback
         self._config = config.Config()
 
+        self._score_cfg = self._get_score_config()
+
         self._broker = None
         self._required_monitors = self._get_required_monitors()
         self._local_monitors = {}
@@ -137,6 +140,38 @@ class HostedEngine(object):
             # TODO local maintenance state
             # TODO unexpected crash state
         }
+
+    def _get_score_config(self):
+        score = {
+            'base-score': constants.BASE_SCORE,
+            'gateway-score-penalty': constants.GATEWAY_SCORE_PENALTY,
+            'mgmt-bridge-score-penalty': constants.MGMT_BRIDGE_SCORE_PENALTY,
+            'free-memory-score-penalty': constants.FREE_MEMORY_SCORE_PENALTY,
+            'cpu-load-score-penalty': constants.CPU_LOAD_SCORE_PENALTY,
+            'engine-retry-score-penalty': constants.ENGINE_RETRY_SCORE_PENALTY,
+            'cpu-load-penalty-min': constants.CPU_LOAD_PENALTY_MIN,
+            'cpu-load-penalty-max': constants.CPU_LOAD_PENALTY_MAX,
+        }
+        float_keys = set((
+            'cpu-load-penalty-min',
+            'cpu-load-penalty-max',
+        ))
+
+        cfg = ConfigParser.SafeConfigParser()
+        cfg.read(constants.AGENT_CONF_FILE)
+        try:
+            score.update(cfg.items('score'))
+        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+            pass
+
+        # When these are used they're expected to be numeric types
+        for k, v in score.iteritems():
+            if k in float_keys:
+                score[k] = float(v)
+            else:
+                score[k] = int(v)
+
+        return score
 
     def _get_required_monitors(self):
         """
@@ -573,23 +608,23 @@ class HostedEngine(object):
         lm = self._local_monitors
         ts = int(time.time())
 
-        score = constants.BASE_SCORE
+        score = self._score_cfg['base-score']
         # FIXME score needed for vdsm storage pool connection?
         # (depending on storage integration, may not be able to report...)
 
         if lm['gateway']['status'] == 'False':
             self._log.info("Penalizing score by %d due to gateway status",
-                           constants.GATEWAY_SCORE_PENALTY,
+                           self._score_cfg['gateway-score-penalty'],
                            extra=log_filter.lf_args('score-gateway',
                                                     self.LF_PENALTY_INT))
-            score -= constants.GATEWAY_SCORE_PENALTY
+            score -= self._score_cfg['gateway-score-penalty']
 
         if lm['bridge']['status'] == 'False':
             self._log.info("Penalizing score by %d due to mgmt bridge status",
-                           constants.MGMT_BRIDGE_SCORE_PENALTY,
+                           self._score_cfg['mgmt-bridge-score-penalty'],
                            extra=log_filter.lf_args('score-mgmtbridge',
                                                     self.LF_PENALTY_INT))
-            score -= constants.MGMT_BRIDGE_SCORE_PENALTY
+            score -= self._score_cfg['mgmt-bridge-score-penalty']
 
         # Record 15 minute cpu load history (not counting load caused by
         # the engine vm.  The default load penalty is:
@@ -606,20 +641,23 @@ class HostedEngine(object):
             self._rinfo['last-load-update-time'] = ts
         load_factor = sum(self._rinfo['cpu-load-history']) / 15
 
-        if constants.CPU_LOAD_PENALTY_MAX == constants.CPU_LOAD_PENALTY_MIN:
+        if self._score_cfg['cpu-load-penalty-max'] \
+                == self._score_cfg['cpu-load-penalty-min']:
             # Avoid divide by 0 in penalty calculation below
-            if load_factor < constants.CPU_LOAD_PENALTY_MIN:
+            if load_factor < self._score_cfg['cpu-load-penalty-min']:
                 penalty = 0
             else:
-                penalty = constants.CPU_LOAD_SCORE_PENALTY
+                penalty = self._score_cfg['cpu-load-score-penalty']
         else:
             # Penalty is normalized to [0, max penalty] and is linear based on
             # (magnitude of value within penalty range) / (size of range)
-            penalty = int((load_factor - constants.CPU_LOAD_PENALTY_MIN)
-                          / (constants.CPU_LOAD_PENALTY_MAX
-                             - constants.CPU_LOAD_PENALTY_MIN)
-                          * constants.CPU_LOAD_SCORE_PENALTY)
-            penalty = max(0, min(constants.CPU_LOAD_SCORE_PENALTY, penalty))
+            penalty = int((load_factor
+                           - self._score_cfg['cpu-load-penalty-min'])
+                          / (self._score_cfg['cpu-load-penalty-max']
+                             - self._score_cfg['cpu-load-penalty-min'])
+                          * self._score_cfg['cpu-load-score-penalty'])
+            penalty = max(0, min(self._score_cfg['cpu-load-score-penalty'],
+                                 penalty))
 
         if penalty > 0:
             self._log.info("Penalizing score by %d due to cpu load",
@@ -633,10 +671,10 @@ class HostedEngine(object):
         if self._rinfo['current-state'] != self.States.ON \
                 and float_or_default(lm['mem-free']['status'], 0) < vm_mem:
             self._log.info('Penalizing score by %d due to low free memory',
-                           constants.FREE_VM_MEMORY_SCORE_PENALTY,
+                           self._score_cfg['free-memory-score-penalty'],
                            extra=log_filter.lf_args('score-memory',
                                                     self.LF_PENALTY_INT))
-            score -= constants.FREE_VM_MEMORY_SCORE_PENALTY
+            score -= self._score_cfg['free-memory-score-penalty']
 
         # If too many retries occur, give a less-suited host a chance
         if (self._rinfo['engine-vm-retry-count']
@@ -649,7 +687,7 @@ class HostedEngine(object):
         elif self._rinfo['engine-vm-retry-count'] > 0:
             # Subtracting a small amount each time causes round-robin attempts
             # between hosts that are otherwise equally suited to run the engine
-            penalty = constants.ENGINE_RETRY_SCORE_PENALTY \
+            penalty = self._score_cfg['engine-retry-score-penalty'] \
                 * self._rinfo['engine-vm-retry-count']
             self._log.info('Penalizing score by %d'
                            ' due to %d engine vm retry attempts',

@@ -107,6 +107,7 @@ install -Dm 0440 sudoers/sudoers %{buildroot}%{_sysconfdir}/sudoers.d/60_ovirt-h
 
 %dir %{engine_ha_confdir}
 %config(noreplace) %{engine_ha_confdir}/agent-log.conf
+%config(noreplace) %{engine_ha_confdir}/agent.conf
 %config(noreplace) %{engine_ha_confdir}/broker-log.conf
 %config(noreplace) %{engine_ha_confdir}/broker.conf
 

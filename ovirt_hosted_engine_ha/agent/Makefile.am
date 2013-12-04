@@ -49,10 +49,12 @@ agent_PYTHON = \
 agentconfdir = $(engine_ha_confdir)
 
 agentconf_DATA = \
+	agent.conf \
 	agent-log.conf \
 	$(NULL)
 
 EXTRA_DIST = \
+	agent.conf \
 	agent-log.conf.in \
 	constants.py.in \
 	$(NULL)
