@@ -1170,30 +1170,34 @@ class HostedEngine(object):
             self._log.info("Engine VM found migrating away")
             return self.States.MIGRATE_MONITOR, True
 
+        best_host_id = self._rinfo['best-score-host-id']
+
         if self._rinfo['maintenance'] == self.MaintenanceMode.GLOBAL:
             self._log.info("Global HA maintenance enabled")
             return self.States.MAINTENANCE, True
         elif self._rinfo['maintenance'] == self.MaintenanceMode.LOCAL:
             # TODO local maintenance should have its own state
-            self._log.info("Local HA maintenance enabled")
-            return self.States.STOP, False
+            self._log.info("Local HA maintenance enabled,"
+                           " migrating VM to host %s (id %d)",
+                           self._all_host_stats[best_host_id]['hostname'],
+                           best_host_id)
+            self._rinfo['migration-host-id'] = best_host_id
+            return self.States.MIGRATE_START, False
         elif self._rinfo['superseded-agent']:
             # TODO superseded agent should have its own state
             self._log.error("Local agent has been superseded by newer"
                             " agents running in this cluster")
             return self.States.STOP, False
 
-        best_host_id = self._rinfo['best-score-host-id']
         if (best_host_id != local_host_id
                 and self._rinfo['best-score']
                 >= self._all_host_stats[local_host_id]['score']
                 + self.MIGRATION_THRESHOLD_SCORE):
             self._log.error("Host %s (id %d) score is significantly better"
-                            " than local score, migrating vm",
+                            " than local score, shutting down VM on this host",
                             self._all_host_stats[best_host_id]['hostname'],
                             best_host_id)
-            self._rinfo['migration-host-id'] = best_host_id
-            return self.States.MIGRATE_START, False
+            return self.States.STOP, False
 
         if self._rinfo['best-engine-status']['vm'] == 'up' \
                 and self._rinfo['best-engine-status']['health'] == 'bad':
