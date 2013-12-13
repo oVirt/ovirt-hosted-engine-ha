@@ -68,7 +68,7 @@ class HAClient(object):
         if not log:
             logging.basicConfig(filename='/dev/null', filemode='w+',
                                 level=logging.CRITICAL)
-        self._log = logging.getLogger("HAClient")
+        self._log = logging.getLogger("%s.HAClient" % __name__)
         self._config = None
 
     def get_all_stats(self, mode=StatModes.ALL):

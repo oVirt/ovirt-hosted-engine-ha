@@ -106,7 +106,7 @@ class HostedEngine(object):
         is a callback returning True/False depending on whether ha agent
         shutdown has been requested.
         """
-        self._log = logging.getLogger("HostedEngine")
+        self._log = logging.getLogger("%s.HostedEngine" % __name__)
         self._log.addFilter(log_filter.IntermittentFilter())
 
         self._shutdown_requested_callback = shutdown_requested_callback

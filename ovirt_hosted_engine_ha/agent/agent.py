@@ -121,9 +121,9 @@ class Agent(object):
         except (ConfigParser.Error, ImportError, NameError, TypeError):
             logging.basicConfig(filename='/dev/stdout', filemode='w+',
                                 level=logging.DEBUG)
-            log = logging.getLogger("Broker")
+            log = logging.getLogger("%s.Agent" % __name__)
             log.warn("Could not inititialize logging", exc_info=True)
-        self._log = logging.getLogger("Broker")
+        self._log = logging.getLogger("%s.Agent" % __name__)
 
     def _get_signal_map(self):
         return {signal.SIGINT: self._handle_quit,

@@ -39,7 +39,7 @@ class SubmonitorBase(object):
         self._options = options
         self._last_result = None
         self._initialization_status = None
-        self._baselog = logging.getLogger("SubmonitorBase")
+        self._baselog = logging.getLogger("%s.SubmonitorBase" % __name__)
 
     def setup(self, options):
         """

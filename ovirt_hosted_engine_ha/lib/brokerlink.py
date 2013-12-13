@@ -35,7 +35,7 @@ class NotifyEvents(object):
 
 class BrokerLink(object):
     def __init__(self):
-        self._log = logging.getLogger("BrokerLink")
+        self._log = logging.getLogger("%s.BrokerLink" % __name__)
         self._socket = None
 
     def connect(self, retries=0):

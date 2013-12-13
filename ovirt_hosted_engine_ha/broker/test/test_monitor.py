@@ -25,7 +25,7 @@ import broker.monitor
 def main():
     logging.basicConfig(filename='/dev/stdout', filemode='w+',
                         level=logging.DEBUG)
-    log = logging.getLogger("monitor test")
+    log = logging.getLogger("%s.monitor test" % __name__)
     log.warn("Could not init proper logging", exc_info=True)
     m = broker.monitor.Monitor()
 

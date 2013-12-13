@@ -31,7 +31,7 @@ def register():
 
 class Submonitor(submonitor_base.SubmonitorBase):
     def setup(self, options):
-        self._log = logging.getLogger("MemFree")
+        self._log = logging.getLogger("%s.MemFree" % __name__)
         self._log.addFilter(log_filter.IntermittentFilter())
         self._address = options.get('address')
         self._use_ssl = util.to_bool(options.get('use_ssl'))

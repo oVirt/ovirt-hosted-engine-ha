@@ -36,7 +36,7 @@ def register():
 
 class Submonitor(submonitor_base.SubmonitorBase):
     def setup(self, options):
-        self._log = logging.getLogger("EngineHealth")
+        self._log = logging.getLogger("%s.EngineHealth" % __name__)
         self._log.addFilter(log_filter.IntermittentFilter())
 
         self._address = options.get('address')

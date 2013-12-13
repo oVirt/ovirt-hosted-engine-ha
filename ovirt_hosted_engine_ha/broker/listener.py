@@ -37,7 +37,7 @@ class Listener(object):
         """
         Prepare the listener and associated locks
         """
-        self._log = logging.getLogger("Listener")
+        self._log = logging.getLogger("%s.Listener" % __name__)
         self._log.info("Initializing SocketServer")
 
         # Coordinate access to resources across connections
@@ -130,7 +130,7 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
         Initialize connection handler class and identify connection.
         """
         if not hasattr(self, '_log'):
-            self._log = logging.getLogger("ConnectionHandler")
+            self._log = logging.getLogger("%s.ConnectionHandler" % __name__)
         self._log.info("Connection established")
         self.request.settimeout(0.7)
         SocketServer.BaseRequestHandler.setup(self)

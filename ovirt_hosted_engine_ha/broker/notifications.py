@@ -27,7 +27,7 @@ def send_email(cfg, message):
         server.quit()
         return True
     except (smtplib.SMTPException, socket.error) as e:
-        logging.getLogger("Notifications").exception(e)
+        logging.getLogger("%s.Notifications" % __name__).exception(e)
         return False
 
 
@@ -37,7 +37,8 @@ def notify(**kwargs):
 
     The configuration is refreshed with every call of this method.
     """
-    logging.getLogger("Notifications").debug("nofity: %s" % (repr(kwargs),))
+    logging.getLogger("%s.Notifications" % __name__)\
+        .debug("nofity: %s" % (repr(kwargs),))
 
     assert "type" in kwargs
     type = kwargs["type"]
@@ -59,7 +60,7 @@ def notify(**kwargs):
         template_path = os.path.join(constants.NOTIFY_TEMPLATES, type+".txt")
         template = open(template_path).read()
     except (OSError, IOError) as e:
-        logging.getLogger("Notifications").exception(e)
+        logging.getLogger("%s.Notifications" % __name__).exception(e)
         return False
 
     # default SMTP configuration
@@ -85,7 +86,7 @@ def notify(**kwargs):
     try:
         email_body = template.format(**kwargs)
     except KeyError as e:
-        logging.getLogger("Notifications").exception(e)
+        logging.getLogger("%s.Notifications" % __name__).exception(e)
         return False
 
     return send_email(smtp_config, email_body)

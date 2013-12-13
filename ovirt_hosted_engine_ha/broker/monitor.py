@@ -26,7 +26,7 @@ from ..lib.exceptions import RequestError
 
 class Monitor(object):
     def __init__(self):
-        self._log = logging.getLogger("Monitor")
+        self._log = logging.getLogger("%s.Monitor" % __name__)
         self._active_submonitors = {}
         self._submonitors = {}
 

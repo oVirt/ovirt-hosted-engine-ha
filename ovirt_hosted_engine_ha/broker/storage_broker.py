@@ -30,7 +30,7 @@ from ..lib import util
 
 class StorageBroker(object):
     def __init__(self):
-        self._log = logging.getLogger("StorageBroker")
+        self._log = logging.getLogger("%s.StorageBroker" % __name__)
         self._storage_access_lock = threading.Lock()
 
     def get_all_stats_for_service_type(self, storage_dir, service_type):

@@ -35,7 +35,7 @@ def register():
 
 class Submonitor(submonitor_base.SubmonitorBase):
     def setup(self, options):
-        self._log = logging.getLogger("CpuLoadNoEngine")
+        self._log = logging.getLogger("%s.CpuLoadNoEngine" % __name__)
         self._log.addFilter(log_filter.IntermittentFilter())
 
         self._address = options.get('address')
