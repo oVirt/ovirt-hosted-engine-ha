@@ -183,6 +183,9 @@ exit 0
 
 
 %changelog
+* Thu Dec 19 2013 Greg Padgett <gpadgett@redhat.com> - 1.1.0-0.0.master
+- New version after 1.0 branch
+
 * Tue Dec 17 2013 Greg Padgett <gpadgett@redhat.com> - 0.1.0-0.10.beta2
 - 0.1.0-0.10.beta2
 
