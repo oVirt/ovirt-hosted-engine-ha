@@ -23,6 +23,7 @@ import errno
 import json
 import logging
 import os
+import re
 import socket
 import subprocess
 import time
@@ -113,6 +114,7 @@ class HostedEngine(object):
         self._config = config.Config()
 
         self._score_cfg = self._get_score_config()
+        self._hostname = self._get_hostname()
 
         self._broker = None
         self._required_monitors = self._get_required_monitors()
@@ -172,6 +174,36 @@ class HostedEngine(object):
                 score[k] = int(v)
 
         return score
+
+    def _get_hostname(self):
+        """
+        Return the name this host should introduce itself as, which must
+        match the Common Name in the certificate used by libvirt (usually
+        the vdsm certificate).
+        """
+        cmd = ['openssl', 'x509',
+               '-in', constants.VDSM_CERT_FILE,
+               '-noout', '-subject']
+        self._log.debug("Executing: {0}".format(' '.join(cmd)))
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+        output = p.communicate()
+
+        if p.returncode != 0:
+            self._log.info("Certificate not available (%s),"
+                           " using hostname to identify host", output[1])
+            return socket.gethostname()
+
+        self._log.debug("Certificate subject: %s", output[0])
+        res = re.findall(r'/CN=([A-Za-z0-9-_\.]+)', output[0])
+
+        if len(res) and len(res[0]):
+            self._log.info("Found certificate common name: %s", res[0])
+            return res[0]
+        else:
+            self._log.info("Certificate common name not found,"
+                           " using hostname to identify host")
+            return socket.gethostname()
 
     def _get_required_monitors(self):
         """
@@ -734,7 +766,7 @@ class HostedEngine(object):
                         host_id=self._rinfo['host-id'],
                         score=score,
                         engine_status=lm['engine-health']['status'],
-                        name=socket.gethostname(),
+                        name=self._hostname,
                         maintenance=1 if local_maintenance else 0))
         if len(data) > constants.METADATA_BLOCK_BYTES:
             raise Exception("Output metadata too long ({0} bytes)"
