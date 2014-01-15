@@ -188,6 +188,11 @@ class HAClient(object):
                 0,
                 block)
 
+    def get_local_host_id(self):
+        if self._config is None:
+            self._config = config.Config()
+        return int(self._config.get(config.ENGINE, config.HOST_ID))
+
     def get_local_host_score(self):
         if self._config is None:
             self._config = config.Config()
