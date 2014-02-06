@@ -18,7 +18,6 @@
 #
 
 import ConfigParser
-import copy
 import errno
 import json
 import logging
@@ -39,6 +38,15 @@ from ..lib import log_filter
 from ..lib import metadata
 from ..lib import util
 from ..lib import vds_client as vdsc
+from .state_machine import EngineStateMachine
+
+
+class MetadataTooNewError(Exception):
+    """
+    This exception is raised when the parser determines that the
+    metadata version is too new to handle.
+    """
+    pass
 
 
 def handler_cleanup(f):
@@ -55,6 +63,27 @@ def handler_cleanup(f):
     return cleanup_wrapper
 
 
+def float_or_none(v):
+    if v == "None":
+        return None
+    else:
+        return float(v)
+
+
+def engine_status(status):
+    if status != 'None':
+        # Convert the json unicode strings back to ascii:
+        # it makes the output and logs much easier to read
+        try:
+            return dict([(str(k), str(v)) for (k, v)
+                        in json.loads(status).iteritems()])
+        except ValueError:
+            return {"vm": "unknown", "health": "unknown",
+                    "detail": "serialization error"}
+    else:
+        return None
+
+
 class HostedEngine(object):
     LF_MD_ERROR = 'LF_MD_ERROR'
     LF_MD_ERROR_INT = 900
@@ -64,9 +93,6 @@ class HostedEngine(object):
     LF_GLOBAL_MD_ERROR_INT = 900
     LF_MAINTENANCE = 'LF_MAINTENANCE'
     LF_MAINTENANCE_INT = 900
-    LF_PENALTY_INT = 60
-
-    MIGRATION_THRESHOLD_SCORE = 800
 
     engine_status_score_lookup = {
         'None': 0,
@@ -119,29 +145,25 @@ class HostedEngine(object):
         self._broker = None
         self._required_monitors = self._get_required_monitors()
         self._local_monitors = {}
-        self._rinfo = {}
-        self._init_runtime_info()
-        self._all_host_stats = {}
-        self._prior_host_stats = {}
-        self._global_stats = {}
+        self.fsm = EngineStateMachine(self, self._log, actions={
+            "START_VM": self._start_engine_vm,
+            "MIGRATE": self._start_migration,
+            "MONITOR_MIGRATION": self._monitor_migration,
+            "STOP_VM": self._stop_engine_vm
+        })
 
         self._sd_path = None
         self._metadata_path = None
 
         self._sanlock_initialized = False
 
-        self._vm_state_actions = {
-            self.States.ENTRY: self._handle_entry,
-            self.States.OFF: self._handle_off,
-            self.States.START: self._handle_start,
-            self.States.ON: self._handle_on,
-            self.States.STOP: self._handle_stop,
-            self.States.MIGRATE_START: self._handle_migrate_start,
-            self.States.MIGRATE_MONITOR: self._handle_migrate_monitor,
-            self.States.MAINTENANCE: self._handle_maintenance,
-            # TODO local maintenance state
-            # TODO unexpected crash state
-        }
+    @property
+    def score_config(self):
+        return self._score_cfg
+
+    @property
+    def min_memory_threshold(self):
+        return int(self._config.get(config.VM, config.MEM_SIZE))
 
     def _get_score_config(self):
         score = {
@@ -156,7 +178,7 @@ class HostedEngine(object):
         }
         float_keys = set((
             'cpu-load-penalty-min',
-            'cpu-load-penalty-max',
+            'cpu-load-penalty-max'
         ))
 
         cfg = ConfigParser.SafeConfigParser()
@@ -215,17 +237,21 @@ class HostedEngine(object):
                     'status' - last status returned by this monitor
          'monitor' - monitor type, e.g. ping or cpu-load
          'options' - dict of options needed by this monitor
+         'type'    - optional function that converts the value from string
+                     to some better type
         """
         req = []
         req.append({
             'field': 'gateway',
             'monitor': 'ping',
+            'type': bool,
             'options': {
                 'addr': self._config.get(config.ENGINE, config.GATEWAY_ADDR)}
         })
         req.append({
             'field': 'bridge',
             'monitor': 'mgmt-bridge',
+            'type': bool,
             'options': {
                 'address': '0',
                 'use_ssl': self._config.get(config.ENGINE, config.VDSM_SSL),
@@ -236,6 +262,7 @@ class HostedEngine(object):
         req.append({
             'field': 'mem-free',
             'monitor': 'mem-free',
+            'type': float_or_none,
             'options': {
                 'address': '0',
                 'use_ssl': self._config.get(config.ENGINE, config.VDSM_SSL)}
@@ -243,6 +270,7 @@ class HostedEngine(object):
         req.append({
             'field': 'cpu-load',
             'monitor': 'cpu-load-no-engine',
+            'type': float_or_none,
             'options': {
                 'address': '0',
                 'use_ssl': self._config.get(config.ENGINE, config.VDSM_SSL),
@@ -251,6 +279,7 @@ class HostedEngine(object):
         req.append({
             'field': 'engine-health',
             'monitor': 'engine-health',
+            'type': engine_status,
             'options': {
                 'address': '0',
                 'use_ssl': self._config.get(config.ENGINE, config.VDSM_SSL),
@@ -258,89 +287,60 @@ class HostedEngine(object):
         })
         return req
 
-    def _init_runtime_info(self):
-        """
-        Initialize self._rinfo dict (and document the entries).
-        """
-        # Local timestamp of most recent engine vm startup attempt
-        self._rinfo['engine-vm-retry-time'] = None
-
-        # Count of recent engine vm startup attempts
-        self._rinfo['engine-vm-retry-count'] = 0
-
-        # Local timestamp when health status caused vm shutdown
-        self._rinfo['bad-health-failure-time'] = None
-
-        # Local timestamp when vm was unexpectedly shut down
-        self._rinfo['unexpected-shutdown-time'] = None
-
-        # Local timestamp of last metadata logging
-        self._rinfo['last-metadata-log-time'] = 0
-
-        # CPU load tracking info
-        self._rinfo['last-load-update-time'] = 0
-        self._rinfo['cpu-load-history'] = []
-
-        # Host id of local host
-        self._rinfo['host-id'] = int(self._config.get(config.ENGINE,
-                                                      config.HOST_ID))
-
-        # Initial state to track engine vm status in state machine
-        self._rinfo['current-state'] = self.States.ENTRY
-
-        # The following are initialized when needed to process engine actions
-
-        # Used to denote best-ranked engine status of all live hosts
-        # self._rinfo['best-engine-status']
-        # self._rinfo['best-engine-status-host-id']
-
-        # Highest score of all hosts, and host-id with that score
-        # self._rinfo['best-score']
-        # self._rinfo['best-score-host-id']
-
-        # Current state machine state, member of self.States
-        # self._rinfo['current-state']
-
-        # State of maintenance bit, True/False
-        # self._rinfo['maintenance']
-
-        # Used by ON state; tracks time when bad status first seen, cleanred
-        # on either state change due to healthy state or timeout
-        # self._rinfo['first-bad-status-time']
-
-        # Used by ON, MIGRATE_START, and MIGRATE_MONITOR states, tracks host
-        # to which the vm is migrating
-        # self._rinfo['migration-host-id']
+    @property
+    def host_id(self):
+        return int(self._config.get(config.ENGINE, config.HOST_ID))
 
     def start_monitoring(self):
         error_count = 0
 
-        while not self._shutdown_requested_callback():
+        # make sure everything is initialized
+        self._initialize_broker()
+        self._initialize_vdsm()
+        self._initialize_sanlock()
+        self._initialize_domain_monitor()
+
+        for old_state, state, delay in self.fsm:
+            if self._shutdown_requested_callback():
+                break
+
+            self._log.debug("Processing engine state %s", state)
+            self._broker.notify(brokerlink.NotifyEvents.STATE_TRANSITION,
+                                "%s-%s" % (old_state.__class__.__name__,
+                                           state.__class__.__name__),
+                                hostname=socket.gethostname())
+
             try:
+                # make sure everything is still initialized
                 self._initialize_broker()
                 self._initialize_vdsm()
                 self._initialize_sanlock()
                 self._initialize_domain_monitor()
 
-                self._collect_local_stats()
-                blocks = self._generate_local_blocks()
+                # log state
+                self._log.info("Current state %s (score: %d)",
+                               state.__class__.__name__,
+                               state.score(self._log))
+                if state.data.best_score_host:
+                    self._log.info("Best remote host %s (id: %d, score: %d)",
+                                   state.data.best_score_host["hostname"],
+                                   state.data.best_score_host["host-id"],
+                                   state.data.best_score_host["score"])
+
+                # publish the current state
+                blocks = self._generate_local_blocks(state)
                 self._push_to_storage(blocks)
-
-                self._collect_all_host_stats()
-                self._perform_engine_actions()
-
             except Exception as e:
                 self._log.warning("Error while monitoring engine: %s", str(e))
                 if not (isinstance(e, ex.DisconnectionError) or
                         isinstance(e, ex.RequestError)):
                     self._log.warning("Unexpected error", exc_info=True)
 
-                delay = 60
+                delay = max(delay, 60)
                 error_count += 1
                 log_level = logging.INFO
 
             else:
-                delay = 10
                 error_count = 0  # All is well, reset the error counter
                 log_level = logging.DEBUG
 
@@ -374,7 +374,7 @@ class HostedEngine(object):
                 lm = {}
                 lm['id'] = self._broker.start_monitor(m['monitor'],
                                                       m.get('options', {}))
-                lm['status'] = self._broker.get_monitor_status(lm['id'])
+                lm['type'] = m['type'] if 'type' in m else None
             except ex.RequestError:
                 self._log.error("Failed to start necessary monitors")
                 # Stopping monitors will occur automatically upon disconnection
@@ -441,7 +441,6 @@ class HostedEngine(object):
     def _initialize_sanlock(self):
         self._cond_start_service('sanlock')
 
-        host_id = self._rinfo['host-id']
         self._metadata_dir = env_path.get_metadata_path(self._config)
         lease_file = os.path.join(self._metadata_dir,
                                   constants.SERVICE_TYPE + '.lockspace')
@@ -451,11 +450,11 @@ class HostedEngine(object):
             lvl = logging.DEBUG
         self._log.log(lvl, "Ensuring lease for lockspace %s, host id %d"
                            " is acquired (file: %s)",
-                           constants.LOCKSPACE_NAME, host_id, lease_file)
+                           constants.LOCKSPACE_NAME, self.host_id, lease_file)
 
         try:
             sanlock.add_lockspace(constants.LOCKSPACE_NAME,
-                                  host_id, lease_file)
+                                  self.host_id, lease_file)
         except sanlock.SanlockException as e:
             acquired_lock = False
             msg = None
@@ -466,31 +465,31 @@ class HostedEngine(object):
                 elif e.errno == errno.EINVAL:
                     msg = ("cannot get lock on host id {0}:"
                            " host already holds lock on a different host id"
-                           .format(host_id))
+                           .format(self.host_id))
                 elif e.errno == errno.EINTR:
                     msg = ("cannot get lock on host id {0}:"
                            " sanlock operation interrupted (will retry)"
-                           .format(host_id))
+                           .format(self.host_id))
                 elif e.errno == errno.EINPROGRESS:
                     msg = ("cannot get lock on host id {0}:"
                            " sanlock operation in progress (will retry)"
-                           .format(host_id))
+                           .format(self.host_id))
             if not acquired_lock:
                 if not msg:
                     msg = ("cannot get lock on host id {0}: {1}"
-                           .format(host_id, str(e)))
+                           .format(self.host_id, str(e)))
                 self._log.error(msg, exc_info=True)
                 raise Exception("Failed to initialize sanlock: {0}"
                                 .format(msg))
         else:
-            self._log.info("Acquired lock on host id %d", host_id)
+            self._log.info("Acquired lock on host id %d", self.host_id)
         self._sanlock_initialized = True
 
     def _initialize_domain_monitor(self):
         use_ssl = util.to_bool(self._config.get(config.ENGINE,
                                                 config.VDSM_SSL))
         sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
-        host_id = self._rinfo['host-id']
+        host_id = self.host_id
 
         status = self._get_domain_monitor_status()
         if status == self.DomainMonitorStatus.NONE:
@@ -559,215 +558,31 @@ class HostedEngine(object):
         self._log.log(log_level, "VDSM domain monitor status: %s", status)
         return status
 
-    def _collect_local_stats(self):
+    def _generate_local_blocks(self, state):
         """
-        Refresh all required submonitors and update local state.
-        """
-        self._log.debug("Refreshing all submonitors")
-        for k, v in self._local_monitors.iteritems():
-            self._local_monitors[k]['status'] = (
-                self._broker.get_monitor_status(v['id']))
-        self._log.debug("Refresh complete")
-
-        # re-initialize retry status variables if the retry window
-        # has expired.
-        if util.has_elapsed(self._rinfo['engine-vm-retry-time'],
-                            constants.ENGINE_RETRY_EXPIRATION_SECS):
-            self._rinfo['engine-vm-retry-time'] = None
-            self._rinfo['engine-vm-retry-count'] = 0
-            self._log.debug("Cleared retry status")
-
-        # reset health status variable after expiration
-        # FIXME it would be better to time this based on # of hosts available
-        # to run the vm, not just a one-size-fits-all timeout
-        if util.has_elapsed(self._rinfo['bad-health-failure-time'],
-                            constants.ENGINE_BAD_HEALTH_TIMEOUT_SECS):
-            self._rinfo['bad-health-failure-time'] = None
-            self._log.debug("Cleared bad health status")
-
-        # reset unexpected shutdown time after a specified delay
-        if util.has_elapsed(self._rinfo['unexpected-shutdown-time'],
-                            constants.VM_UNEXPECTED_SHUTDOWN_EXPIRATION_SECS):
-            self._rinfo['unexpected-shutdown-time'] = None
-            self._log.debug("Cleared unexpected shutdown status")
-
-    def _generate_local_blocks(self):
-        """
-        Calculates the host score from local monitor info and places the
-        score on shared storage in the following format:
+        This method places the current state and score on shared storage
+        in the following format:
 
           {md_parse_vers}|{md_feature_vers}|{ts_int}
             |{host_id}|{score}|{engine_status}|{name}
 
-        The compiled score is later read back from the storage, parsed from
-        the string above, and used to decide where engine should run (host
-        with the highest score wins).
-
-        The score is  based on a variety of factors each having different
-        weights; they are scaled such that minor factors are not considered
-        at all unless major factors are equal.  For example, a host with an
-        unreachable gateway will never be chosen over one with the gateway
-        up due to extra cpu/memory being available.
-
-        Additional adjustments are made for the retry count of starting the
-        engine VM.  If the VM can't be started, an equally-suitable host
-        should be given the next chance.  After a few (ENGINE_RETRY_COUNT)
-        failed attempts, the host's score is set to 0 to give any lesser-
-        suited hosts a chance.  After ENGINE_RETRY_EXPIRATION_SECS seconds,
-        this host's retry count will no longer be factored into the score.
-        If retries are still occurring amonst the HA hosts at that time, this
-        host will again have an opportunity to run the engine VM.
-
-        Score weights:
-        1000 - gateway address is pingable
-         800 - host's management network bridge is up
-         400 - host has 4GB of memory free to run the engine VM
-         100 - host's cpu load is less than 80% of capacity
-         100 - host's memory usage is less than 80% of capacity
-
-        Adjustments:
-         -50 - subtraction for each failed start-vm retry attempt
-           0 - score reset to 0 after ENGINE_RETRY_COUNT attempts,
-               until ENGINE_RETRY_EXPIRATION_SECS seconds have passed
+        The compiled block is read back from the storage by other hosts,
+        parsed from the string above, and used in the state machine logic.
+        Most importantly to determine where the engine should be running.
         """
-
-        def float_or_default(value, default):
-            try:
-                return float(value)
-            except ValueError:
-                return default
-
-        lm = self._local_monitors
-        ts = int(time.time())
-
-        score = self._score_cfg['base-score']
-        # FIXME score needed for vdsm storage pool connection?
-        # (depending on storage integration, may not be able to report...)
-
-        if lm['gateway']['status'] == 'False':
-            self._log.info("Penalizing score by %d due to gateway status",
-                           self._score_cfg['gateway-score-penalty'],
-                           extra=log_filter.lf_args('score-gateway',
-                                                    self.LF_PENALTY_INT))
-            score -= self._score_cfg['gateway-score-penalty']
-
-        if lm['bridge']['status'] == 'False':
-            self._log.info("Penalizing score by %d due to mgmt bridge status",
-                           self._score_cfg['mgmt-bridge-score-penalty'],
-                           extra=log_filter.lf_args('score-mgmtbridge',
-                                                    self.LF_PENALTY_INT))
-            score -= self._score_cfg['mgmt-bridge-score-penalty']
-
-        # Record 15 minute cpu load history (not counting load caused by
-        # the engine vm.  The default load penalty is:
-        #   load 0-40% : 0
-        #   load 40-90%: 0 to 1000 (rising linearly with increasing load)
-        #   load 90%+  : 1000
-        # Thus, a load of 80% causes an 800 point penalty
-        if util.has_elapsed(self._rinfo['last-load-update-time'], 60) \
-                and lm['cpu-load']['status'] != 'None':
-            if len(self._rinfo['cpu-load-history']) == 15:
-                self._rinfo['cpu-load-history'].pop(0)
-            self._rinfo['cpu-load-history'] \
-                .append(float(lm['cpu-load']['status']))
-            self._rinfo['last-load-update-time'] = ts
-        load_factor = sum(self._rinfo['cpu-load-history']) / 15
-
-        if self._score_cfg['cpu-load-penalty-max'] \
-                == self._score_cfg['cpu-load-penalty-min']:
-            # Avoid divide by 0 in penalty calculation below
-            if load_factor < self._score_cfg['cpu-load-penalty-min']:
-                penalty = 0
-            else:
-                penalty = self._score_cfg['cpu-load-score-penalty']
-        else:
-            # Penalty is normalized to [0, max penalty] and is linear based on
-            # (magnitude of value within penalty range) / (size of range)
-            penalty = int((load_factor
-                           - self._score_cfg['cpu-load-penalty-min'])
-                          / (self._score_cfg['cpu-load-penalty-max']
-                             - self._score_cfg['cpu-load-penalty-min'])
-                          * self._score_cfg['cpu-load-score-penalty'])
-            penalty = max(0, min(self._score_cfg['cpu-load-score-penalty'],
-                                 penalty))
-
-        if penalty > 0:
-            self._log.info("Penalizing score by %d due to cpu load",
-                           penalty,
-                           extra=log_filter.lf_args('score-cpu',
-                                                    self.LF_PENALTY_INT))
-            score -= penalty
-
-        # Penalize for free mem only if the VM is not on this host
-        vm_mem = int(self._config.get(config.VM, config.MEM_SIZE))
-        if self._rinfo['current-state'] != self.States.ON \
-                and float_or_default(lm['mem-free']['status'], 0) < vm_mem:
-            self._log.info('Penalizing score by %d due to low free memory',
-                           self._score_cfg['free-memory-score-penalty'],
-                           extra=log_filter.lf_args('score-memory',
-                                                    self.LF_PENALTY_INT))
-            score -= self._score_cfg['free-memory-score-penalty']
-
-        # If too many retries occur, give a less-suited host a chance
-        if (self._rinfo['engine-vm-retry-count']
-                > constants.ENGINE_RETRY_MAX_ATTEMPTS):
-            self._log.info('Score is 0 due to %d engine vm retry attempts',
-                           self._rinfo['engine-vm-retry-count'],
-                           extra=log_filter.lf_args('score-retries',
-                                                    self.LF_PENALTY_INT))
-            score = 0
-        elif self._rinfo['engine-vm-retry-count'] > 0:
-            # Subtracting a small amount each time causes round-robin attempts
-            # between hosts that are otherwise equally suited to run the engine
-            penalty = self._score_cfg['engine-retry-score-penalty'] \
-                * self._rinfo['engine-vm-retry-count']
-            self._log.info('Penalizing score by %d'
-                           ' due to %d engine vm retry attempts',
-                           penalty, self._rinfo['engine-vm-retry-count'],
-                           extra=log_filter.lf_args('score-retries',
-                                                    self.LF_PENALTY_INT))
-            score -= penalty
-
-        # If engine has bad health status, let another host try
-        if self._rinfo['bad-health-failure-time']:
-            self._log.info('Score is 0 due to bad engine health at %s',
-                           time.ctime(self._rinfo['bad-health-failure-time']),
-                           extra=log_filter.lf_args('score-health',
-                                                    self.LF_PENALTY_INT))
-            score = 0
-
-        # If the VM shut down unexpectedly (user command, died, etc.), drop the
-        # score to effectively move it to another host.  This also serves as a
-        # shortcut for the user to start host maintenance mode, though it still
-        # should be set manually lest the score recover after a timeout.
-        if self._rinfo['unexpected-shutdown-time']:
-            self._log.info('Score is 0 due to unexpected vm shutdown at %s',
-                           time.ctime(self._rinfo['unexpected-shutdown-time']),
-                           extra=log_filter.lf_args('score-shutdown',
-                                                    self.LF_PENALTY_INT))
-            score = 0
-
-        # Hosts in local maintenance mode should not run the vm
-        local_maintenance = (self._get_maintenance_mode()
-                             == self.MaintenanceMode.LOCAL)
-        if local_maintenance:
-            self._log.info('Score is 0 due to local maintenance mode',
-                           extra=log_filter.lf_args('score-maintenance',
-                                                    self.LF_PENALTY_INT))
-            score = 0
-
-        score = max(0, score)
-
+        score = state.score(self.fsm.logger)
+        lm = state.data.stats.local
+        md = state.metadata()
         data = ("{md_parse_vers}|{md_feature_vers}|{ts_int}"
                 "|{host_id}|{score}|{engine_status}|{name}|{maintenance}"
                 .format(md_parse_vers=constants.METADATA_PARSE_VERSION,
                         md_feature_vers=constants.METADATA_FEATURE_VERSION,
-                        ts_int=ts,
-                        host_id=self._rinfo['host-id'],
+                        ts_int=state.data.stats.collect_start,
+                        host_id=state.data.stats.host_id,
                         score=score,
-                        engine_status=lm['engine-health']['status'],
+                        engine_status=lm['engine-health'],
                         name=self._hostname,
-                        maintenance=1 if local_maintenance else 0))
+                        maintenance=1 if md["maintenance"] else 0))
         if len(data) > constants.METADATA_BLOCK_BYTES:
             raise Exception("Output metadata too long ({0} bytes)"
                             .format(data))
@@ -777,16 +592,14 @@ class HostedEngine(object):
                 "timestamp={ts_int} ({ts_str})\n"
                 "host-id={host_id}\n"
                 "score={score}\n"
-                "maintenance={maintenance}\n"
                 .format(md_parse_vers=constants.METADATA_PARSE_VERSION,
                         md_feature_vers=constants.METADATA_FEATURE_VERSION,
-                        ts_int=ts,
-                        ts_str=time.ctime(ts),
-                        host_id=self._rinfo['host-id'],
-                        score=score,
-                        maintenance=local_maintenance))
-        for (k, v) in sorted(lm.iteritems()):
-            info += "{0}={1}\n".format(k, str(v['status']))
+                        ts_int=state.data.stats.collect_start,
+                        ts_str=time.ctime(state.data.stats.collect_start),
+                        host_id=state.data.host_id,
+                        score=score))
+        for (k, v) in sorted(md.iteritems()):
+            info += "{0}={1}\n".format(k, str(v))
 
         info_count = int((len(info) + constants.METADATA_BLOCK_BYTES - 1)
                          / constants.METADATA_BLOCK_BYTES)
@@ -804,18 +617,98 @@ class HostedEngine(object):
             self._config.get(config.ENGINE, config.HOST_ID),
             blocks)
 
-    def _collect_all_host_stats(self):
+    def collect_stats(self):
         all_stats = self._broker.get_stats_from_storage(
             self._metadata_dir,
             constants.SERVICE_TYPE)
-        local_ts = int(time.time())
 
-        # Flag is set if the local agent discovers metadata too new for it
-        # to parse, in which case the agent will shut down the engine VM.
-        self._rinfo['superseded-agent'] = False
+        data = {
+            # Flag is set if the local agent discovers metadata too new for it
+            # to parse, in which case the agent will shut down the engine VM.
+            "metadata_too_new": False,
+
+            # Global metadata
+            "cluster": {},
+
+            # Id of this host just to make sure
+            "host_id": self.host_id,
+
+            # Metadata for remote hosts
+            "hosts": {},
+
+            # Local data
+            "local": {},
+
+            # Maintenance information
+            "maintenance": False,
+        }
+
+        all_stats = self._broker.get_stats_from_storage(
+            self._metadata_dir,
+            constants.SERVICE_TYPE)
 
         # host_id 0 is a special case, representing global metadata
-        data = all_stats.pop(0, None)
+        if all_stats and 0 in all_stats:
+            data["cluster"] = self.process_global_metadata(all_stats.pop(0))
+
+        # collect the last reported state for all hosts
+        for host_id, remote_data in all_stats.iteritems():
+            try:
+                # we are not interested in stale data about local
+                # machine
+                if host_id == self.host_id:
+                    continue
+                stats = self.process_remote_metadata(host_id, remote_data)
+                data["hosts"][host_id] = stats
+            except MetadataTooNewError:
+                data["metadata_too_new"] = True
+
+        # collect all local stats
+        self._log.debug("Refreshing all submonitors")
+        for field, monitor in self._local_monitors.iteritems():
+            ret = self._broker.get_monitor_status(monitor['id'])
+            if monitor['type'] is not None:
+                ret = monitor['type'](ret)
+            data["local"][field] = ret
+
+        # check local maintenance
+        data["local"]["maintenance"] = util.to_bool(self._config.get(
+            config.HA,
+            config.LOCAL_MAINTENANCE))
+
+        self._log.debug("Refresh complete")
+
+        return data
+
+    def process_remote_metadata(self, host_id, data):
+        try:
+            md = metadata.parse_metadata_to_dict(host_id, data)
+            # Make sure the Id database is consistent
+            assert md["host-id"] == host_id
+        except ex.FatalMetadataError as e:
+            self._log.error(
+                str(e),
+                extra=log_filter.lf_args(self.LF_MD_ERROR + str(host_id),
+                                         self.LF_MD_ERROR_INT))
+            raise MetadataTooNewError()
+        except ex.MetadataError as e:
+            self._log.error(
+                str(e),
+                extra=log_filter.lf_args(self.LF_MD_ERROR + str(host_id),
+                                         self.LF_MD_ERROR_INT))
+            return {}
+        except AssertionError as e:
+            # Ignore host if the Id is not consistent
+            self._log.error(
+                str(e),
+                extra=log_filter.lf_args(self.LF_MD_ERROR + str(host_id),
+                                         self.LF_MD_ERROR_INT))
+            return {}
+        else:
+            md['engine-status'] = engine_status(md["engine-status"])
+            return md
+
+    def process_global_metadata(self, data):
         md = {}
         if data is not None:
             try:
@@ -826,318 +719,83 @@ class HostedEngine(object):
                     extra=log_filter.lf_args(self.LF_GLOBAL_MD_ERROR,
                                              self.LF_GLOBAL_MD_ERROR_INT))
                 # Continue agent processing, ignoring the bad global metadata
-        if self._global_stats != md:
-            self._log.info('Global metadata changed: {0}'.format(md))
-            self._global_stats = md
+        return md
 
-        for host_id, data in all_stats.iteritems():
-            try:
-                md = metadata.parse_metadata_to_dict(host_id, data)
-            except ex.FatalMetadataError as e:
-                self._log.error(
-                    str(e),
-                    extra=log_filter.lf_args(self.LF_MD_ERROR + str(host_id),
-                                             self.LF_MD_ERROR_INT))
-                self._rinfo['superseded-agent'] = True
-                continue
-            except ex.MetadataError as e:
-                self._log.error(
-                    str(e),
-                    extra=log_filter.lf_args(self.LF_MD_ERROR + str(host_id),
-                                             self.LF_MD_ERROR_INT))
-                continue
-
-            if md['host-id'] not in self._all_host_stats:
-                self._all_host_stats[md['host-id']] = {
-                    'first-update': True,
-                    'last-update-local-ts': local_ts,
-                    'last-update-host-ts': None,
-                    'alive': 'unknown',
-                    'score': 0,
-                    'engine-status': {'vm': 'unknown'},
-                    'hostname': '(unknown)'}
-
-            self._prior_host_stats[md['host-id']] = \
-                copy.copy(self._all_host_stats[md['host-id']])
-
-            if self._all_host_stats[md['host-id']]['last-update-host-ts'] \
-                    != md['host-ts']:
-                # Track first update in order to accurately judge liveness.
-                # If last-update-host-ts is 0, then first-update stays True
-                # which indicates that we cannot use this last-update-local-ts
-                # as an indication of host liveness.
-                if self._all_host_stats[md['host-id']]['last-update-host-ts']:
-                    self._all_host_stats[md['host-id']]['first-update'] = False
-
-                self._all_host_stats[md['host-id']]['last-update-host-ts'] = \
-                    md['host-ts']
-                self._all_host_stats[md['host-id']]['last-update-local-ts'] = \
-                    local_ts
-                self._all_host_stats[md['host-id']]['score'] = \
-                    md['score']
-                self._all_host_stats[md['host-id']]['hostname'] = \
-                    md['hostname']
-
-                if md['engine-status'] != 'None':
-                    # Convert the json unicode strings back to ascii:
-                    # it makes the output and logs much easier to read
-                    d = dict([(str(k), str(v)) for (k, v)
-                              in json.loads(md['engine-status']).iteritems()])
-                else:
-                    d = {'vm': 'unknown'}
-                self._all_host_stats[md['host-id']]['engine-status'] = d
-
-        # All updated, now determine if hosts are alive/updating
-        for host_id, attr in self._all_host_stats.iteritems():
-            if (attr['last-update-local-ts']
-                    + constants.HOST_ALIVE_TIMEOUT_SECS) <= local_ts:
-                # Check for timeout regardless of the first-update flag status:
-                # a timeout in this case means we read stale data, but still
-                # must mark the host as dead.
-                # TODO newer sanlocks can report this through get_hosts()
-                if self._all_host_stats[host_id]['alive']:
-                    self._log.error("Host %s (id %d) is no longer updating its"
-                                    " metadata", attr['hostname'], host_id)
-                    self._all_host_stats[host_id]['alive'] = False
-            elif attr['first-update']:
-                self._log.info("Waiting for first update from host %s (id %d)",
-                               attr['hostname'], host_id)
-            else:
-                self._log.debug("Host %s (id %d) metadata updated",
-                                attr['hostname'], host_id)
-                self._all_host_stats[host_id]['alive'] = True
-
-            # Log any changed stats
-            if (any((self._all_host_stats[host_id][k]
-                     != self._prior_host_stats[host_id][k]
-                     for k in ['alive', 'engine-status', 'score']))):
-                info_str = "{0}".format(attr)
-                self._log.info("Host %s (id %d) changed: %s",
-                               attr['hostname'], host_id, info_str)
-
-        if util.has_elapsed(self._rinfo['last-metadata-log-time'],
-                            constants.METADATA_LOG_PERIOD_SECS):
-            self._rinfo['last-metadata-log-time'] = int(time.time())
-            self._log.info('Global metadata: {0}'.format(self._global_stats))
-            for host_id, attr in self._all_host_stats.iteritems():
-                info_str = "{0}".format(attr)
-                self._log.info("Host %s (id %d): %s",
-                               attr['hostname'], host_id, info_str)
-
-    def _perform_engine_actions(self):
-        """
-        Start or stop engine on current host based on hosts' statistics.
-        """
-        local_host_id = self._rinfo['host-id']
-
-        if self._all_host_stats[local_host_id]['engine-status']['vm'] \
-                == 'unknown':
-            self._log.info("Unknown local engine vm status, no actions taken")
-            return
-
-        # Use a runtime info dict to hold information used by the state
-        # machine, including host statistics and global metadata
-        rinfo = {
-            'best-engine-status':
-            self._all_host_stats[local_host_id]['engine-status'],
-            'best-engine-status-host-id': local_host_id,
-            'best-score': self._all_host_stats[local_host_id]['score'],
-            'best-score-host-id': local_host_id,
-        }
-
-        for host_id, stats in self._all_host_stats.iteritems():
-            if stats['alive'] == 'unknown':
-                # TODO probably unnecessary to wait, sanlock will prevent
-                # 2 from starting up accidentally
-                self._log.info("Unknown host state for id %d,"
-                               " waiting for initialization", host_id)
-                return
-            elif not stats['alive']:
-                continue
-
-            if self._get_engine_status_score(stats['engine-status']) \
-                    > self._get_engine_status_score(
-                        rinfo['best-engine-status']):
-                rinfo['best-engine-status'] = stats['engine-status']
-                rinfo['best-engine-status-host-id'] = host_id
-            # Prefer local score if equal to remote score
-            if stats['score'] > rinfo['best-score']:
-                rinfo['best-score'] = stats['score']
-                rinfo['best-score-host-id'] = host_id
-
-        rinfo['maintenance'] = self._get_maintenance_mode()
-
-        self._rinfo.update(rinfo)
-
-        yield_ = False
-        # Process the states until it's time to sleep, indicated by the
-        # state handler returning yield_ as True.
-        while not yield_:
-            self._log.debug("Processing engine state %s",
-                            self._rinfo['current-state'])
-
-            # save the current state
-            old_state = self._rinfo['current-state']
-
-            self._rinfo['current-state'], yield_ \
-                = self._vm_state_actions[self._rinfo['current-state']]()
-
-            # notify on state change
-            if old_state != self._rinfo['current-state']:
-                self._broker.notify(brokerlink.NotifyEvents.STATE_TRANSITION,
-                                    "%s-%s" % (old_state,
-                                               self._rinfo['current-state']),
-                                    hostname=socket.gethostname())
-
-        self._log.debug("Next engine state %s",
-                        self._rinfo['current-state'])
-
-    def _get_engine_status_score(self, status):
-        """
-        Convert a dict engine/vm status to a sortable numeric score;
-        the highest score is a live vm with a healthy engine.
-        """
-        if status['vm'] == 'unknown':
-            return 0
-        elif status['vm'] == 'down':
-            return 1
-        elif status['health'] == 'bad':
-            return 2
-        elif status['health'] == 'good':
-            return 3
-        else:
-            self._log.error("Invalid engine status: %r", status, exc_info=True)
-            return 0
-
-    def _get_maintenance_mode(self):
-        """
-        Returns maintenance mode:
-          NONE - no maintenance, function as usual
-          GLOBAL - HA system in maintenance, ignore VM state and score
-          LOCAL - local host in maintenance, zero score and shut down vm
-        If both LOCAL and GLOBAL modes are set, LOCAL will be returned
-        because is more invasive to the host HA state.
-        """
+    def _start_migration(self, host_id, hostname):
+        vm_id = self._config.get(config.VM, config.VM_UUID)
+        use_ssl = util.to_bool(self._config.get(config.ENGINE,
+                                                config.VDSM_SSL))
         try:
-            if util.to_bool(self._config.get(config.HA,
-                                             config.LOCAL_MAINTENANCE)):
-                return self.MaintenanceMode.LOCAL
-            elif self._global_stats.get('maintenance', False):
-                return self.MaintenanceMode.GLOBAL
-            else:
-                return self.MaintenanceMode.NONE
-        except ValueError:
-            self._log.error("Invalid value for maintenance setting",
-                            exc_info=True)
-            return self.MaintenanceMode.NONE
-
-    def _handle_entry(self):
-        """
-        ENTRY state.  Determine current vm state and switch appropriately.
-        """
-        local_host_id = self._rinfo['host-id']
-        self._log.info("Determining initial state for host")
-        if self._all_host_stats[local_host_id]['engine-status']['vm'] == 'up':
-            return self.States.ON, False
-        else:
-            return self.States.OFF, False
-
-    def _handle_off(self):
-        """
-        OFF state.  Check if any conditions warrant starting the vm, and
-        check if it was started externally.
-        """
-        local_host_id = self._rinfo['host-id']
-
-        if self._rinfo['best-engine-status']['vm'] == 'up':
-            engine_host_id = self._rinfo['best-engine-status-host-id']
-            if engine_host_id == local_host_id:
-                self._log.info("Engine vm unexpectedly running locally,"
-                               " monitoring vm")
-                return self.States.ON, False
-            else:
-                self._log.info(
-                    "Engine vm is running on host %s (id %d)",
-                    self._all_host_stats[engine_host_id]['hostname'],
-                    engine_host_id,
-                    extra=log_filter.lf_args(self.LF_ENGINE_HEALTH,
-                                             self.LF_ENGINE_HEALTH_INT)
+            self._log.debug("Initiating online migration of"
+                            " vm %s from localhost to %s",
+                            vm_id, hostname)
+            vdsc.run_vds_client_cmd(
+                '0',
+                use_ssl,
+                'migrate',
+                vmId=vm_id,
+                method='online',
+                src='localhost',
+                dst=hostname,
                 )
-                return self.States.OFF, True
+            return True
+        except Exception:
+            self._log.error("Migration to host %s (id %d) failed to start",
+                            hostname,
+                            host_id,
+                            exc_info=True)
+            return False
 
-        # FIXME remote db down, other statuses
-
-        if self._rinfo['maintenance'] == self.MaintenanceMode.GLOBAL:
-            self._log.info("Global HA maintenance enabled")
-            return self.States.MAINTENANCE, True
-        elif self._rinfo['maintenance'] == self.MaintenanceMode.LOCAL:
-            # TODO local maintenance should have its own state
-            self._log.info("Local HA maintenance enabled")
-            return self.States.OFF, True
-        elif self._rinfo['superseded-agent']:
-            # TODO superseded agent should have its own state
-            self._log.error("Local agent has been superseded by newer"
-                            " agents running in this cluster")
-            return self.States.OFF, True
-
-        if self._rinfo['best-score-host-id'] != local_host_id:
-            self._log.info("Engine down, local host does not have best score",
-                           extra=log_filter.lf_args(self.LF_ENGINE_HEALTH,
-                                                    self.LF_ENGINE_HEALTH_INT))
-            return self.States.OFF, True
-
-        self._log.error("Engine down and local host has best score (%d),"
-                        " attempting to start engine VM",
-                        self._rinfo['best-score'],
-                        extra=log_filter.lf_args(self.LF_ENGINE_HEALTH,
-                                                 self.LF_ENGINE_HEALTH_INT))
-        return self.States.START, False
-
-    def _handle_start(self):
-        """
-        START state.  Power on VM.
-        """
+    def _monitor_migration(self):
+        vm_id = self._config.get(config.VM, config.VM_UUID)
+        use_ssl = util.to_bool(self._config.get(config.ENGINE,
+                                                config.VDSM_SSL))
         try:
-            self._start_engine_vm()
-        except Exception as e:
-            self._log.error("Failed to start engine VM: %s", str(e))
-            # FIXME these sorts of tracking vars could be put in an audit log
-            self._rinfo['engine-vm-retry-time'] = int(time.time())
-            self._rinfo['engine-vm-retry-count'] += 1
-            # TODO mail for error (each time, or after n retries?)
-            # OFF handler will retry based on host score
-            return self.States.OFF, True
+            self._log.debug("Monitoring migration of vm %s", vm_id)
+            res = vdsc.run_vds_client_cmd(
+                '0',
+                use_ssl,
+                'migrateStatus',
+                vm_id,
+                )
+        except Exception:
+            # Log the exception; the failure is handled below
+            self._log.error("Failed to migrate", exc_info=True)
+            return False
         else:
-            self._rinfo['engine-vm-retry-time'] = None
-            self._rinfo['engine-vm-retry-count'] = 0
-            return self.States.ON, True
+            return res["status"]["message"]
 
     def _start_engine_vm(self):
-        # Ensure there isn't any stale VDSM state from a prior VM lifecycle
-        self._clean_vdsm_state()
+        try:
+            # Ensure there isn't any stale VDSM state from a prior VM lifecycle
+            self._clean_vdsm_state()
 
-        self._log.info("Starting vm using `%s --vm-start`",
-                       constants.HOSTED_ENGINE_BINARY)
-        p = subprocess.Popen([constants.HOSTED_ENGINE_BINARY,
-                              '--vm-start'],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output = p.communicate()
-        self._log.info("stdout: %s", output[0])
-        self._log.info("stderr: %s", output[1])
-        if p.returncode != 0:
-            # FIXME consider removing when we can get vm status from sanlock,
-            # if still an issue then the alternative of tracking the time we
-            # started the engine might be better than parsing this output
-            if output[0].startswith("Virtual machine already exists"):
-                self._log.warning("Failed to start engine VM,"
-                                  " already running according to VDSM")
-                return
+            self._log.info("Starting vm using `%s --vm-start`",
+                           constants.HOSTED_ENGINE_BINARY)
+            p = subprocess.Popen([constants.HOSTED_ENGINE_BINARY,
+                                  '--vm-start'],
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+            output = p.communicate()
+            self._log.info("stdout: %s", output[0])
+            self._log.info("stderr: %s", output[1])
+            if p.returncode != 0:
+                # FIXME consider removing, we can get vm status from sanlock,
+                # if still an issue then the alternative tracking the time we
+                # started the engine might be better than parsing this output
+                if output[0].startswith("Virtual machine already exists"):
+                    self._log.warning("Failed to start engine VM,"
+                                      " already running according to VDSM")
+                    return
 
-            self._log.error("Failed: %s", output[1])
-            raise Exception(output[1])
+                self._log.error("Failed: %s", output[1])
+                raise Exception(output[1])
 
-        self._log.error("Engine VM started on localhost")
-        return
+            self._log.error("Engine VM started on localhost")
+            return True
+        except Exception as e:
+            self._log.error("Failed to start engine VM: %s", str(e))
+            return False
 
     def _clean_vdsm_state(self):
         """
@@ -1181,240 +839,26 @@ class HostedEngine(object):
 
         raise Exception("Timed out trying to clean VDSM state for VM")
 
-    @handler_cleanup
-    def _handle_on(self):
-        """
-        ON state.  See if the VM was stopped or needs to be stopped.
-        """
-        local_host_id = self._rinfo['host-id']
-        if self._rinfo['best-engine-status']['vm'] != 'up':
-            self._log.error("Engine vm died unexpectedly")
-            self._rinfo['unexpected-shutdown-time'] = int(time.time())
-            # Switch to OFF after yielding so score can adjust to 0
-            # TODO make this into new state that keeps track of the time
-            return self.States.OFF, True
-        elif self._rinfo['best-engine-status-host-id'] != local_host_id:
-            self._log.error("Engine vm unexpectedly running on other host")
-            self._rinfo['unexpected-shutdown-time'] = int(time.time())
-            # TODO make this into new state that keeps track of the time
-            return self.States.OFF, True
-        elif self._rinfo['best-engine-status']['detail'] == 'migration source':
-            self._log.info("Engine VM found migrating away")
-            return self.States.MIGRATE_MONITOR, True
-
-        best_host_id = self._rinfo['best-score-host-id']
-
-        if self._rinfo['maintenance'] == self.MaintenanceMode.GLOBAL:
-            self._log.info("Global HA maintenance enabled")
-            return self.States.MAINTENANCE, True
-        elif self._rinfo['maintenance'] == self.MaintenanceMode.LOCAL:
-            # TODO local maintenance should have its own state
-            self._log.info("Local HA maintenance enabled,"
-                           " migrating VM to host %s (id %d)",
-                           self._all_host_stats[best_host_id]['hostname'],
-                           best_host_id)
-            self._rinfo['migration-host-id'] = best_host_id
-            return self.States.MIGRATE_START, False
-        elif self._rinfo['superseded-agent']:
-            # TODO superseded agent should have its own state
-            self._log.error("Local agent has been superseded by newer"
-                            " agents running in this cluster")
-            return self.States.STOP, False
-
-        if (best_host_id != local_host_id
-                and self._rinfo['best-score']
-                >= self._all_host_stats[local_host_id]['score']
-                + self.MIGRATION_THRESHOLD_SCORE):
-            self._log.error("Host %s (id %d) score is significantly better"
-                            " than local score, shutting down VM on this host",
-                            self._all_host_stats[best_host_id]['hostname'],
-                            best_host_id)
-            return self.States.STOP, False
-
-        if self._rinfo['best-engine-status']['vm'] == 'up' \
-                and self._rinfo['best-engine-status']['health'] == 'bad':
-            now = int(time.time())
-            if 'first-bad-status-time' not in self._rinfo:
-                self._rinfo['first-bad-status-time'] = now
-            timeout = (constants.ENGINE_BAD_HEALTH_TIMEOUT_SECS
-                       - (now - self._rinfo['first-bad-status-time']))
-            if timeout > 0:
-                self._log.error("Engine VM has bad health status,"
-                                " timeout in %d seconds", timeout)
-                return self.States.ON, True
-            else:
-                self._log.error("Engine VM timed out with bad health status"
-                                " after %d seconds, restarting",
-                                constants.ENGINE_BAD_HEALTH_TIMEOUT_SECS)
-                self._rinfo['bad-health-failure-time'] = now
-                # FIXME how do we avoid this for cases like vm running fsck?
-                return self.States.STOP, False
-
-        self._log.info("Engine vm running on localhost",
-                       extra=log_filter.lf_args(self.LF_ENGINE_HEALTH,
-                                                self.LF_ENGINE_HEALTH_INT))
-        return self.States.ON, True
-
-    def _handle_on_cleanup(self):
-        if 'first-bad-status-time' in self._rinfo:
-            del self._rinfo['first-bad-status-time']
-
-    @handler_cleanup
-    def _handle_stop(self):
-        """
-        STOP state.  Shut down the locally-running vm.
-        """
-        local_host_id = self._rinfo['host-id']
-        if (self._rinfo['best-engine-status']['vm'] != 'up'
-                or self._rinfo['best-engine-status-host-id'] != local_host_id):
-            self._log.info("Engine vm not running on local host")
-            return self.States.OFF, True
-
-        force = False
-        run_stop_cmd = False
-        if self._rinfo.get('engine-vm-shutdown-time'):
-            elapsed = int(time.time()) - self._rinfo['engine-vm-shutdown-time']
-            if elapsed > constants.ENGINE_BAD_HEALTH_TIMEOUT_SECS:
-                force = True
-                run_stop_cmd = True
-            else:
-                self._log.info("Waiting on shutdown to complete"
-                               " (%d of %d seconds)",
-                               elapsed,
-                               constants.ENGINE_BAD_HEALTH_TIMEOUT_SECS)
-        else:
-            run_stop_cmd = True
-
-        if run_stop_cmd:
-            try:
-                self._stop_engine_vm(force)
-            except Exception as e:
-                self._log.error("Failed to stop engine VM: %s", str(e))
-                # Allow rediscovery of vm state.  Yield in case the state
-                # machine ends up immediately in the STOP state again.
-                return self.States.ENTRY, True
-
-        if force:
-            return self.States.OFF, True
-        else:
-            if 'engine-vm-shutdown-time' not in self._rinfo:
-                self._rinfo['engine-vm-shutdown-time'] = int(time.time())
-            return self.States.STOP, True
-
-    def _handle_stop_cleanup(self):
-        if 'engine-vm-shutdown-time' in self._rinfo:
-            del self._rinfo['engine-vm-shutdown-time']
-
-    def _stop_engine_vm(self, force):
-        cmd = '--vm-poweroff' if force else '--vm-shutdown'
-        self._log.info("Shutting down vm using `%s %s`",
-                       constants.HOSTED_ENGINE_BINARY, cmd)
-        p = subprocess.Popen([constants.HOSTED_ENGINE_BINARY, cmd],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output = p.communicate()
-        self._log.info("stdout: %s", output[0])
-        self._log.info("stderr: %s", output[1])
-        if (p.returncode != 0
-                and not output[0].startswith(
-                "Virtual machine does not exist")):
-            self._log.error("Failed to stop engine vm with %s %s: %s",
-                            constants.HOSTED_ENGINE_BINARY, cmd, output[1])
-            raise Exception(output[1])
-
-        self._log.error("Engine VM stopped on localhost")
-        return
-
-    def _handle_migrate_start(self):
-        """
-        MIGRATE_START state.  Move the VM to the destination host.
-        """
-        vm_id = self._config.get(config.VM, config.VM_UUID)
-        use_ssl = util.to_bool(self._config.get(config.ENGINE,
-                                                config.VDSM_SSL))
-        dest_host_id = self._rinfo['migration-host-id']
-
+    def _stop_engine_vm(self, force=False):
         try:
-            vdsc.run_vds_client_cmd(
-                '0',
-                use_ssl,
-                'migrate',
-                vmId=vm_id,
-                method='online',
-                src='localhost',
-                dst=self._all_host_stats[dest_host_id]['hostname'],
-            )
-        except:
-            self._log.error("Migration to host %s (id %d) failed to start",
-                            self._all_host_stats[dest_host_id]['hostname'],
-                            dest_host_id,
-                            exc_info=True)
-            del self._rinfo['migration-host-id']
-            return self.States.STOP, False
-        else:
-            self._log.info("Started migration to host %s (id %d)",
-                           self._all_host_stats[dest_host_id]['hostname'],
-                           dest_host_id)
-            return self.States.MIGRATE_MONITOR, True
+            cmd = '--vm-poweroff' if force else '--vm-shutdown'
+            self._log.info("Shutting down vm using `%s %s`",
+                           constants.HOSTED_ENGINE_BINARY, cmd)
+            p = subprocess.Popen([constants.HOSTED_ENGINE_BINARY, cmd],
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+            output = p.communicate()
+            self._log.info("stdout: %s", output[0])
+            self._log.info("stderr: %s", output[1])
+            if (p.returncode != 0
+                    and not output[0].startswith(
+                    "Virtual machine does not exist")):
+                self._log.error("Failed to stop engine vm with %s %s: %s",
+                                constants.HOSTED_ENGINE_BINARY, cmd, output[1])
+                raise Exception(output[1])
 
-    @handler_cleanup
-    def _handle_migrate_monitor(self):
-        """
-        MIGRATE_MONITOR state.  Monitor an existing migration.
-        """
-        vm_id = self._config.get(config.VM, config.VM_UUID)
-        use_ssl = util.to_bool(self._config.get(config.ENGINE,
-                                                config.VDSM_SSL))
-        if 'migration-host-id' in self._rinfo:
-            # The agent requested the migration thus knows its destination
-            dest_host_id = self._rinfo['migration-host-id']
-            host_str = 'host {0} (id {1})'.format(
-                self._all_host_stats[dest_host_id]['hostname'],
-                dest_host_id)
-        else:
-            # Migration was not performed by this agent
-            host_str = 'unknown host'
-
-        try:
-            res = vdsc.run_vds_client_cmd(
-                '0',
-                use_ssl,
-                'migrateStatus',
-                vm_id,
-            )
-        except:
-            # Log the exception; the failure is handled below
-            self._log.error("Failed to migrate", exc_info=True)
-        else:
-            self._log.info("Migration status: %s",
-                           res['status']['message'])
-
-            if res['status']['message'].startswith('Migration in progress'):
-                self._log.info("Continuing to monitor migration")
-                return self.States.MIGRATE_MONITOR, True
-
-            elif res['status']['message'].startswith('Migration done'):
-                self._log.info("Migration to %s complete,"
-                               " no longer monitoring vm",
-                               host_str)
-                return self.States.OFF, True
-
-        # Failure cases from above are handled here
-        self._log.error("Migration to %s failed", host_str)
-        return self.States.STOP, False
-
-    def _handle_migrate_monitor_cleanup(self):
-        if 'migration-host-id' in self._rinfo:
-            del self._rinfo['migration-host-id']
-
-    def _handle_maintenance(self):
-        """
-        MAINTENANCE state.  Allow arbitrary HA VM state while in maintenance
-        mode (i.e. ignore it), and re-init in ENTRY state once complete.
-        """
-        if self._rinfo['maintenance'] == self.MaintenanceMode.GLOBAL:
-            self._log.info("Global HA maintenance enabled",
-                           extra=log_filter.lf_args(self.LF_MAINTENANCE,
-                                                    self.LF_MAINTENANCE_INT))
-            return self.States.MAINTENANCE, True
-        else:
-            return self.States.ENTRY, False
+            self._log.error("Engine VM stopped on localhost")
+            return True
+        except Exception as e:
+            self._log.error("Failed to stop engine VM: %s", str(e))
+            return False

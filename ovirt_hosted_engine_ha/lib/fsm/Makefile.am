@@ -23,20 +23,11 @@ MAINTAINERCLEANFILES = \
 	$(srcdir)/Makefile.in \
 	$(NULL)
 
-halibdir = $(engine_ha_libdir)/lib
+fsmlibdir = $(engine_ha_libdir)/lib/fsm
 
-dist_halib_PYTHON = \
+dist_fsmlib_PYTHON = \
 	__init__.py \
-	brokerlink.py \
-	exceptions.py \
-	log_filter.py \
-	metadata.py \
-	util.py \
-	vds_client.py \
-	$(NULL)
-
-SUBDIRS = \
-	fsm \
+	machine.py \
 	$(NULL)
 
 clean-local: \

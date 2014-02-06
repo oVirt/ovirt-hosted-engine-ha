@@ -89,6 +89,7 @@ AC_CONFIG_FILES([
 	ovirt_hosted_engine_ha/client/Makefile
 	ovirt_hosted_engine_ha/env/Makefile
 	ovirt_hosted_engine_ha/lib/Makefile
+	ovirt_hosted_engine_ha/lib/fsm/Makefile
 	sudoers/Makefile
 ])
 AC_OUTPUT

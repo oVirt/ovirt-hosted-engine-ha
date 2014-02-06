@@ -118,7 +118,7 @@ def parse_metadata_to_dict(host_str, data):
     except ValueError:
         raise MetadataError("Malformed metadata:"
                             " host id '{0}' not an integer"
-                            .format(host_id))
+                            .format(host_str))
 
     if len(data) < 512:
         raise MetadataError("Malformed metadata for host {0}:"
