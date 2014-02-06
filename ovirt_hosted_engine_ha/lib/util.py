@@ -94,3 +94,20 @@ def to_bool(string):
         return False
     else:
         raise ValueError("Invalid value for boolean: {0}".format(string))
+
+
+def engine_status_score(status):
+    """
+    Convert a dict engine/vm status to a sortable numeric score;
+    the highest score is a live vm with a healthy engine.
+    """
+    if status['vm'] == 'unknown':
+        return 0
+    elif status['vm'] == 'down':
+        return 1
+    elif status['health'] == 'bad':
+        return 2
+    elif status['health'] == 'good':
+        return 3
+    else:
+        raise ValueError("Invalid engine status: %r" % status)

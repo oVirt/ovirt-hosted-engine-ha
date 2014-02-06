@@ -40,6 +40,10 @@ dist_agent_PYTHON = \
 	__init__.py \
 	agent.py \
 	hosted_engine.py \
+	state_data.py \
+	state_decorators.py \
+	state_machine.py \
+	states.py \
 	$(NULL)
 
 agent_PYTHON = \

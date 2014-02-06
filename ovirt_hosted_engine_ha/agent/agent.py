@@ -43,6 +43,8 @@ class Agent(object):
         parser = OptionParser(version=constants.FULL_PROG_NAME)
         parser.add_option("--no-daemon", action="store_false",
                           dest="daemon", help="don't start as a daemon")
+        parser.add_option("--pdb", action="store_true",
+                          dest="pdb", help="start pdb in case of crash")
         parser.set_defaults(daemon=True)
         (options, args) = parser.parse_args()
 
@@ -101,7 +103,14 @@ class Agent(object):
             self._log.critical("Could not start ha-agent", exc_info=True)
             print("Could not start ha-agent: {0} (see log for details)"
                   .format(str(e)), file=sys.stderr)
+            if options.pdb:
+                import pdb
+                pdb.post_mortem()
             sys.exit(1)
+        except KeyboardInterrupt:
+            if options.pdb:
+                import pdb
+                pdb.post_mortem()
 
         # Agent shutdown...
         self._log.info("Agent shutting down")
