@@ -53,9 +53,11 @@ Requires:       sanlock-python >= 2.8
 Requires:       vdsm >= 4.12.2
 Requires:       vdsm-cli >= 4.12.2
 Requires:       vdsm-python >= 4.12.2
+
 BuildRequires:  python2-devel
 
 %if 0%{?with_systemd}
+%systemd_requires
 BuildRequires:  systemd
 %endif
 
@@ -146,10 +148,11 @@ install -Dm 0440 sudoers/sudoers %{buildroot}%{_sysconfdir}/sudoers.d/60_ovirt-h
 %if 0%{?with_systemd}
 %systemd_post ovirt-ha-agent.service
 %systemd_post ovirt-ha-broker.service
-%else
 if [ "$1" -eq 1 ] ; then
-    /sbin/chkconfig --add ovirt-ha-agent
-    /sbin/chkconfig --add ovirt-ha-broker
+#We don't want the service to be started by default before the system
+#is configured and Hosted Engine VM deployed
+    /usr/bin/systemctl --no-reload disable ovirt-ha-agent.service
+    /usr/bin/systemctl --no-reload disable ovirt-ha-broker.service
 fi
 %endif
 
