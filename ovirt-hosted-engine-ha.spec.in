@@ -53,9 +53,11 @@ Requires:       sanlock-python >= 2.8
 Requires:       vdsm >= 4.12.2
 Requires:       vdsm-cli >= 4.12.2
 Requires:       vdsm-python >= 4.12.2
+
 BuildRequires:  python2-devel
 
 %if 0%{?with_systemd}
+%systemd_requires
 BuildRequires:  systemd
 %endif
 
@@ -144,17 +146,21 @@ install -Dm 0440 sudoers/sudoers %{buildroot}%{_sysconfdir}/sudoers.d/60_ovirt-h
 
 %post
 %if 0%{?with_systemd}
+#Set service presets in any case covering install and update.
 %systemd_post ovirt-ha-agent.service
 %systemd_post ovirt-ha-broker.service
-%else
 if [ "$1" -eq 1 ] ; then
-    /sbin/chkconfig --add ovirt-ha-agent
-    /sbin/chkconfig --add ovirt-ha-broker
+#We don't want the service to be started by default before the system
+#is configured and Hosted Engine VM deployed on a fresh install.
+#Avoid to have the daemon running after yum install and reboot.
+    /usr/bin/systemctl --no-reload disable ovirt-ha-agent.service
+    /usr/bin/systemctl --no-reload disable ovirt-ha-broker.service
 fi
 %endif
 
 
 %preun
+#stop and disable services only on remove
 %if 0%{?with_systemd}
 %systemd_preun ovirt-ha-agent.service
 %systemd_preun ovirt-ha-broker.service
@@ -170,6 +176,7 @@ fi
 
 
 %postun
+#restart services on update if they're already running
 %if 0%{?with_systemd}
 %systemd_postun_with_restart ovirt-ha-agent.service
 %systemd_postun_with_restart ovirt-ha-broker.service
