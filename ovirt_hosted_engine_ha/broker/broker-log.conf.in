@@ -19,8 +19,8 @@ formatter=sysform
 args=('/dev/log', handlers.SysLogHandler.LOG_USER)
 
 [handler_logfile]
-class=logging.handlers.RotatingFileHandler
-args=('@ENGINE_HA_LOGDIR@/broker.log', 'a', 4194304, 8)
+class=logging.handlers.TimedRotatingFileHandler
+args=('@ENGINE_HA_LOGDIR@/broker.log', 'd', 1, 7)
 level=DEBUG
 formatter=long
 
