@@ -5,7 +5,7 @@ from ..lib import log_filter
 from . import constants
 from .state_decorators import check_local_maintenance, check_timeout
 from .state_decorators import check_local_vm_unknown, check_global_maintenance
-from .state_data import time as dtime
+from .state_data import time as dtime, load_factor
 import time
 
 
@@ -124,29 +124,25 @@ class EngineState(BaseState):
                                                  self.LF_PENALTY_INT))
             score -= score_cfg['mgmt-bridge-score-penalty']
 
-        # Record 15 minute cpu load history (not counting load caused by
+        # Compute cpu load average (not counting load caused by
         # the engine vm.  The default load penalty is:
         #   load 0-40% : 0
         #   load 40-90%: 0 to 1000 (rising linearly with increasing load)
         #   load 90%+  : 1000
         # Thus, a load of 80% causes an 800 point penalty
-        load_factor = reduce(lambda acc, point:
-                             acc + point.local["cpu-load"]
-                             if point.local["cpu-load"] is not None else acc,
-                             self.data.history,
-                             0) / len(self.data.history)
+        load_average = load_factor(self.data)
 
         if score_cfg['cpu-load-penalty-max'] \
                 == score_cfg['cpu-load-penalty-min']:
             # Avoid divide by 0 in penalty calculation below
-            if load_factor < score_cfg['cpu-load-penalty-min']:
+            if load_average < score_cfg['cpu-load-penalty-min']:
                 penalty = 0
             else:
                 penalty = score_cfg['cpu-load-score-penalty']
         else:
             # Penalty is normalized to [0, max penalty] and is linear based on
             # (magnitude of value within penalty range) / (size of range)
-            penalty = int((load_factor
+            penalty = int((load_average
                            - score_cfg['cpu-load-penalty-min'])
                           / (score_cfg['cpu-load-penalty-max']
                              - score_cfg['cpu-load-penalty-min'])

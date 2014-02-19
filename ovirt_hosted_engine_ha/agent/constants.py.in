@@ -84,3 +84,6 @@ LOCKSPACE_NAME = SERVICE_TYPE
 
 # Maximum request error count
 MAX_ERROR_COUNT = 3
+
+# The length of history
+STATS_HISTORY_SECS = 15 * 60
