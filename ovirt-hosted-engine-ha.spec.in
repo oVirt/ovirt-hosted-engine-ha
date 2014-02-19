@@ -55,6 +55,7 @@ Requires:       vdsm-cli >= 4.12.2
 Requires:       vdsm-python >= 4.12.2
 
 BuildRequires:  python2-devel
+BuildRequires:  python-nose
 
 %if 0%{?with_systemd}
 %systemd_requires
@@ -77,6 +78,8 @@ Hosted engine manager for oVirt project.
         %{?conf}
 make %{?_smp_mflags}
 
+%check
+make test
 
 %install
 rm -rf "%{buildroot}"
