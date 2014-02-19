@@ -20,14 +20,14 @@
 import logging
 import time
 
-import broker.monitor
+from .. import monitor
 
 def main():
     logging.basicConfig(filename='/dev/stdout', filemode='w+',
                         level=logging.DEBUG)
     log = logging.getLogger("%s.monitor test" % __name__)
     log.warn("Could not init proper logging", exc_info=True)
-    m = broker.monitor.Monitor()
+    m = monitor.Monitor()
 
     sm_id = m.start_submonitor('ping', {'addr': '127.0.0.1'})
     m.stop_submonitor(sm_id)

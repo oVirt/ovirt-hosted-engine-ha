@@ -78,6 +78,9 @@ rpm:	srpm
 	@echo "rpm(s) available at '$(TMPREPOS)'"
 	@echo
 
+test:
+	nosetests .
+
 clean-local:
 	rm -fr "$(TMPREPOS)"
 	rm -fr target
