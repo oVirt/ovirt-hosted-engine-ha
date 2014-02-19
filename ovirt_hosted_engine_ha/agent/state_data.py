@@ -75,3 +75,34 @@ def time(he_data):
     :type he_data: HostedEngineData
     """
     return he_data.stats.collect_finish
+
+
+def load_factor(he_data):
+    """
+    Computes the average CPU load over all known history. Uses weighted average
+    to account for different time spans between data points. The load intervals
+    are integrated using the trapezoidal method:
+
+    area = (b - a)(f(a) + f(b))/2
+    where a,b are timestamps and f(a) and f(b) are values
+    """
+
+    def trapezoid(acc, point):
+        area, time, last_load, last_time = acc
+        cur_load = point.local["cpu-load"]
+        cur_time = point.collect_start
+        if cur_load is not None and last_load is not None:
+            seg_time = last_time - cur_time
+            seg_area = (seg_time *
+                        (last_load + cur_load) / 2.0)
+            return area+seg_area, time+seg_time, cur_load, cur_time
+        else:
+            return area, time, cur_load, cur_time
+
+    load_area, load_time = reduce(trapezoid,
+                                  he_data.history,
+                                  (0, 0, None, None))[:2]
+    if load_time == 0:
+        return 0.0
+    else:
+        return load_area / load_time

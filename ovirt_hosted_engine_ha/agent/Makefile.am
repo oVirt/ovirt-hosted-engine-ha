@@ -41,6 +41,7 @@ dist_agent_PYTHON = \
 	agent.py \
 	hosted_engine.py \
 	state_data.py \
+	state_data_test.py \
 	state_decorators.py \
 	state_machine.py \
 	states.py \

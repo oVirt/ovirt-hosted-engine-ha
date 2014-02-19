@@ -161,8 +161,9 @@ class EngineStateMachine(BaseFSM):
         # beginning, we are not interested in more than
         # 15 second history snapshots
         # namedtuple._replace makes a copy with updated values
+        hlimit = stats.collect_start - constants.STATS_HISTORY_SECS
         new_data = old_data._replace(
-            history=(stats,) + old_data.history[:14],
+            history=(stats,) + self.trim_history(old_data.history, hlimit),
             stats=stats,
             host_id=self.hosted_engine.host_id,
 
@@ -170,3 +171,8 @@ class EngineStateMachine(BaseFSM):
             **new_data)
 
         return new_data
+
+    @staticmethod
+    def trim_history(history, time_limit):
+        return tuple(stat for stat in history
+                     if stat.collect_start > time_limit)
