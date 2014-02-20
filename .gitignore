@@ -27,6 +27,7 @@
 /configure
 /doc/Makefile
 /doc/Makefile.in
+/doc/agent-fsm.png
 /ovirt_hosted_engine_ha/Makefile
 /ovirt_hosted_engine_ha/Makefile.in
 /ovirt_hosted_engine_ha/agent/Makefile
@@ -47,6 +48,8 @@
 /ovirt_hosted_engine_ha/env/constants.py
 /ovirt_hosted_engine_ha/lib/Makefile
 /ovirt_hosted_engine_ha/lib/Makefile.in
+/ovirt_hosted_engine_ha/lib/fsm/Makefile
+/ovirt_hosted_engine_ha/lib/fsm/Makefile.in
 /initscripts/Makefile
 /initscripts/Makefile.in
 /initscripts/config.log
