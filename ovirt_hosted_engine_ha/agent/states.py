@@ -197,6 +197,9 @@ class LocalMaintenance(EngineState):
     This state is entered any time the host gets to local maintenance state.
     It monitors the environment and once the maintenance is completed,
     the FSM is reinitialized.
+
+    :transition:
+    :transition ReinitializeFSM:
     """
     def score(self, logger):
         logger.info('Score is 0 due to local maintenance mode',
@@ -223,6 +226,10 @@ class GlobalMaintenance(EngineState):
     """
     This is an idler state that does not do anything while the global
     maintenance mode is enabled.
+
+    :transition:
+    :transition LocalMaintenance:
+    :transition ReinitializeFSM:
     """
     @check_global_maintenance(None)
     @check_local_maintenance(LocalMaintenance)
@@ -239,6 +246,11 @@ class UnknownLocalVmState(EngineState):
     """
     Error state that is used when we are not able to determine the
     status of the local engine VM.
+
+    :transition:
+    :transition GlobalMaintenance:
+    :transition LocalMaintenance:
+    :transition ReinitializeFSM:
     """
     @check_global_maintenance(GlobalMaintenance)
     @check_local_vm_unknown(None)
@@ -256,6 +268,12 @@ class ReinitializeFSM(EngineState):
     """
     Determine the best state to start with based on the current
     information about the environment.
+
+    :transition GlobalMaintenance:
+    :transition LocalMaintenance:
+    :transition UnknownLocalVmState:
+    :transition EngineUp:
+    :transition EngineDown:
     """
     def score(self, logger):
         return 0
@@ -288,6 +306,11 @@ class LocalMaintenanceMigrateVm(LocalMaintenance):
     when the engine runs locally..
     It tries to migrate it to the best remote host and
     then moves to local maintenance state.
+
+    :transition GlobalMaintenance:
+    :transition UnknownLocalVmState:
+    :transition EngineStop:
+    :transition EngineMigratingAway:
     """
     @check_global_maintenance(GlobalMaintenance)
     @check_local_vm_unknown(UnknownLocalVmState)
@@ -315,6 +338,15 @@ class EngineUp(EngineState):
     """
     When the engine is up and running locally, this state is used
     to monitor it.
+
+    :transition GlobalMaintenance:
+    :transition UnknownLocalVmState:
+    :transition LocalMaintenanceMigrateVm:
+    :transition EngineUnexpectedlyDown:
+    :transition EngineMigratingAway:
+    :transition EngineStop:
+    :transition EngineUpBadHealth:
+    :transition:
     """
     def _penalize_memory(self, vm_mem, lm, logger, score, score_cfg):
         # if the vm is up, do not check memory usage
@@ -363,6 +395,13 @@ class EngineDown(EngineState):
     This state is used when the engine is running elsewhere and the local
     host has nothing to do except wait for the engine host to become
     bad.
+
+    :transition GlobalMaintenance:
+    :transition UnknownLocalVmState:
+    :transition LocalMaintenance:
+    :transition EngineUp:
+    :transition:
+    :transition EngineStart:
     """
     @check_global_maintenance(GlobalMaintenance)
     @check_local_vm_unknown(UnknownLocalVmState)
@@ -420,6 +459,12 @@ class EngineForceStop(EngineState):
     """
     This state is used to force-stop the local VM. Used only
     if the regular stop procedure did not finish on time.
+
+    :transition GlobalMaintenance:
+    :transition LocalMaintenance:
+    :transition UnknownLocalVmState:
+    :transition EngineDown:
+    :transition ReinitializeFSM:
     """
     @check_global_maintenance(GlobalMaintenance)
     @check_local_maintenance(LocalMaintenance)
@@ -441,6 +486,13 @@ class EngineStop(EngineState):
     This state is responsible for stopping the local VM in preparation
     of starting it elsewhere. If the stop action takes too long, it falls
     back to EngineForceStop.
+
+    :transition GlobalMaintenance:
+    :transition LocalMaintenance:
+    :transition UnknownLocalVmState:
+    :transition EngineForceStop:
+    :transition:
+    :transition ReinitializeFSM:
     """
     @check_global_maintenance(GlobalMaintenance)
     @check_local_maintenance(LocalMaintenance)
@@ -485,6 +537,9 @@ class EngineUpBadHealth(EngineUp):
     the VM is UP and the engine does not report healthy state.
     If the engine stays in this state too long, the VM is stopped and
     started somewhere else.
+
+    :transition EngineStop:
+    :transitions_from EngineUp:
     """
     @check_timeout(EngineStop, constants.ENGINE_BAD_HEALTH_TIMEOUT_SECS)
     def consume(self, fsm, new_data, logger):
@@ -520,6 +575,13 @@ class EngineUnexpectedlyDown(EngineState):
     score to effectively move it to another host. This also serves as a
     shortcut for the user to start host maintenance mode, though it still
     should be set manually lest the score recover after a timeout.
+
+    :transition GlobalMaintenance:
+    :transition UnknownLocalVmState:
+    :transition LocalMaintenance:
+    :transition EngineDown:
+    :transition EngineUp:
+    :transition:
     """
 
     @check_global_maintenance(GlobalMaintenance)
@@ -577,6 +639,12 @@ class EngineUnexpectedlyDown(EngineState):
 class EngineStart(EngineState):
     """
     This state is responsible for starting the VM on the local machine.
+
+    :transition GlobalMaintenance:
+    :transition UnknownLocalVmState:
+    :transition LocalMaintenance:
+    :transition EngineUp:
+    :transition EngineDown:
     """
     @check_global_maintenance(GlobalMaintenance)
     @check_local_vm_unknown(UnknownLocalVmState)
@@ -605,6 +673,12 @@ class EngineMigratingAway(EngineState):
     """
     This state is responsible for monitoring a migration of the engine
     VM to some other machine.
+
+    :transition GlobalMaintenance:
+    :transition UnknownLocalVmState:
+    :transition:
+    :transition EngineDown:
+    :transition ReinitializeFSM:
     """
     def collect(self, fsm, new_data, logger):
         """

@@ -10,6 +10,9 @@ from state_data import HostedEngineData, StatsData
 
 
 class StartState(BaseState):
+    """
+    :transition ReinitializeFSM:
+    """
     def consume(self, fsm, new_data, logger):
         return ReinitializeFSM(new_data)
 
