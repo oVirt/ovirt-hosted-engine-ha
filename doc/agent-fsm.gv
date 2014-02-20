@@ -1,3 +1,34 @@
+//  <module 'ovirt_hosted_engine_ha.agent.state_machine' from '/home/msivak/Work/ovirt-hosted-engine-ha/ovirt_hosted_engine_ha/agent/state_machine.pyc'>
+//  <class 'ovirt_hosted_engine_ha.lib.fsm.machine.BaseFSM'>
+// skip
+//  <class 'ovirt_hosted_engine_ha.lib.fsm.machine.BaseState'>
+//  <class 'ovirt_hosted_engine_ha.agent.state_machine.EngineStateMachine'>
+// skip
+//  <class 'ovirt_hosted_engine_ha.agent.state_data.HostedEngineData'>
+// skip
+//  <class 'ovirt_hosted_engine_ha.agent.states.ReinitializeFSM'>
+//  <class 'ovirt_hosted_engine_ha.agent.state_machine.StartState'>
+//  <class 'ovirt_hosted_engine_ha.agent.state_data.StatsData'>
+// skip
+//  <module 'ovirt_hosted_engine_ha.agent.states' from '/home/msivak/Work/ovirt-hosted-engine-ha/ovirt_hosted_engine_ha/agent/states.pyc'>
+//  <class 'ovirt_hosted_engine_ha.lib.fsm.machine.BaseFSM'>
+// skip
+//  <class 'ovirt_hosted_engine_ha.lib.fsm.machine.BaseState'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineDown'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineForceStop'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineMigratingAway'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineStart'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineState'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineStop'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineUnexpectedlyDown'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineUp'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineUpBadHealth'>
+// copy rule EngineUp -> EngineUpBadHealth
+//  <class 'ovirt_hosted_engine_ha.agent.states.GlobalMaintenance'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.LocalMaintenance'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.LocalMaintenanceMigrateVm'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.ReinitializeFSM'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.UnknownLocalVmState'>
 /**
  * This file contains the source for a graphviz FSM diagram of the HA agent
  * state machine.  To create an image, fsm.png in this case, run the following:
@@ -10,35 +41,74 @@
  */
 
 digraph finite_state_machine {
-    ranksep = 0.3;
-    node [shape = doublecircle]; ENTRY;
-    node [shape = circle]; OFF START ON STOP MIGRATE;
-
-    ENTRY -> OFF [ label = "VM down locally" ];
-    ENTRY -> ON [ label = "VM up  \nlocally  " ];
-
-    OFF -> OFF [ label = "VM down locally" ];
-    OFF -> ON [ label = "VM unexpectedly  \nrunning locally  " ];
-    OFF -> START [ label = "VM down  \nglobally, host has  \nhighest score  " ];
-    OFF -> MAINTENANCE [ label = "Maintenance\nmode enabled" ];
-
-    START -> OFF [ label = "VM startup  \nfailed  " ];
-    START -> ON [ label = "VM powered on" ];
-
-    ON -> ON [ label = "VM up locally" ];
-    ON -> OFF [ label = "VM died  \nunexpectedly  " ];
-    ON -> MIGRATE [ label = "VM up locally,  \nother host has  \nmuch better score  " ];
-    ON -> STOP [ label = "VM timed out  \nwith bad health  \nstatus  " ];
-    ON -> MAINTENANCE [ label = "Maintenance\nmode enabled" ];
-
-    STOP -> STOP [ label = "VM shutdown\nin progress" ];
-    STOP -> OFF [ label = "VM shutdown\nsuccessful" ];
-    STOP -> ENTRY [ label = "VM failed to stop,\nunknown state" ];
-
-    MIGRATE -> MIGRATE [ label = "VM migration\nin progress" ];
-    MIGRATE -> OFF [ label = "VM migration\nsuccessful" ];
-    MIGRATE -> STOP [ label = "VM migration\nfailed" ];
-
-    MAINTENANCE -> MAINTENANCE [ label = "Maintenance\nmode enabled" ];
-    MAINTENANCE -> ENTRY [ label = "Maintenance\nmode disabled" ];
+ranksep = 0.5;
+node [shape = doublecircle]; StartState;
+node [shape = circle]; EngineMigratingAway LocalMaintenanceMigrateVm EngineStop EngineStart ReinitializeFSM GlobalMaintenance UnknownLocalVmState EngineUp EngineDown LocalMaintenance EngineUpBadHealth EngineUnexpectedlyDown EngineForceStop ;
+EngineMigratingAway -> EngineMigratingAway [ label = "" ];
+EngineMigratingAway -> EngineDown [ label = "" ];
+EngineMigratingAway -> GlobalMaintenance [ label = "" ];
+EngineMigratingAway -> UnknownLocalVmState [ label = "" ];
+EngineMigratingAway -> ReinitializeFSM [ label = "" ];
+LocalMaintenanceMigrateVm -> EngineStop [ label = "" ];
+LocalMaintenanceMigrateVm -> GlobalMaintenance [ label = "" ];
+LocalMaintenanceMigrateVm -> UnknownLocalVmState [ label = "" ];
+LocalMaintenanceMigrateVm -> EngineMigratingAway [ label = "" ];
+EngineStop -> EngineStop [ label = "" ];
+EngineStop -> ReinitializeFSM [ label = "" ];
+EngineStop -> GlobalMaintenance [ label = "" ];
+EngineStop -> UnknownLocalVmState [ label = "" ];
+EngineStop -> LocalMaintenance [ label = "" ];
+EngineStop -> EngineForceStop [ label = "" ];
+EngineStart -> EngineDown [ label = "" ];
+EngineStart -> GlobalMaintenance [ label = "" ];
+EngineStart -> UnknownLocalVmState [ label = "" ];
+EngineStart -> EngineUp [ label = "" ];
+EngineStart -> LocalMaintenance [ label = "" ];
+ReinitializeFSM -> EngineDown [ label = "" ];
+ReinitializeFSM -> GlobalMaintenance [ label = "" ];
+ReinitializeFSM -> UnknownLocalVmState [ label = "" ];
+ReinitializeFSM -> EngineUp [ label = "" ];
+ReinitializeFSM -> LocalMaintenance [ label = "" ];
+GlobalMaintenance -> ReinitializeFSM [ label = "" ];
+GlobalMaintenance -> GlobalMaintenance [ label = "" ];
+GlobalMaintenance -> LocalMaintenance [ label = "" ];
+UnknownLocalVmState -> GlobalMaintenance [ label = "" ];
+UnknownLocalVmState -> UnknownLocalVmState [ label = "" ];
+UnknownLocalVmState -> LocalMaintenance [ label = "" ];
+EngineUp -> EngineMigratingAway [ label = "" ];
+EngineUp -> GlobalMaintenance [ label = "" ];
+EngineUp -> EngineUnexpectedlyDown [ label = "" ];
+EngineUp -> LocalMaintenanceMigrateVm [ label = "" ];
+EngineUp -> UnknownLocalVmState [ label = "" ];
+EngineUp -> EngineUp [ label = "" ];
+EngineUp -> EngineUpBadHealth [ label = "" ];
+EngineUp -> EngineStop [ label = "" ];
+StartState -> ReinitializeFSM [ label = "" ];
+EngineDown -> EngineStart [ label = "" ];
+EngineDown -> GlobalMaintenance [ label = "" ];
+EngineDown -> UnknownLocalVmState [ label = "" ];
+EngineDown -> EngineUp [ label = "" ];
+EngineDown -> EngineDown [ label = "" ];
+EngineDown -> LocalMaintenance [ label = "" ];
+LocalMaintenance -> ReinitializeFSM [ label = "" ];
+LocalMaintenance -> LocalMaintenance [ label = "" ];
+EngineUpBadHealth -> EngineMigratingAway [ label = "" ];
+EngineUpBadHealth -> LocalMaintenanceMigrateVm [ label = "" ];
+EngineUpBadHealth -> EngineStop [ label = "" ];
+EngineUpBadHealth -> GlobalMaintenance [ label = "" ];
+EngineUpBadHealth -> UnknownLocalVmState [ label = "" ];
+EngineUpBadHealth -> EngineUp [ label = "" ];
+EngineUpBadHealth -> EngineUpBadHealth [ label = "" ];
+EngineUpBadHealth -> EngineUnexpectedlyDown [ label = "" ];
+EngineUnexpectedlyDown -> EngineUnexpectedlyDown [ label = "" ];
+EngineUnexpectedlyDown -> GlobalMaintenance [ label = "" ];
+EngineUnexpectedlyDown -> UnknownLocalVmState [ label = "" ];
+EngineUnexpectedlyDown -> EngineUp [ label = "" ];
+EngineUnexpectedlyDown -> EngineDown [ label = "" ];
+EngineUnexpectedlyDown -> LocalMaintenance [ label = "" ];
+EngineForceStop -> EngineDown [ label = "" ];
+EngineForceStop -> ReinitializeFSM [ label = "" ];
+EngineForceStop -> GlobalMaintenance [ label = "" ];
+EngineForceStop -> UnknownLocalVmState [ label = "" ];
+EngineForceStop -> LocalMaintenance [ label = "" ];
 }

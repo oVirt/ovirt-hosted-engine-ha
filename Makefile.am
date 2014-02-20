@@ -89,3 +89,8 @@ maintainer-clean-local:
 	sed '/^$$/d' "$(srcdir)/m4/.gitignore" | while read f; do \
 		rm -f $(srcdir)/m4/$$f; \
 	done
+
+fsm:
+	PYTHONPATH=. python build/build-aux/gen_gv.py > doc/agent-fsm.gv
+	dot doc/agent-fsm.gv -Tpng -o doc/agent-fsm.png
+
