@@ -737,7 +737,7 @@ class HostedEngine(object):
                 method='online',
                 src='localhost',
                 dst=hostname,
-                )
+            )
             return True
         except Exception:
             self._log.error("Migration to host %s (id %d) failed to start",
@@ -757,7 +757,7 @@ class HostedEngine(object):
                 use_ssl,
                 'migrateStatus',
                 vm_id,
-                )
+            )
         except Exception:
             # Log the exception; the failure is handled below
             self._log.error("Failed to migrate", exc_info=True)
