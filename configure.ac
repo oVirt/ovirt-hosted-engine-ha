@@ -1,6 +1,6 @@
 dnl
 dnl ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-dnl Copyright (C) 2013 Red Hat, Inc.
+dnl Copyright (C) 2013-2014 Red Hat, Inc.
 dnl
 dnl This library is free software; you can redistribute it and/or
 dnl modify it under the terms of the GNU Lesser General Public
@@ -20,14 +20,14 @@ AC_PREREQ(2.60)
 
 define([VERSION_MAJOR], [1])
 define([VERSION_MINOR], [1])
-define([VERSION_FIX], [0])
+define([VERSION_FIX], [1])
 define([VERSION_NUMBER], VERSION_MAJOR[.]VERSION_MINOR[.]VERSION_FIX)
-define([VERSION_RELEASE], [1])
-define([VERSION_SUFFIX], [])
+define([VERSION_RELEASE], [0.0])
+define([VERSION_SUFFIX], [master])
 
-AC_INIT([ovirt-hosted-engine-ha], VERSION_NUMBER)
+AC_INIT([ovirt-hosted-engine-ha], VERSION_NUMBER[-]VERSION_RELEASE[.]VERSION_SUFFIX)
 PACKAGE_RPM_VERSION="VERSION_NUMBER"
-PACKAGE_RPM_RELEASE="VERSION_RELEASE"
+PACKAGE_RPM_RELEASE="VERSION_RELEASE.VERSION_SUFFIX"
 AC_SUBST([PACKAGE_RPM_VERSION])
 AC_SUBST([PACKAGE_RPM_RELEASE])
 
