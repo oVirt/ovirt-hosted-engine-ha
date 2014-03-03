@@ -13,7 +13,9 @@ class FSMLoggerAdapter(logging.LoggerAdapter):
     """
 
     def __init__(self, logger, fsm):
-        super(FSMLoggerAdapter, self).__init__(logger, None)
+        # super cannot be used here because Python 2.6
+        # does not derive logging classes from object
+        logging.LoggerAdapter.__init__(self, logger, None)
         self.fsm = fsm
 
     def process(self, msg, kwargs):
