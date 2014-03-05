@@ -193,6 +193,9 @@ exit 0
 
 
 %changelog
+* Wed Mar 05 2014 Martin Sivak <msivak@redhat.com> - 1.1.1-1
+- Fix for python 2.6 environment
+
 * Mon Feb 24 2014 Sandro Bonazzola <sbonazzo@redhat.com> - 1.1.1-0.0.master
 - 1.1.1-0.0.master
 
