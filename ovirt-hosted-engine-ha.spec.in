@@ -39,7 +39,7 @@ Version:        @PACKAGE_RPM_VERSION@
 Release:        @PACKAGE_RPM_RELEASE@%{?release_suffix}%{?dist}
 License:        LGPLv2+
 URL:            http://www.ovirt.org
-Source:         http://resources.ovirt.org/releases/nightly/src/%{name}-%{package_version}.tar.gz
+Source:         http://resources.ovirt.org/releases/stable/src/%{name}-%{package_version}.tar.gz
 Group:          Applications/System
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -190,6 +190,9 @@ exit 0
 
 
 %changelog
+* Mon Mar 10 2014 Sandro Bonazzola <sbonazzo@redhat.com> - 1.0.0-1
+- 1.0.0-1
+
 * Wed Dec 18 2013 Greg Padgett <gpadgett@redhat.com> - 1.0.0-0.1.beta3
 - 1.0.0-0.1.beta3
 
