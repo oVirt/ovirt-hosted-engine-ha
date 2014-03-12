@@ -22,6 +22,11 @@ MAINTAINERCLEANFILES = \
 	$(NULL)
 
 dist_noinst_DATA = \
+	$(srcdir)/d3.dependencyWheel.js \
+	$(srcdir)/d3.v3.min.js \
 	$(srcdir)/agent-fsm.gv \
+	$(srcdir)/agent-fsm.html \
 	$(srcdir)/README.versioning \
 	$(NULL)
+
+

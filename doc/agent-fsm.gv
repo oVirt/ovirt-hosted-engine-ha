@@ -1,4 +1,4 @@
-//  <module 'ovirt_hosted_engine_ha.agent.state_machine' from '/home/msivak/Work/ovirt-hosted-engine-ha/ovirt_hosted_engine_ha/agent/state_machine.pyc'>
+//  <module 'ovirt_hosted_engine_ha.agent.state_machine' from '/home/msivak/Work/ovirt-hosted-engine-ha/ovirt_hosted_engine_ha/agent/state_machine.py'>
 //  <class 'ovirt_hosted_engine_ha.lib.fsm.machine.BaseFSM'>
 // skip
 //  <class 'ovirt_hosted_engine_ha.lib.fsm.machine.BaseState'>
@@ -10,7 +10,7 @@
 //  <class 'ovirt_hosted_engine_ha.agent.state_machine.StartState'>
 //  <class 'ovirt_hosted_engine_ha.agent.state_data.StatsData'>
 // skip
-//  <module 'ovirt_hosted_engine_ha.agent.states' from '/home/msivak/Work/ovirt-hosted-engine-ha/ovirt_hosted_engine_ha/agent/states.pyc'>
+//  <module 'ovirt_hosted_engine_ha.agent.states' from '/home/msivak/Work/ovirt-hosted-engine-ha/ovirt_hosted_engine_ha/agent/states.py'>
 //  <class 'ovirt_hosted_engine_ha.lib.fsm.machine.BaseFSM'>
 // skip
 //  <class 'ovirt_hosted_engine_ha.lib.fsm.machine.BaseState'>
@@ -72,6 +72,7 @@ ReinitializeFSM -> LocalMaintenance [ label = "" ];
 GlobalMaintenance -> ReinitializeFSM [ label = "" ];
 GlobalMaintenance -> GlobalMaintenance [ label = "" ];
 GlobalMaintenance -> LocalMaintenance [ label = "" ];
+UnknownLocalVmState -> ReinitializeFSM [ label = "" ];
 UnknownLocalVmState -> GlobalMaintenance [ label = "" ];
 UnknownLocalVmState -> UnknownLocalVmState [ label = "" ];
 UnknownLocalVmState -> LocalMaintenance [ label = "" ];

@@ -91,6 +91,7 @@ maintainer-clean-local:
 	done
 
 fsm:
-	PYTHONPATH=. python build/build-aux/gen_gv.py > doc/agent-fsm.gv
+	PYTHONPATH=. python build/gen_gv.py > doc/agent-fsm.gv
 	dot doc/agent-fsm.gv -Tpng -o doc/agent-fsm.png
+	PYTHONPATH=. python build/gen_html.py > doc/agent-fsm.html
 

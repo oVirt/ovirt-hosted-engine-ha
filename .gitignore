@@ -27,6 +27,8 @@
 /configure
 /doc/Makefile
 /doc/Makefile.in
+/doc/lib/Makefile
+/doc/lib/Makefile.in
 /doc/agent-fsm.png
 /ovirt_hosted_engine_ha/Makefile
 /ovirt_hosted_engine_ha/Makefile.in

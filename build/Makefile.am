@@ -20,3 +20,9 @@
 MAINTAINERCLEANFILES = \
 	$(srcdir)/Makefile.in \
 	$(NULL)
+
+dist_noinst_DATA = \
+	gen_gv.py \
+	gen_html.py \
+	$(NULL)
+

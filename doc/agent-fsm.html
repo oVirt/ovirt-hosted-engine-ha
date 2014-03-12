@@ -1,0 +1,55 @@
+<!--
+//  <module 'ovirt_hosted_engine_ha.agent.state_machine' from '/home/msivak/Work/ovirt-hosted-engine-ha/ovirt_hosted_engine_ha/agent/state_machine.pyc'>
+//  <class 'ovirt_hosted_engine_ha.lib.fsm.machine.BaseFSM'>
+// skip
+//  <class 'ovirt_hosted_engine_ha.lib.fsm.machine.BaseState'>
+//  <class 'ovirt_hosted_engine_ha.agent.state_machine.EngineStateMachine'>
+// skip
+//  <class 'ovirt_hosted_engine_ha.agent.state_data.HostedEngineData'>
+// skip
+//  <class 'ovirt_hosted_engine_ha.agent.states.ReinitializeFSM'>
+//  <class 'ovirt_hosted_engine_ha.agent.state_machine.StartState'>
+//  <class 'ovirt_hosted_engine_ha.agent.state_data.StatsData'>
+// skip
+//  <module 'ovirt_hosted_engine_ha.agent.states' from '/home/msivak/Work/ovirt-hosted-engine-ha/ovirt_hosted_engine_ha/agent/states.pyc'>
+//  <class 'ovirt_hosted_engine_ha.lib.fsm.machine.BaseFSM'>
+// skip
+//  <class 'ovirt_hosted_engine_ha.lib.fsm.machine.BaseState'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineDown'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineForceStop'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineMigratingAway'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineStart'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineState'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineStop'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineUnexpectedlyDown'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineUp'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.EngineUpBadHealth'>
+// copy rule EngineUp -> EngineUpBadHealth
+//  <class 'ovirt_hosted_engine_ha.agent.states.GlobalMaintenance'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.LocalMaintenance'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.LocalMaintenanceMigrateVm'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.ReinitializeFSM'>
+//  <class 'ovirt_hosted_engine_ha.agent.states.UnknownLocalVmState'>
+
+//-->
+<html>
+<head>
+<title>Hosted Engine HA agent state machine transitions</title>
+<script src="d3.v3.min.js" charset="utf-8"></script>
+<script src="d3.dependencyWheel.js"></script>
+</head>
+<body>
+<div id='graph'>
+</div>
+<script language='javascript'>
+var data = {"packageNames": ["EngineMigratingAway", "GlobalMaintenance", "EngineStop", "EngineStart", "ReinitializeFSM", "LocalMaintenanceMigrateVm", "UnknownLocalVmState", "EngineUp", "StartState", "EngineDown", "LocalMaintenance", "EngineUpBadHealth", "EngineForceStop", "EngineUnexpectedlyDown"], "matrix": [[1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0], [0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0], [0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0], [0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0], [0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0], [1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0], [1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1], [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0], [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0], [1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1], [0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0], [0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1]]};
+var chart = d3.chart.dependencyWheel()
+  .width(700)    // also used for height, since the wheel is in a a square
+  .margin(150)   // used to display package names
+  .padding(.02); // separating groups in the wheel
+d3.select('#graph')
+  .datum(data)
+  .call(chart);
+</script>
+</body>
+</html>
