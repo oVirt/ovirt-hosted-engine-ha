@@ -25,21 +25,46 @@ import threading
 
 from ..env import constants
 from ..lib.exceptions import RequestError
-from ..lib import util
+from ..lib.storage_backends import FilesystemBackend, BlockBackend
 
 
 class StorageBroker(object):
+
+    DOMAINTYPES = {
+        "fs": FilesystemBackend,
+        "block": BlockBackend
+    }
+
     def __init__(self):
         self._log = logging.getLogger("%s.StorageBroker" % __name__)
         self._storage_access_lock = threading.Lock()
+        self._backends = {}
 
-    def get_all_stats_for_service_type(self, storage_dir, service_type):
+    def set_storage_domain(self, client, sd_type, **kwargs):
+        """
+        The first thing any new broker client should do is to configure
+        the storage it wants to use. Client is arbitrary hashable structure,
+        but usually is (host, ip) of the agent that opened the connection
+        to the broker. The client value is provided by the broker logic.
+
+        :param sd_type: The type of backend the clients want to use
+        :type sd_type: Currently the only supported values are "fs" and "block"
+        """
+        if client in self._backends:
+            self._backends[client].disconnect()
+            del self._backends[client]
+        self._backends[client] = self.DOMAINTYPES[sd_type](**kwargs)
+        self._backends[client].connect()
+        return str(id(self._backends[client]))
+
+    def get_all_stats_for_service_type(self, client, service_type):
         """
         Reads all files in storage_dir for the given service_type, returning a
         space-delimited string of "<host_id>=<hex data>" for each host.
         """
-        d = self.get_raw_stats_for_service_type(storage_dir, service_type)
+        d = self.get_raw_stats_for_service_type(client, service_type)
         str_list = []
+
         for host_id in sorted(d.keys()):
             hex_data = base64.b16encode(d.get(host_id))
             self._log.debug("Read for host id %d: %s",
@@ -47,7 +72,7 @@ class StorageBroker(object):
             str_list.append("{0}={1}".format(host_id, hex_data))
         return ' '.join(str_list)
 
-    def get_raw_stats_for_service_type(self, storage_dir, service_type):
+    def get_raw_stats_for_service_type(self, client, service_type):
         """
         Reads all files in storage_dir for the given service_type, returning a
         dict of "host_id: data" for each host
@@ -55,9 +80,14 @@ class StorageBroker(object):
         Note: this method is called from the client as well as from
         self.get_all_stats_for_service_type().
         """
-        self._log.debug("Getting stats for service %s from %s",
-                        service_type, storage_dir)
-        path = os.path.join(storage_dir, self._get_filename(service_type))
+        try:
+            path, offset = self._backends[client].filename(service_type)
+            self._log.debug("Getting stats for service %s from %s with"
+                            " offset %d",
+                            service_type, path, offset)
+        except KeyError:
+            self._log.error("No storage configured for %s", client)
+            return {}
 
         # Use direct I/O if possible, to avoid the local filesystem cache
         # from hiding metadata file updates from other hosts.  For NFS, we
@@ -72,6 +102,7 @@ class StorageBroker(object):
         try:
             with self._storage_access_lock:
                 f = os.open(path, direct_flag | os.O_RDONLY)
+                os.lseek(f, offset, os.SEEK_SET)
                 data = os.read(f, read_size)
                 os.close(f)
         except IOError as e:
@@ -83,7 +114,7 @@ class StorageBroker(object):
                      for i in range(0, len(data), bs)
                      if data[i] != '\0'))
 
-    def put_stats(self, storage_dir, service_type, host_id, data):
+    def put_stats(self, client, service_type, host_id, data):
         """
         Writes to the storage in file <storage_dir>/<service-type>.metadata,
         storing the hex string data (e.g. 01bc4f[...]) in binary format.
@@ -96,18 +127,21 @@ class StorageBroker(object):
         the file after the write.
         """
         host_id = int(host_id)
-        path = os.path.join(storage_dir, self._get_filename(service_type))
-        offset = host_id * constants.HOST_SEGMENT_BYTES
-        self._log.debug("Writing stats for service %s, host id %d"
-                        " to file %s, offset %d",
-                        service_type, host_id, path, offset)
+        try:
+            path, offset = self._backends[client].filename(service_type)
+            offset += host_id * constants.HOST_SEGMENT_BYTES
+            self._log.debug("Writing stats for service %s, host id %d"
+                            " to file %s, offset %d",
+                            service_type, host_id, path, offset)
+        except KeyError:
+            self._log.error("No storage configured for %s", client)
+            return None
 
         byte_data = base64.b16decode(data)
         byte_data = byte_data.ljust(constants.HOST_SEGMENT_BYTES, '\0')
         with self._storage_access_lock:
             f = None
             try:
-                util.mkdir_recursive(storage_dir)
                 f = io.open(path, "r+b")
                 f.seek(offset, os.SEEK_SET)
                 f.write(byte_data)
@@ -122,7 +156,27 @@ class StorageBroker(object):
 
         self._log.debug("Finished")
 
-    def _get_filename(self, service_type):
-        # Nothing special yet
-        # FIXME should escape special chars before production deployment
-        return "{0}.{1}".format(service_type, constants.MD_EXTENSION)
+    def get_service_path(self, client, service):
+        """
+        Returns the full path to a file or device that holds the data
+        for specified service.
+
+        Client ID is provided by the broker logic.
+        """
+        try:
+            return self._backends[client].filename(service)[0]
+        except KeyError:
+            self._log.error("No storage configured for %s", client)
+            return ""
+
+    def cleanup(self, client):
+        """
+        After client (like ha_agent) disconnects the storage backend
+        needs to be freed properly.
+
+        Client ID is provided by the broker logic.
+        """
+        if client in self._backends:
+            self._log.debug("Cleaning up after client %s", client)
+            self._backends[client].disconnect()
+            del self._backends[client]

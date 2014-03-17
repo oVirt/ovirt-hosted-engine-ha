@@ -153,8 +153,6 @@ class HostedEngine(object):
         })
 
         self._sd_path = None
-        self._metadata_path = None
-
         self._sanlock_initialized = False
 
     @property
@@ -295,8 +293,12 @@ class HostedEngine(object):
         error_count = 0
 
         # make sure everything is initialized
-        self._initialize_broker()
+        # VDSM has to be initialized first, because it prepares the
+        # storage domain connection
+        # Broker then initializes the pieces needed for metadata and leases
+        # which are then used by sanlock
         self._initialize_vdsm()
+        self._initialize_broker()
         self._initialize_sanlock()
         self._initialize_domain_monitor()
 
@@ -312,8 +314,8 @@ class HostedEngine(object):
 
             try:
                 # make sure everything is still initialized
-                self._initialize_broker()
                 self._initialize_vdsm()
+                self._initialize_broker()
                 self._initialize_sanlock()
                 self._initialize_domain_monitor()
 
@@ -383,6 +385,14 @@ class HostedEngine(object):
                 raise
             else:
                 self._local_monitors[m['field']] = lm
+
+        # register storage domain info
+        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
+        dom_type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
+        self._broker.set_storage_domain("fs",
+                                        sd_uuid=sd_uuid,
+                                        dom_type=dom_type)
+
         self._log.info("Broker initialized, all submonitors started")
 
     def _initialize_vdsm(self):
@@ -440,10 +450,8 @@ class HostedEngine(object):
 
     def _initialize_sanlock(self):
         self._cond_start_service('sanlock')
-
-        self._metadata_dir = env_path.get_metadata_path(self._config)
-        lease_file = os.path.join(self._metadata_dir,
-                                  constants.SERVICE_TYPE + '.lockspace')
+        lease_file = self._broker.get_service_path(
+            constants.SERVICE_TYPE + constants.LOCKSPACE_EXTENSION)
         if not self._sanlock_initialized:
             lvl = logging.INFO
         else:
@@ -612,15 +620,13 @@ class HostedEngine(object):
 
     def _push_to_storage(self, blocks):
         self._broker.put_stats_on_storage(
-            self._metadata_dir,
-            constants.SERVICE_TYPE,
+            constants.SERVICE_TYPE + constants.MD_EXTENSION,
             self._config.get(config.ENGINE, config.HOST_ID),
             blocks)
 
     def collect_stats(self):
         all_stats = self._broker.get_stats_from_storage(
-            self._metadata_dir,
-            constants.SERVICE_TYPE)
+            constants.SERVICE_TYPE + constants.MD_EXTENSION)
 
         data = {
             # Flag is set if the local agent discovers metadata too new for it
@@ -644,8 +650,7 @@ class HostedEngine(object):
         }
 
         all_stats = self._broker.get_stats_from_storage(
-            self._metadata_dir,
-            constants.SERVICE_TYPE)
+            constants.SERVICE_TYPE + constants.MD_EXTENSION)
 
         # host_id 0 is a special case, representing global metadata
         if all_stats and 0 in all_stats:

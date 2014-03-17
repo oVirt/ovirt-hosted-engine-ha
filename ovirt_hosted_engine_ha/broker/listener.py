@@ -162,7 +162,9 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
                 data = util.socket_readline(self.request, self._log)
                 self._log.debug("Input: %s", data)
                 try:
-                    response = "success " + self._dispatch(data)
+                    ret = self._dispatch(threading.current_thread().ident,
+                                         data)
+                    response = "success " + ret
                 except RequestError as e:
                     response = "failure " + format(str(e))
                 self._log.debug("Response: %s", response)
@@ -210,6 +212,11 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
                                 + "%d - %s", id, str(e))
         self._remove_monitor_conn_entry()
 
+        # cleanup storage
+        with self.server.sp_listener.storage_broker_instance_access_lock:
+            self.server.sp_listener.storage_broker_instance \
+                .cleanup(threading.current_thread().ident)
+
         try:
             SocketServer.BaseRequestHandler.finish(self)
         except socket.error as e:
@@ -217,7 +224,7 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
                 self._log.error("Error while closing connection",
                                 exc_info=True)
 
-    def _dispatch(self, data):
+    def _dispatch(self, client, data):
         """
         Parses and dispatches a request to the appropriate subsystem.
 
@@ -228,7 +235,7 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
         """
         tokens = shlex.split(data)
         type = tokens.pop(0)
-        self._log.debug("Request type %s", type)
+        self._log.debug("Request type %s from %s", type, client)
 
         # TODO fix to be less procedural, e.g. dict of req_type=handler_func()
         if type == 'monitor':
@@ -258,14 +265,25 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
             options = self._get_options(tokens)
             with self.server.sp_listener.storage_broker_instance_access_lock:
                 stats = self.server.sp_listener.storage_broker_instance \
-                    .get_all_stats_for_service_type(**options)
+                    .get_all_stats_for_service_type(client, **options)
             return stats
         elif type == 'put-stats':
             options = self._get_options(tokens)
             with self.server.sp_listener.storage_broker_instance_access_lock:
                 self.server.sp_listener.storage_broker_instance \
-                    .put_stats(**options)
+                    .put_stats(client, **options)
             return "ok"
+        elif type == 'service-path':
+            service = tokens.pop(0)
+            with self.server.sp_listener.storage_broker_instance_access_lock:
+                return self.server.sp_listener.storage_broker_instance \
+                    .get_service_path(client, service)
+        elif type == 'set-storage-domain':
+            sd_type = tokens.pop(0)
+            options = self._get_options(tokens)
+            with self.server.sp_listener.storage_broker_instance_access_lock:
+                return self.server.sp_listener.storage_broker_instance \
+                    .set_storage_domain(client, sd_type, **options)
         elif type == 'notify':
             options = self._get_options(tokens)
             if notifications.notify(**options):

@@ -148,26 +148,53 @@ class BrokerLink(object):
         self._log.debug("Success, status %s", response)
         return response
 
-    def put_stats_on_storage(self, storage_dir, service_type, host_id, data):
+    def get_service_path(self, service):
+        request = "service-path {0}".format(service)
+        try:
+            response = self._checked_communicate(request)
+        except Exception as e:
+            self._log.error("Exception getting service path: %s", str(e))
+            raise RequestError("Failed to get service path: {0}"
+                               .format(str(e)))
+        self._log.debug("Success, service path %s", response)
+        return response
+
+    def set_storage_domain(self, sd_type, **options):
+        request = ["set-storage-domain {0}".format(sd_type)]
+        for (k, v) in options.iteritems():
+            request.append("{0}={1}".format(k, str(v)))
+        request = " ".join(request)
+
+        try:
+            response = self._checked_communicate(request)
+        except Exception as e:
+            raise RequestError("Failed to set storage domain {0}, "
+                               "options {1}: {2}"
+                               .format(sd_type, options, e))
+
+        self._log.info("Success, id %s", response)
+        return response
+
+    def put_stats_on_storage(self, service_type, host_id, data):
         """
         Puts data on the shared storage according to the parameters.
         Data should be passed in as a string.
         """
-        self._log.debug("Storing blocks on storage at %s", storage_dir)
+        self._log.debug("Storing blocks on storage for %s", service_type)
         # broker expects blocks in hex format
         hex_data = base64.b16encode(data)
         request = ("put-stats"
-                   " storage_dir={0} service_type={1} host_id={2} data={3}"
-                   .format(storage_dir, service_type, host_id, hex_data))
+                   " service_type={0} host_id={1} data={2}"
+                   .format(service_type, host_id, hex_data))
         self._checked_communicate(request)
 
-    def get_stats_from_storage(self, storage_dir, service_type):
+    def get_stats_from_storage(self, service_type):
         """
         Returns data from the shared storage for all hosts of the specified
         service type.
         """
-        request = ("get-stats storage_dir={0} service_type={1}"
-                   .format(storage_dir, service_type))
+        request = ("get-stats service_type={0}"
+                   .format(service_type))
         result = self._checked_communicate(request)
 
         tokens = result.split()

@@ -18,13 +18,11 @@
 #
 
 import logging
-import os
 import time
 
 from ..agent import constants as agent_constants
 from ..env import config
 from ..env import constants
-from ..env import path
 from ..lib import brokerlink
 from ..lib import metadata
 from ..lib import util
@@ -81,13 +79,14 @@ class HAClient(object):
             self._config = config.Config()
         broker = brokerlink.BrokerLink()
         with broker.connection():
-            stats = broker.get_stats_from_storage(
-                path.get_metadata_path(self._config),
-                constants.SERVICE_TYPE)
+            self._configure_broker_conn(broker)
+            service = constants.SERVICE_TYPE+agent_constants.MD_EXTENSION
+            stats = broker.get_stats_from_storage(service)
 
         return self._parse_stats(stats, mode)
 
-    def get_all_stats_direct(self, dom_path, service_type, mode=StatModes.ALL):
+    def get_all_stats_direct(self, sd_uuid, dom_type, service_type,
+                             mode=StatModes.ALL):
         """
         Like get_all_stats(), but bypasses broker by directly accessing
         storage.
@@ -95,8 +94,9 @@ class HAClient(object):
         from ..broker import storage_broker
 
         sb = storage_broker.StorageBroker()
-        path = os.path.join(dom_path, constants.SD_METADATA_DIR)
-        stats = sb.get_raw_stats_for_service_type(path, service_type)
+        sb.set_storage_domain("client", "fs",
+                              sd_uuid=sd_uuid, dom_type=dom_type)
+        stats = sb.get_raw_stats_for_service_type("client", service_type)
 
         return self._parse_stats(stats, mode)
 
@@ -146,6 +146,15 @@ class HAClient(object):
             service_type,
             self.StatModes.HOST)
 
+    def _configure_broker_conn(self, broker):
+        if self._config is None:
+            self._config = config.Config()
+        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
+        dom_type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
+        broker.set_storage_domain("fs",
+                                  sd_uuid=sd_uuid,
+                                  dom_type=dom_type)
+
     def set_global_md_flag(self, flag, value):
         """
         Connects to HA broker and sets flags in global metadata, leaving
@@ -164,14 +173,11 @@ class HAClient(object):
         else:
             put_val = value
 
-        if self._config is None:
-            self._config = config.Config()
-
         broker = brokerlink.BrokerLink()
         with broker.connection():
-            all_stats = broker.get_stats_from_storage(
-                path.get_metadata_path(self._config),
-                constants.SERVICE_TYPE)
+            self._configure_broker_conn(broker)
+            service = constants.SERVICE_TYPE + agent_constants.MD_EXTENSION
+            all_stats = broker.get_stats_from_storage(service)
 
             global_stats = all_stats.get(0)
             if global_stats and len(global_stats):
@@ -183,8 +189,7 @@ class HAClient(object):
             md_dict[flag] = put_val
             block = metadata.create_global_metadata_from_dict(md_dict)
             broker.put_stats_on_storage(
-                path.get_metadata_path(self._config),
-                constants.SERVICE_TYPE,
+                constants.SERVICE_TYPE+agent_constants.MD_EXTENSION,
                 0,
                 block)
 
@@ -200,9 +205,9 @@ class HAClient(object):
         host_id = int(self._config.get(config.ENGINE, config.HOST_ID))
         broker = brokerlink.BrokerLink()
         with broker.connection():
-            stats = broker.get_stats_from_storage(
-                path.get_metadata_path(self._config),
-                constants.SERVICE_TYPE)
+            self._configure_broker_conn(broker)
+            service = constants.SERVICE_TYPE + agent_constants.MD_EXTENSION
+            stats = broker.get_stats_from_storage(service)
 
         score = 0
         if host_id in stats:
