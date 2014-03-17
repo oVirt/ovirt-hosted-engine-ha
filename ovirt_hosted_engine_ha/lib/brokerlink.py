@@ -185,17 +185,18 @@ class BrokerLink(object):
         On success, returns the result without the "success" prefix.
         """
         response = self._communicate(request)
-        parts = response.split(" ", 1)
-        if len(parts) > 1 and parts[0] == "success":
+        try:
+            status, message = response.split(" ", 1)
+        except ValueError:
+            status, message = response, ""
+
+        if status == "success":
             self._log.debug("Successful response from socket")
-            return parts[1]
+            return message
         else:
             self._log.debug("Failed response from socket")
-            if len(parts) > 1:
-                msg = parts[1]
-            else:
-                msg = response
-            raise RequestError("Request failed: {0}".format(msg))
+            raise RequestError("Request failed: {0}"
+                               .format(message or response))
 
     def _communicate(self, request):
         """
