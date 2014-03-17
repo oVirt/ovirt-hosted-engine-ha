@@ -31,6 +31,8 @@ dist_halib_PYTHON = \
 	exceptions.py \
 	log_filter.py \
 	metadata.py \
+	storage_backends.py \
+	storage_backends_test.py \
 	util.py \
 	vds_client.py \
 	$(NULL)
