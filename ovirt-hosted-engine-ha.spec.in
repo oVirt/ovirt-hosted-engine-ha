@@ -39,7 +39,7 @@ Version:        @PACKAGE_RPM_VERSION@
 Release:        @PACKAGE_RPM_RELEASE@%{?release_suffix}%{?dist}
 License:        LGPLv2+
 URL:            http://www.ovirt.org
-Source:         http://resources.ovirt.org/pub/ovirt-3.4-snapshot/src/%{name}-%{package_version}.tar.gz
+Source:         http://resources.ovirt.org/releases/stable/src/%{name}-%{package_version}.tar.gz
 Group:          Applications/System
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -193,6 +193,10 @@ exit 0
 
 
 %changelog
+* Tue Mar 18 2014 Sandro Bonazzola <sbonazzo@redhat.com> - 1.1.2-1
+- 1.1.2-1
+- Resolves: BZ#1075126
+
 * Wed Mar 05 2014 Martin Sivak <msivak@redhat.com> - 1.1.1-1
 - Fix for python 2.6 environment
 
