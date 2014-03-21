@@ -28,6 +28,7 @@ halibdir = $(engine_ha_libdir)/lib
 dist_halib_PYTHON = \
 	__init__.py \
 	brokerlink.py \
+	brokerlink_test.py \
 	exceptions.py \
 	log_filter.py \
 	metadata.py \
