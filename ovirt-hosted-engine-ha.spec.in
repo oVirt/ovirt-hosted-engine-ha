@@ -191,6 +191,9 @@ exit 0
 
 
 %changelog
+* Mon Mar 24 2014 Martin Sivak <msivak@redhat.com> - 1.2.0-0.0.master
+- New backend interface
+
 * Thu Dec 19 2013 Greg Padgett <gpadgett@redhat.com> - 1.1.0-0.0.master
 - New version after 1.0 branch
 
