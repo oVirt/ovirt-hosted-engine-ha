@@ -191,6 +191,9 @@ exit 0
 
 
 %changelog
+* Tue Mar 25 2014 Martin Sivak <msivak@redhat.com> - 1.2.1-0.0.master
+- Fix in haClient direct API
+
 * Mon Mar 24 2014 Martin Sivak <msivak@redhat.com> - 1.2.0-0.0.master
 - New backend interface
 

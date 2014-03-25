@@ -136,13 +136,14 @@ class HAClient(object):
         """
         return self.get_all_stats(self.StatModes.HOST)
 
-    def get_all_host_stats_direct(self, dom_path, service_type):
+    def get_all_host_stats_direct(self, sd_uuid, dom_type, service_type):
         """
         Like get_all_host_stats(), but bypasses broker by directly accessing
         storage.
         """
         return self.get_all_stats_direct(
-            dom_path,
+            sd_uuid,
+            dom_type,
             service_type,
             self.StatModes.HOST)
 
