@@ -267,6 +267,19 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
                 stats = self.server.sp_listener.storage_broker_instance \
                     .get_all_stats_for_service_type(client, **options)
             return stats
+        elif type == 'push-hosts-state':
+            options = self._get_options(tokens)
+            with self.server.sp_listener.storage_broker_instance_access_lock:
+                self.server.sp_listener.storage_broker_instance \
+                    .push_hosts_state(client, **options)
+            return "ok"
+        elif type == 'is-host-alive':
+            options = self._get_options(tokens)
+            with self.server.sp_listener.storage_broker_instance_access_lock:
+                alive_hosts = self.server.sp_listener.storage_broker_instance \
+                    .is_host_alive(client, **options)
+            # list of alive hosts in format <host_id>|<host_id>
+            return alive_hosts
         elif type == 'put-stats':
             options = self._get_options(tokens)
             with self.server.sp_listener.storage_broker_instance_access_lock:

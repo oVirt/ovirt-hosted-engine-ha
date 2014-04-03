@@ -18,7 +18,6 @@
 #
 
 import logging
-import time
 
 from ..agent import constants as agent_constants
 from ..env import config
@@ -69,6 +68,20 @@ class HAClient(object):
         self._log = logging.getLogger("%s.HAClient" % __name__)
         self._config = None
 
+    def _check_liveness_metadata(self, md, broker):
+        with broker.connection():
+            self._configure_broker_conn(broker)
+            service = constants.SERVICE_TYPE+agent_constants.MD_EXTENSION
+            md["live-data"] = broker.is_host_alive(service, md["host-id"])
+            self._log.debug("Is host '{0}' alive? -> '{1}'"
+                            .format(md["host-id"], md["live-data"]))
+
+        return md["live-data"]
+
+    def _check_liveness_for_stats(self, stats, broker):
+        for host_id in stats:
+            self._check_liveness_metadata(stats[host_id], broker)
+
     def get_all_stats(self, mode=StatModes.ALL):
         """
         Connects to HA broker to get global md and/or host stats, based on
@@ -83,7 +96,9 @@ class HAClient(object):
             service = constants.SERVICE_TYPE+agent_constants.MD_EXTENSION
             stats = broker.get_stats_from_storage(service)
 
-        return self._parse_stats(stats, mode)
+        stats = self._parse_stats(stats, mode)
+        self._check_liveness_for_stats(stats, broker)
+        return stats
 
     def get_all_stats_direct(self, sd_uuid, dom_type, service_type,
                              mode=StatModes.ALL):
@@ -219,8 +234,7 @@ class HAClient(object):
             else:
                 # Only report a non-zero score if the local host has had a
                 # recent update.
-                if (md['host-ts'] + agent_constants.HOST_ALIVE_TIMEOUT_SECS
-                        >= time.time()):
+                if self._check_liveness_metadata(md, broker):
                     score = md['score']
 
         return score

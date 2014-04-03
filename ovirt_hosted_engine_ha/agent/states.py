@@ -553,9 +553,15 @@ class EngineUpBadHealth(EngineUp):
         return super(EngineUpBadHealth, self).consume(fsm, new_data, logger)
 
     def score(self, logger):
+        # the timeout_start_time is None if the state just changed
+        if self.data.timeout_start_time:
+            time_str = time.ctime(self.data.timeout_start_time
+                                  + self.data.stats.time_epoch)
+        else:
+            time_str = time.ctime()
         # If engine has bad health status, let another host try
         logger.info('Score is 0 due to bad engine health at %s',
-                    time.ctime(self.data.timeout_start_time),
+                    time_str,
                     extra=log_filter.lf_args('score-health',
                                              self.LF_PENALTY_INT))
         return 0
@@ -621,8 +627,14 @@ class EngineUnexpectedlyDown(EngineState):
             return EngineUnexpectedlyDown(new_data)
 
     def score(self, logger):
+        if self.data.timeout_start_time:
+            time_str = time.ctime(self.data.timeout_start_time
+                                  + self.data.stats.time_epoch)
+        else:
+            time_str = time.ctime()
+
         logger.info('Score is 0 due to unexpected vm shutdown at %s',
-                    time.ctime(self.data.timeout_start_time),
+                    time_str,
                     extra=log_filter.lf_args('score-shutdown',
                                              self.LF_PENALTY_INT))
         return 0

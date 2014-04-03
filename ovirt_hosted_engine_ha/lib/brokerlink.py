@@ -188,6 +188,37 @@ class BrokerLink(object):
                    .format(service_type, host_id, hex_data))
         self._checked_communicate(request)
 
+    def put_hosts_state_on_storage(self, service_type, host_id, alive_hosts):
+        """
+        Broker expects list of alive hosts in format:
+        <host_id>|<host_id>
+        The broker adds it's own monotonic timestamp before saving it
+        """
+
+        # since we're reporting it we are alive ;)
+        _alive_hosts = [host_id] + alive_hosts
+        host_str = "|".join(str(host_id) for host_id in _alive_hosts)
+
+        self._log.debug("Updating live hosts list")
+        hex_data = base64.b16encode(host_str)
+        request = ("push-hosts-state"
+                   " service_type={0} data={1}"
+                   .format(service_type, hex_data))
+        self._checked_communicate(request)
+
+    def is_host_alive(self, service_type, host_id):
+        request = ("is-host-alive service_type={0}"
+                   .format(service_type))
+        response = self._checked_communicate(request)
+        if not response:
+            return False
+
+        host_list = map(int, base64.b16decode(response).split('|'))
+        self._log.debug("Alive hosts '{0}'".format(host_list))
+        self._log.debug("Is host '{0}' alive -> '{1}'"
+                        .format(host_id, host_id in host_list))
+        return host_id in host_list
+
     def get_stats_from_storage(self, service_type):
         """
         Returns data from the shared storage for all hosts of the specified
@@ -196,13 +227,13 @@ class BrokerLink(object):
         request = ("get-stats service_type={0}"
                    .format(service_type))
         result = self._checked_communicate(request)
-
         tokens = result.split()
         ret = {}
-        # broker returns "<host_id 1>=<hex data 1> [<host_id 2>=...]"
+        # result is in form: "<host_id 1>=<hex data 1> [<host_id 2>=...]"
         while tokens:
             (host_id, data) = tokens.pop(0).split('=', 1)
             ret[int(host_id)] = base64.b16decode(data)
+
         return ret
 
     def _checked_communicate(self, request):

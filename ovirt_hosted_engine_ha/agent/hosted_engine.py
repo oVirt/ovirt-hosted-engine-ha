@@ -332,6 +332,7 @@ class HostedEngine(object):
                 # publish the current state
                 blocks = self._generate_local_blocks(state)
                 self._push_to_storage(blocks)
+                self.update_hosts_state(state)
             except Exception as e:
                 self._log.warning("Error while monitoring engine: %s", str(e))
                 if not (isinstance(e, ex.DisconnectionError) or
@@ -585,6 +586,7 @@ class HostedEngine(object):
                 "|{host_id}|{score}|{engine_status}|{name}|{maintenance}"
                 .format(md_parse_vers=constants.METADATA_PARSE_VERSION,
                         md_feature_vers=constants.METADATA_FEATURE_VERSION,
+                        # system timestamp
                         ts_int=state.data.stats.collect_start,
                         host_id=state.data.stats.host_id,
                         score=score,
@@ -603,9 +605,11 @@ class HostedEngine(object):
                 .format(md_parse_vers=constants.METADATA_PARSE_VERSION,
                         md_feature_vers=constants.METADATA_FEATURE_VERSION,
                         ts_int=state.data.stats.collect_start,
-                        ts_str=time.ctime(state.data.stats.collect_start),
+                        ts_str=time.ctime(state.data.stats.collect_start
+                                          + state.data.stats.time_epoch),
                         host_id=state.data.host_id,
                         score=score))
+        # state | metadata
         for (k, v) in sorted(md.iteritems()):
             info += "{0}={1}\n".format(k, str(v))
 
@@ -624,9 +628,13 @@ class HostedEngine(object):
             self._config.get(config.ENGINE, config.HOST_ID),
             blocks)
 
+    def update_hosts_state(self, engine_state):
+        self._broker.put_hosts_state_on_storage(
+            constants.SERVICE_TYPE + constants.MD_EXTENSION,
+            self._config.get(config.ENGINE, config.HOST_ID),
+            engine_state.data.alive_hosts)
+
     def collect_stats(self):
-        all_stats = self._broker.get_stats_from_storage(
-            constants.SERVICE_TYPE + constants.MD_EXTENSION)
 
         data = {
             # Flag is set if the local agent discovers metadata too new for it

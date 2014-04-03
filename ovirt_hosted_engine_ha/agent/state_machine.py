@@ -7,6 +7,7 @@ from . import constants
 import time
 from states import ReinitializeFSM
 from state_data import HostedEngineData, StatsData
+from ..lib import monotonic
 
 
 class StartState(BaseState):
@@ -49,7 +50,8 @@ class EngineStateMachine(BaseFSM):
             min_memory_threshold=he.min_memory_threshold,
             best_engine_status=None,
             best_engine_host_id=None,
-            best_score_host=None
+            best_score_host=None,
+            alive_hosts=[],
         )
 
         super(EngineStateMachine, self).__init__(StartState, initial_data,
@@ -65,8 +67,10 @@ class EngineStateMachine(BaseFSM):
         :rtype: HostedEngineData
         """
         # Collect stats
+        mtime = monotonic.time()
         stats = {
-            "collect_start": int(time.time()),
+            "collect_start": int(mtime),
+            "time_epoch": int(time.time() - mtime)
         }
 
         # Do not refresh if the time has not changed
@@ -76,7 +80,7 @@ class EngineStateMachine(BaseFSM):
 
         stats.update(self.hosted_engine.collect_stats())
         stats.update({
-            "collect_finish": int(time.time())
+            "collect_finish": int(monotonic.time())
         })
 
         # Convert to read only structure to prevent accidental changes
@@ -108,6 +112,12 @@ class EngineStateMachine(BaseFSM):
         else:
             alive_hosts = []
 
+        # Prepare changes to the data structure
+        new_data = {}
+        # save the copy of alive_hosts right after we compute it to avoid
+        # any changes that might be done to the list
+        new_data["alive_hosts"] = [host['host-id'] for host in alive_hosts]
+
         if alive_hosts:
             # Pre-compute the best remote engine (skip old metadata
             # for local host)
@@ -118,9 +128,6 @@ class EngineStateMachine(BaseFSM):
             # Pre-compute best remote score (skip old metadata for local host)
             best_score = min(alive_hosts,
                              key=lambda st: st['score'])
-
-        # Prepare changes to the data structure
-        new_data = {}
 
         # Compare the best engine remote values with the local state
         lm = stats.local

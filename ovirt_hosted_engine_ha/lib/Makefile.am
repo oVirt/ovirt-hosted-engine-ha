@@ -36,6 +36,7 @@ dist_halib_PYTHON = \
 	storage_backends_test.py \
 	util.py \
 	vds_client.py \
+	monotonic.py \
 	$(NULL)
 
 SUBDIRS = \

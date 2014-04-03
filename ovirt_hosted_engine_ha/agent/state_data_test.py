@@ -12,6 +12,7 @@ class TestCases(unittest.TestCase):
         return state_data.StatsData(
             collect_start=time,
             collect_finish=time,
+            time_epoch=0,
             metadata_too_new=False,
             cluster={},
             host_id=1,

@@ -24,6 +24,7 @@ import os
 import threading
 
 from ..env import constants
+from ..lib import monotonic
 from ..lib.exceptions import RequestError
 from ..lib.storage_backends import FilesystemBackend, BlockBackend
 
@@ -39,6 +40,11 @@ class StorageBroker(object):
         self._log = logging.getLogger("%s.StorageBroker" % __name__)
         self._storage_access_lock = threading.Lock()
         self._backends = {}
+        """
+        Hosts state (liveness) history as reported by agents:
+        format: {service_type: (timestamp, [<host_id>, <host_id>])}
+        """
+        self._stats_cache = {}
 
     def set_storage_domain(self, client, sd_type, **kwargs):
         """
@@ -56,6 +62,19 @@ class StorageBroker(object):
         self._backends[client] = self.DOMAINTYPES[sd_type](**kwargs)
         self._backends[client].connect()
         return str(id(self._backends[client]))
+
+    def is_host_alive(self, client, service_type):
+        timestamp, host_list = self._stats_cache.get(service_type, (0, ""))
+        # the last report from client is too old, so we don't know
+        if monotonic.time() - timestamp > constants.HOST_ALIVE_TIMEOUT_SECS:
+            return ""  # the data is too old
+
+        return base64.b16encode(host_list)
+
+    def push_hosts_state(self, client, service_type, data):
+        current_time = monotonic.time()
+        self._stats_cache[service_type] =\
+            (current_time, base64.b16decode(data))
 
     def get_all_stats_for_service_type(self, client, service_type):
         """

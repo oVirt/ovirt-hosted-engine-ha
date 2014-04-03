@@ -42,7 +42,10 @@ HostedEngineData = collections.namedtuple("HostedEngineData", (
     "best_engine_host_id",
 
     # Precomputed value for host with best score in cluster
-    "best_score_host"))
+    "best_score_host",
+
+    # a list of alive hosts as seen on the last refresh()
+    "alive_hosts"))
 
 
 StatsData = collections.namedtuple("StatsData", (
@@ -66,7 +69,11 @@ StatsData = collections.namedtuple("StatsData", (
     "maintenance",
 
     # Timestamps
-    'collect_start', 'collect_finish'
+    'collect_start', 'collect_finish',
+
+    # Time epoch - difference between monotonic time and the system time
+    # it's 0 if we fail to obtain the monotonic time
+    'time_epoch'
 ))
 
 
@@ -88,6 +95,9 @@ def load_factor(he_data):
     """
 
     def trapezoid(acc, point):
+        """
+        type point: StatsData
+        """
         area, time, last_load, last_time = acc
         cur_load = point.local["cpu-load"]
         cur_time = point.collect_start

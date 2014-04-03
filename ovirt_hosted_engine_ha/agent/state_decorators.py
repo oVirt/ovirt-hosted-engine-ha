@@ -90,7 +90,8 @@ def check_timeout(destination, timeout, wait=BaseFSM.WAIT):
             elif data.timeout_start_time is None:
                 # Staying in current state, set timeout if not already set
                 logger.info("Timeout set to %s while transitioning %s -> %s",
-                            time.ctime(now + timeout), self.__class__,
+                            time.ctime(now + data.stats.time_epoch + timeout),
+                            self.__class__,
                             next_state.__class__)
                 # The timeout start has to be set here because some states
                 # use the initial None value to determine if it is the first

@@ -18,7 +18,6 @@
 #
 
 import re
-import time
 
 from ..env import constants
 from ..lib import util
@@ -105,12 +104,13 @@ def parse_metadata_to_dict(host_str, data):
          name - hostname of described host
          maintenance - 0 or 1 representing host is operational or in
             local maintenance
+
      - Next 3584 bytes (for a total of 4096): human-readable description of
        data to aid in debugging, including factors considered in the host score
 
     The output is a dict with keys corresponding to the above:
       host-id, host-ts, score, engine-status, hostname
-    It also contains a key, "extra", containing the human-readable portaion of
+    It also contains a key, "extra", containing the human-readable portion of
     the metadata block.
     """
     try:
@@ -180,10 +180,6 @@ def parse_metadata_to_dict(host_str, data):
     # support maintenance flag if present, but ignore if it isn't
     if len(tokens) >= 8:
         ret['maintenance'] = int(tokens[7]) > 0
-
-    # check the timestamp to get the hosts liveness
-    last_valid_time = time.time() - constants.HOST_ALIVE_TIMEOUT_SECS
-    ret['live-data'] = ret['host-ts'] >= last_valid_time
 
     # Add human-readable summary from bytes 512+
     extra = data[512:].rstrip('\0')
