@@ -49,7 +49,7 @@ class EngineState(BaseState):
     def _float_or_default(value, default):
         try:
             return float(value)
-        except ValueError:
+        except (ValueError, TypeError):
             return default
 
     def _penalize_memory(self, vm_mem, lm, logger, score, score_cfg):
