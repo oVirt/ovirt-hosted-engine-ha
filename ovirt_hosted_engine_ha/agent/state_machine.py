@@ -129,8 +129,8 @@ class EngineStateMachine(BaseFSM):
             new_data["best_engine_status"] = lm["engine-health"]
             new_data["best_engine_host_id"] = self.hosted_engine.host_id
         else:
-            new_data["best_engine_status"] = best_engine.engine_status
-            new_data["best_engine_host_id"] = best_engine.host_id
+            new_data["best_engine_status"] = best_engine["engine_status"]
+            new_data["best_engine_host_id"] = best_engine["host_id"]
 
         # Save the best score remote values
         # we can't compare them because we first need to fully initialize
