@@ -34,6 +34,10 @@ class StorageBackend(object):
         # the atomic block size of the underlying storage
         self._blocksize = constants.METADATA_BLOCK_BYTES
 
+    @property
+    def direct_io(self):
+        return False
+
     @abstractmethod
     def connect(self):
         """Initialize the storage."""
@@ -95,6 +99,11 @@ class FilesystemBackend(StorageBackend):
         self._dom_type = dom_type
         self._lv_based = False
         self._storage_path = None
+
+    @StorageBackend.direct_io.getter
+    def direct_io(self):
+        # if it's not lv_based then it's NFS and we cna use direct_io
+        return not self._lv_based
 
     def filename(self, service):
         fname = os.path.join(self._storage_path, service)

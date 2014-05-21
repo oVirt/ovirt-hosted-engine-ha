@@ -112,7 +112,7 @@ class StorageBroker(object):
         # from hiding metadata file updates from other hosts.  For NFS, we
         # don't have to worry about alignment; see man open(2) for details.
         # TODO it would be better if this was configurable
-        direct_flag = (os.O_DIRECT if constants.USE_DIRECT_IO else 0)
+        direct_flag = (os.O_DIRECT if self._backends[client].direct_io else 0)
 
         bs = constants.HOST_SEGMENT_BYTES
         # TODO it would be better if this was configurable

@@ -26,7 +26,6 @@ MAX_HOST_ID_SCAN = 64
 HOST_SEGMENT_BYTES = 4096
 METADATA_BLOCK_BYTES = 512
 SERVICE_TYPE = 'hosted-engine'
-USE_DIRECT_IO = True
 HOST_ALIVE_TIMEOUT_SECS = 60
 
 # See http://www.gnu.org/software/automake/manual/html_node/Scripts.html
