@@ -80,6 +80,8 @@ class HAClient(object):
 
     def _check_liveness_for_stats(self, stats, broker):
         for host_id in stats:
+            if host_id == 0:  # global stats
+                continue
             self._check_liveness_metadata(stats[host_id], broker)
 
     def get_all_stats(self, mode=StatModes.ALL):
