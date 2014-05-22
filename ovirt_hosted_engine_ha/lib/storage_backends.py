@@ -106,6 +106,27 @@ class StorageBackend(object):
         raise BackendFailureException("path to storage domain {0} not found"
                                       " in {1}".format(sd_uuid, parent))
 
+    def _check_symlinks(self, storage_path, volume_path, service_link):
+        try:
+            os.unlink(service_link)
+            logger.info("Cleaning up stale LV link '%s'", service_link)
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                # If the file is not there it is not a failure,
+                # but if anything else happened, raise it again
+                raise
+        util.mkdir_recursive(storage_path)
+        try:
+            os.symlink(volume_path, service_link)
+        except OSError as e:
+            raise Exception(
+                "'%s' -> '%s' failed: '%s'" % (
+                    volume_path,
+                    service_link,
+                    str(e)
+                )
+            )
+
 
 class BackendFailureException(Exception):
     """
@@ -360,15 +381,7 @@ class VdsmBackend(StorageBackend):
 
             # Create symlinks for compatibility reasons
             service_link = os.path.join(self._storage_path, service)
-            try:
-                os.unlink(service_link)
-                logger.info("Cleaning up stale LV link '%s'", service_link)
-            except OSError as e:
-                if e.errno != errno.ENOENT:
-                    # If the file is not there it is not a failure,
-                    # but if anything else happened, raise it again
-                    raise
-            os.symlink(volume.path, service_link)
+            self._check_symlinks(self._storage_path, volume.path, service_link)
 
     def get_device(self, service):
         """
@@ -432,15 +445,8 @@ class FilesystemBackend(StorageBackend):
             # strip the prefix and use the rest as symlink name
             service = lv.split(constants.SD_METADATA_DIR + "-", 1)[-1]
             service_link = os.path.join(self._storage_path, service)
-            try:
-                os.unlink(service_link)
-                logger.info("Cleaning up stale LV link %s", service_link)
-            except OSError as e:
-                if e.errno != errno.ENOENT:
-                    # If the file is not there it is not a failure,
-                    # but if anything else happened, raise it again
-                    raise
-            os.symlink(os.path.join("/dev", uuid, lv), service_link)
+            self._check_symlinks(self._storage_path,
+                                 os.path.join("/dev", uuid, lv), service_link)
 
     def disconnect(self):
         pass
