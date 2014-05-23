@@ -45,3 +45,11 @@ class MetadataError(Exception):
 
 class FatalMetadataError(Exception):
     pass
+
+
+class SanlockInitializationError(Exception):
+    pass
+
+
+class BrokerInitializationError(Exception):
+    pass
