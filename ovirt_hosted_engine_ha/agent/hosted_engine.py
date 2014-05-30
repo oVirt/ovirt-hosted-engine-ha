@@ -580,7 +580,7 @@ class HostedEngine(object):
                         ts_int=state.data.stats.collect_start,
                         host_id=state.data.stats.host_id,
                         score=score,
-                        engine_status=lm['engine-health'],
+                        engine_status=json.dumps(lm['engine-health']),
                         name=self._hostname,
                         maintenance=1 if md["maintenance"] else 0))
         if len(data) > constants.METADATA_BLOCK_BYTES:
