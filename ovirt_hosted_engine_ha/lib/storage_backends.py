@@ -12,8 +12,24 @@ import struct
 from io import BytesIO
 from operator import itemgetter
 import math
+import vdsm.vdscli
+import time
+import uuid
+import json
+import base64
 
 logger = logging.getLogger(__name__)
+
+_StorageBackendTypesTuple = namedtuple(
+    'StorageBackendTypes',
+    ['FilesystemBackend', 'BlockBackend', 'VdsmBackend']
+)
+
+StorageBackendTypes = _StorageBackendTypesTuple(
+    FilesystemBackend='FilesystemBackend',
+    BlockBackend='BlockBackend',
+    VdsmBackend='VdsmBackend'
+)
 
 
 class BlockBackendCorruptedException(Exception):
@@ -74,6 +90,22 @@ class StorageBackend(object):
         """
         raise NotImplementedError()
 
+    def get_domain_path(self, sd_uuid, dom_type):
+        """
+        Return path of storage domain holding the engine vm
+        in the form (path, lvm_based_bool)
+        """
+        parent = constants.SD_MOUNT_PARENT
+        if dom_type == 'glusterfs':
+            parent = os.path.join(parent, 'glusterSD')
+
+        for dname in os.listdir(parent):
+            path = os.path.join(parent, dname, sd_uuid)
+            if os.access(path, os.F_OK):
+                return path, dname == "blockSD"
+        raise BackendFailureException("path to storage domain {0} not found"
+                                      " in {1}".format(sd_uuid, parent))
+
 
 class BackendFailureException(Exception):
     """
@@ -82,6 +114,279 @@ class BackendFailureException(Exception):
     or unexpected errors.
     """
     pass
+
+
+class VdsmBackend(StorageBackend):
+    """
+    This storage backend uses regular VDSM volumes to store the service
+    metadata files.
+    """
+
+    class Device(object):
+        __slots__ = ["image_uuid", "volume_uuid", "path"]
+
+        def __init__(self, image_uuid, volume_uuid, path=None):
+            self.image_uuid = image_uuid
+            self.volume_uuid = volume_uuid
+            self.path = path
+
+        def dump(self):
+            """
+            Creates a string representation of the Device object
+            which can be send thru the brokerlink
+            """
+            return base64.b16encode(
+                json.dumps(
+                    {
+                        "image_uuid": self.image_uuid,
+                        "volume_uuid": self.volume_uuid,
+                        "path": self.path
+                    }
+                )
+            )
+
+        def load(self, obj):
+            """
+            Loads a Device values from it's string representation.
+            """
+
+            if obj is None:
+                return self
+
+            # already a Device obj, no need to convert
+            if type(obj) == type(self):
+                return obj
+
+            device_dict = json.loads(base64.b16decode(obj))
+            for slot in self.__slots__:
+                self.__setattr__(slot, device_dict[slot])
+
+            return self
+
+        @classmethod
+        def device_from_str(cls, obj):
+            dev = cls(None, None, None)
+            return dev.load(obj)
+
+    # VDSM storage constants
+    RAW_FORMAT = 5
+    PREALLOCATED_VOL = 1
+    DATA_DISK_TYPE = 2
+    TASK_WAIT = 1
+
+    # Megabyte constant
+    MiB = float(math.pow(2, 20))
+
+    def __init__(self, sp_uuid, sd_uuid, dom_type, **activate_devices):
+        """
+        :param sp_uuid: Storage Pool UUID (data center)
+        :type sp_uuid: str
+
+        :param sd_uuid: Storage domain UUID
+        :type sd_uuid: str
+
+        :param dom_type: domain type identifier
+        :type dom_type: nfs, glusterSD, ...
+
+        :param activate_devices: Dictionary with service name as a key
+                                 and image uuid as value. The services from
+                                 this dictionary will be automatically
+                                 activated after connect() is called.
+        :type activate_devices: dict[str]=VdsmBackend.Device
+        """
+        super(VdsmBackend, self).__init__()
+        self._services = \
+            dict(map
+                (
+                    lambda (service, device):
+                    (service, self.Device.device_from_str(device)),
+                    activate_devices.items()
+                )
+            )
+        self._sp_uuid = sp_uuid
+        self._sd_uuid = sd_uuid
+        self._dom_type = dom_type
+
+    def create_volume(self, service_name, service_size,
+                      volume_uuid, image_uuid):
+        """
+        :param service_name: a string identifying the service
+        :param service_size: size of the requested space in Bytes
+        :param volume_uuid: a UUID to identify the volume in VDSM
+        :param image_uuid: a UUID to identify the underlying file image
+
+        Returns True if the volume has been created, False otherwise.
+        Raise RuntimeError if something goes wrong.
+        """
+        if self._sp_uuid is None:
+            raise RuntimeError(
+                "Storage Pool must be defined for creating volumes"
+            )
+
+        # Connect to local VDSM
+        logger.debug("Connecting to VDSM")
+        connection = vdsm.vdscli.connect()
+
+        # Check of the volume already exists
+        response = connection.getVolumePath(
+            self._sd_uuid,
+            self._sp_uuid,
+            image_uuid,
+            volume_uuid
+        )
+
+        logger.debug("getVolumePath: '%s'", response)
+        if response["status"]["code"] == 0:
+            logger.info("Image for '%s' already exists", service_name)
+            path = response['path']
+            return False, path
+
+        elif response["status"]["code"] not in (201, 254):
+            # 100 is returned when the volume doesn't exist
+            # 254 is returned when Image path doesn't exist
+            raise RuntimeError(response["status"]["message"])
+
+        logger.info("Creating Image for '%s' ...", service_name)
+
+        # Create new volume
+        create_response = connection.createVolume(
+            self._sd_uuid,
+            self._sp_uuid,
+            image_uuid,
+            str(service_size),  # Need to be str for using bytes.
+            self.RAW_FORMAT,
+            self.PREALLOCATED_VOL,
+            self.DATA_DISK_TYPE,
+            volume_uuid,
+            service_name
+        )
+
+        logger.debug("createVolume: '%s'", create_response)
+        if create_response["status"]["code"] != 0:
+            raise RuntimeError(create_response["status"]["message"])
+
+        # Wait for the createVolume task to finish
+        task = create_response["uuid"]
+        while True:
+            task_status = connection.getTaskStatus(task)
+            logger.debug("getTaskStatus: '%s'" % str(task_status))
+            if task_status["status"]["code"] != 0:
+                raise RuntimeError(task_status["status"]["message"])
+            elif task_status["taskStatus"]["taskState"] == "finished":
+                if task_status["taskStatus"]["taskResult"] != "success":
+                    raise RuntimeError(task_status["taskStatus"]["message"])
+                break
+            else:
+                time.sleep(self.TASK_WAIT)
+
+        response = connection.clearTask(task)
+        logger.debug("clearTask: '%s'", response)
+        logger.info("Image for '%s' created successfully", service_name)
+
+        response = connection.getVolumePath(
+            self._sd_uuid,
+            self._sp_uuid,
+            image_uuid,
+            volume_uuid
+        )
+        logger.debug("getVolumePath: '%s'", response)
+        if response["status"]["code"] != 0:
+            raise RuntimeError(response["status"]["message"])
+        path = response['path']
+        return True, path
+
+    def create(self, service_map, force_new=False):
+        base_path, self._lv_based = self.get_domain_path(self._sd_uuid,
+                                                         self._dom_type)
+        self._storage_path = os.path.join(base_path,
+                                          constants.SD_METADATA_DIR)
+
+        util.mkdir_recursive(self._storage_path)
+
+        new_set = set()
+        for service, size in service_map.iteritems():
+            # Generate new random UUIDs
+            new_image_uuid = str(uuid.uuid4())
+            new_volume_uuid = str(uuid.uuid4())
+
+            isnew, path = self.create_volume(service_name=service,
+                                             image_uuid=new_image_uuid,
+                                             volume_uuid=new_volume_uuid,
+                                             service_size=size)
+
+            if isnew:
+                new_set.add(service)
+                self._services[service] = self.Device(
+                    image_uuid=new_image_uuid,
+                    volume_uuid=new_volume_uuid,
+                    path=path
+                )
+
+        return new_set
+
+    def connect(self):
+        """Initialize the storage."""
+        base_path, self._lv_based = self.get_domain_path(self._sd_uuid,
+                                                         self._dom_type)
+        self._storage_path = os.path.join(base_path,
+                                          constants.SD_METADATA_DIR)
+
+        # Connect to local VDSM
+        logger.debug("Connecting to VDSM")
+        connection = vdsm.vdscli.connect()
+        for service, volume in self._services.iteritems():
+            # Activate volumes and set the volume.path to proper path
+            response = connection.prepareImage(
+                self._sp_uuid,
+                self._sd_uuid,
+                volume.image_uuid,
+                volume.volume_uuid
+            )
+            logger.debug("prepareImage: '%s'" % response)
+            if response["status"]["code"] != 0:
+                raise RuntimeError(response["status"]["message"])
+
+            response = connection.getVolumePath(
+                self._sd_uuid,
+                self._sp_uuid,
+                volume.image_uuid,
+                volume.volume_uuid
+            )
+            logger.debug("getVolumePath: '%s'", response)
+            if response["status"]["code"] == 0:
+                volume.path = response['path']
+            else:
+                raise RuntimeError(response["status"]["message"])
+
+            # Create symlinks for compatibility reasons
+            service_link = os.path.join(self._storage_path, service)
+            try:
+                os.unlink(service_link)
+                logger.info("Cleaning up stale LV link '%s'", service_link)
+            except OSError as e:
+                if e.errno != errno.ENOENT:
+                    # If the file is not there it is not a failure,
+                    # but if anything else happened, raise it again
+                    raise
+            os.symlink(volume.path, service_link)
+
+    def get_device(self, service):
+        """
+        This method gives access to the underlying Device objects so it is
+        possible to retrieve the volume and image UUIDs.
+        """
+        return self._services[service]
+
+    def disconnect(self):
+        """Close the storage."""
+        pass
+
+    def filename(self, service):
+        """
+        Return a tuple with the filename to open and bytes to skip
+        to get to the metadata structures.
+        """
+        return self._services[service].path, 0
 
 
 class FilesystemBackend(StorageBackend):
@@ -108,23 +413,6 @@ class FilesystemBackend(StorageBackend):
     def filename(self, service):
         fname = os.path.join(self._storage_path, service)
         return (fname, 0)
-
-    def get_domain_path(self, sd_uuid, dom_type):
-        """
-        Return path of storage domain holding the engine vm
-        in the form (path, lvm_based_bool)
-        """
-        parent = constants.SD_MOUNT_PARENT
-        if dom_type == 'glusterfs':
-            parent = os.path.join(parent, 'glusterSD')
-
-        for dname in os.listdir(parent):
-            path = os.path.join(parent, dname, sd_uuid)
-            if os.access(path, os.F_OK):
-                return path, dname == "blockSD"
-        raise BackendFailureException("path to storage domain {0} not found"
-                                      " in {1}"
-                                      .format(sd_uuid, parent))
 
     def connect(self):
         base_path, self._lv_based = self.get_domain_path(self._sd_uuid,
