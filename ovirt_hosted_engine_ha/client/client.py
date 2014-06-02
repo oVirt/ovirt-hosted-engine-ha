@@ -26,6 +26,7 @@ from ..lib import brokerlink
 from ..lib import metadata
 from ..lib import util
 from ..lib.exceptions import MetadataError
+from ..lib.storage_backends import StorageBackendTypes
 
 
 class HAClient(object):
@@ -111,7 +112,7 @@ class HAClient(object):
         from ..broker import storage_broker
 
         sb = storage_broker.StorageBroker()
-        sb.set_storage_domain("client", "fs",
+        sb.set_storage_domain("client", StorageBackendTypes.FilesystemBackend,
                               sd_uuid=sd_uuid, dom_type=dom_type)
         stats = sb.get_raw_stats_for_service_type("client", service_type)
 
@@ -169,7 +170,7 @@ class HAClient(object):
             self._config = config.Config()
         sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
         dom_type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
-        broker.set_storage_domain("fs",
+        broker.set_storage_domain(StorageBackendTypes.FilesystemBackend,
                                   sd_uuid=sd_uuid,
                                   dom_type=dom_type)
 

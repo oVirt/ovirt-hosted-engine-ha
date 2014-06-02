@@ -38,6 +38,7 @@ from ..lib import log_filter
 from ..lib import metadata
 from ..lib import util
 from ..lib import vds_client as vdsc
+from ..lib.storage_backends import StorageBackendTypes, VdsmBackend
 from .state_machine import EngineStateMachine
 
 
@@ -389,13 +390,49 @@ class HostedEngine(object):
 
         # register storage domain info
         sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
+        sp_uuid = self._config.get(config.ENGINE, config.SP_UUID)
         dom_type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
+
+        # use vdsm type as the default
+        storage_backend_type = StorageBackendTypes.VdsmBackend
+        try:
+            storage_params = {
+                'sp_uuid': sp_uuid,
+                'sd_uuid': sd_uuid,
+                'dom_type': dom_type,
+                constants.SERVICE_TYPE + constants.MD_EXTENSION:
+                VdsmBackend.Device(
+                    self._config.get(config.ENGINE,
+                                     config.METADATA_IMAGE_UUID),
+                    self._config.get(config.ENGINE,
+                                     config.METADATA_VOLUME_UUID),
+                ).dump(),
+                constants.SERVICE_TYPE + constants.LOCKSPACE_EXTENSION:
+                VdsmBackend.Device(
+                    self._config.get(config.ENGINE,
+                                     config.LOCKSPACE_IMAGE_UUID),
+                    self._config.get(config.ENGINE,
+                                     config.LOCKSPACE_VOLUME_UUID),
+                ).dump()
+            }
+            # check if we have all the needed config params needed for vdsm api
+            if [v for k, v in storage_params.items() if v is '']:
+                storage_params = {
+                    'sd_uuid': sd_uuid,
+                    'dom_type': dom_type
+                }
+                storage_backend_type = StorageBackendTypes.FilesystemBackend
+
+        except Exception as _ex:
+            self._log.warn("Can't read volume uuids from config "
+                           "-> assuming fs based storage: '{0}'"
+                           .format(str(_ex)))
+            storage_backend_type = StorageBackendTypes.FilesystemBackend
 
         for attempt in range(0, constants.WAIT_FOR_STORAGE_RETRY):
             try:
-                self._broker.set_storage_domain("fs",
-                                                sd_uuid=sd_uuid,
-                                                dom_type=dom_type)
+                self._broker.set_storage_domain(storage_backend_type,
+                                                **storage_params)
                 break
             except Exception as _ex:
                 self._log.info("Failed set the storage domain: '{0}'."

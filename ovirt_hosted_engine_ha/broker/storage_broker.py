@@ -26,14 +26,16 @@ import threading
 from ..env import constants
 from ..lib import monotonic
 from ..lib.exceptions import RequestError
-from ..lib.storage_backends import FilesystemBackend, BlockBackend
+from ..lib.storage_backends import FilesystemBackend, BlockBackend, VdsmBackend
+from ..lib.storage_backends import StorageBackendTypes
 
 
 class StorageBroker(object):
 
     DOMAINTYPES = {
-        "fs": FilesystemBackend,
-        "block": BlockBackend
+        StorageBackendTypes.FilesystemBackend: FilesystemBackend,
+        StorageBackendTypes.BlockBackend: BlockBackend,
+        StorageBackendTypes.VdsmBackend: VdsmBackend,
     }
 
     def __init__(self):
@@ -54,7 +56,7 @@ class StorageBroker(object):
         to the broker. The client value is provided by the broker logic.
 
         :param sd_type: The type of backend the clients want to use
-        :type sd_type: Currently the only supported values are "fs" and "block"
+        :type sd_type: Values from StorageBackendTypes tuple
         """
         if client in self._backends:
             self._backends[client].disconnect()

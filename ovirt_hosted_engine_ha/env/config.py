@@ -28,8 +28,14 @@ ENGINE_FQDN = 'fqdn'
 GATEWAY_ADDR = 'gateway'
 HOST_ID = 'host_id'
 SD_UUID = 'sdUUID'
+SP_UUID = 'spUUID'
 VDSM_SSL = 'vdsm_use_ssl'
 BRIDGE_NAME = 'bridge'
+METADATA_VOLUME_UUID = 'metadata_volume_UUID'
+METADATA_IMAGE_UUID = 'metadata_image_UUID'
+LOCKSPACE_VOLUME_UUID = 'lockspace_volume_UUID'
+LOCKSPACE_IMAGE_UUID = 'lockspace_image_UUID'
+
 
 # constants for vm.conf options
 VM = 'vm'
