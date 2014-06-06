@@ -410,8 +410,22 @@ class HostedEngine(object):
         self._log.info("Broker initialized, all submonitors started")
 
     def _initialize_vdsm(self):
-        # TODO not the most efficient means to maintain vdsmd...
-        self._cond_start_service('vdsmd')
+        tries = 0
+        while tries < constants.MAX_VDSM_START_RETRIES:
+            tries += 1
+            try:
+                self._cond_start_service('vdsmd')
+                break
+            except Exception as _ex:
+                if tries > constants.MAX_VDSM_START_RETRIES:
+                    self._log.error("Can't start vdsmd, the number of errors "
+                                    "has exceeded the limit: '{0}'"
+                                    .format(_ex))
+                    raise
+                self._log.warn("Can't start vdsmd, waiting '{0}' seconds "
+                               "before the next attempt"
+                               .format(constants.MAX_VDSM_WAIT_SECS))
+                time.sleep(constants.MAX_VDSM_WAIT_SECS)
 
         self._log.debug("Verifying storage is attached")
         tries = 0
