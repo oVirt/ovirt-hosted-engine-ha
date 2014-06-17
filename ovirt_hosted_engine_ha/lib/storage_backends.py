@@ -217,8 +217,8 @@ class VdsmBackend(StorageBackend):
         """
         super(VdsmBackend, self).__init__()
         self._services = \
-            dict(map
-                (
+            dict(
+                map(
                     lambda (service, device):
                     (service, self.Device.device_from_str(device)),
                     activate_devices.items()

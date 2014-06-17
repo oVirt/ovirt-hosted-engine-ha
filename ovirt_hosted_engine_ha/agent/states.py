@@ -698,8 +698,9 @@ class EngineMigratingAway(EngineState):
         :type new_data: HostedEngineData
         :type logger: logging.Logger
         """
-        return new_data._replace(migration_result=
-                                 fsm.actions.MONITOR_MIGRATION())
+        return new_data._replace(
+            migration_result=fsm.actions.MONITOR_MIGRATION()
+        )
 
     @check_global_maintenance(GlobalMaintenance)
     @check_local_vm_unknown(UnknownLocalVmState)
