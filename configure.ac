@@ -22,7 +22,7 @@ define([VERSION_MAJOR], [1])
 define([VERSION_MINOR], [1])
 define([VERSION_FIX], [6])
 define([VERSION_NUMBER], VERSION_MAJOR[.]VERSION_MINOR[.]VERSION_FIX)
-define([VERSION_RELEASE], [0.0])
+define([VERSION_RELEASE], [0.1])
 define([VERSION_SUFFIX], [master])
 
 AC_INIT([ovirt-hosted-engine-ha], VERSION_NUMBER[_]VERSION_SUFFIX)

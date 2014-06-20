@@ -58,7 +58,7 @@ BuildRequires:  python2-devel
 BuildRequires:  python-nose
 
 %if 0%{?with_systemd}
-%systemd_requires
+%{?systemd_requires}
 BuildRequires:  systemd
 %endif
 
@@ -193,6 +193,9 @@ exit 0
 
 
 %changelog
+* Fri Jul 18 2014 David Caro <dcaro@redhat.com> - 1.1.6-0.1.master
+- Fix missing macro systemd_requires
+
 * Wed Jul 16 2014 Sandro Bonazzola <sbonazzo@redhat.com> - 1.1.6-0.0.master
 - 1.1.6-0.0.master
 
