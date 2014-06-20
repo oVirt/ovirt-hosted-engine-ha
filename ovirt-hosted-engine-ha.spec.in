@@ -54,13 +54,14 @@ Requires:       vdsm >= 4.14.0
 Requires:       vdsm-cli >= 4.14.0
 Requires:       vdsm-python >= 4.14.0
 
+BuildRequires:  python
 BuildRequires:  python2-devel
 BuildRequires:  python-nose
 BuildRequires:  python-mock
 BuildRequires:  vdsm-cli >= 4.14.0
 
 %if 0%{?with_systemd}
-%systemd_requires
+%{?systemd_requires}
 BuildRequires:  systemd
 %endif
 
@@ -192,6 +193,9 @@ exit 0
 
 
 %changelog
+* Fri Jun 20 2014 David Caro <dcaro@redhat.com> - 1.2.1-0.1.master
+- Fix missing macro systemd_requires
+
 * Tue Mar 25 2014 Martin Sivak <msivak@redhat.com> - 1.2.1-0.0.master
 - Fix in haClient direct API
 
