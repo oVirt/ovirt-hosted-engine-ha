@@ -70,6 +70,7 @@ force_reload() {
 
 rh_status() {
     status $prog
+    RETVAL=$?
 }
 
 rh_status_q() {
