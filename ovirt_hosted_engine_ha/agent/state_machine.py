@@ -121,12 +121,12 @@ class EngineStateMachine(BaseFSM):
         if alive_hosts:
             # Pre-compute the best remote engine (skip old metadata
             # for local host)
-            best_engine = min(alive_hosts,
+            best_engine = max(alive_hosts,
                               key=lambda st:
                               engine_status_score(st['engine-status']))
 
             # Pre-compute best remote score (skip old metadata for local host)
-            best_score = min(alive_hosts,
+            best_score = max(alive_hosts,
                              key=lambda st: st['score'])
 
         # Compare the best engine remote values with the local state
