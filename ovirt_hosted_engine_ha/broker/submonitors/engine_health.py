@@ -71,21 +71,19 @@ class Submonitor(submonitor_base.SubmonitorBase):
                 self.update_result(json.dumps(d))
                 return
         vm_status = stats['statsList'][0]['status'].lower()
-        if vm_status in ('powering up',
-                         'powering down',
-                         'waitforlaunch',
-                         'migration source',
-                         'rebootinprogress',
-                         'restoringstate',
-                         'savingstate',
-                         'paused'):
+
+        # Report states that are not really Up, but should be
+        # reported as such
+        if vm_status in ('paused', 'waitforlaunch', 'restoringstate'):
             self._log.info("VM status: %s", vm_status,
                            extra=log_filter.lf_args('status', 60))
             d = {'vm': 'up', 'health': 'bad', 'detail': vm_status,
                  'reason': 'bad vm status'}
             self.update_result(json.dumps(d))
             return
-        if vm_status not in ('up', 'running'):
+
+        # Check for states that are definitely down
+        if vm_status in ('down', 'migration destination'):
             self._log.info("VM not running on this host, status %s", vm_status,
                            extra=log_filter.lf_args('status', 60))
             d = {'vm': 'down', 'health': 'bad', 'detail': vm_status,
@@ -93,7 +91,8 @@ class Submonitor(submonitor_base.SubmonitorBase):
             self.update_result(json.dumps(d))
             return
 
-        # VM is up, let's see if engine is up by polling health status page
+        # VM is probably up, let's see if engine is up by polling
+        # health status page
         p = subprocess.Popen([constants.HOSTED_ENGINE_BINARY,
                               '--check-liveliness'],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
