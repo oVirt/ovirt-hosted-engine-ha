@@ -465,9 +465,7 @@ class HostedEngine(object):
                 time.sleep(constants.MAX_VDSM_WAIT_SECS)
 
         self._log.debug("Verifying storage is attached")
-        tries = 0
-        while tries < constants.MAX_VDSM_WAIT_SECS:
-            tries += 1
+        for attempt in xrange(constants.MAX_VDSM_START_RETRIES):
             # `hosted-engine --connect-storage` internally calls vdsClient's
             # connectStorageServer command, which can be executed repeatedly
             # without issue even if the storage is already connected.  Note
@@ -478,14 +476,20 @@ class HostedEngine(object):
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE)
             output = p.communicate()
-            self._log.debug("Attempt %d, return code: %d", tries, p.returncode)
+            self._log.debug("Attempt %d, return code: %d", attempt,
+                            p.returncode)
             self._log.debug("stdout: %s", output[0])
             self._log.debug("stderr: %s", output[1])
             if p.returncode == 0:
                 self._log.debug("Successfully verified that VDSM"
                                 " is attached to storage")
                 break
-        if tries == constants.MAX_VDSM_WAIT_SECS:
+
+            self._log.warn("Failed to connect storage, waiting '{0}' seconds "
+                           "before the next attempt"
+                           .format(constants.MAX_VDSM_WAIT_SECS))
+            time.sleep(constants.MAX_VDSM_WAIT_SECS)
+        else:
             self._log.error("Failed trying to connect storage: %s", output[1])
             raise Exception("Failed trying to connect storage")
 
