@@ -1,6 +1,6 @@
 #
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-# Copyright (C) 2012-2014 Red Hat, Inc.
+# Copyright (C) 2013-2014 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -39,7 +39,7 @@ Version:        @PACKAGE_RPM_VERSION@
 Release:        @PACKAGE_RPM_RELEASE@%{?release_suffix}%{?dist}
 License:        LGPLv2+
 URL:            http://www.ovirt.org
-Source:         http://resources.ovirt.org/releases/nightly/src/%{name}-%{package_version}.tar.gz
+Source:         http://resources.ovirt.org/pub/ovirt-master-snapshot/src/%{name}/%{name}-%{package_version}.tar.gz
 Group:          Applications/System
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -50,15 +50,15 @@ Requires:       python
 Requires:       python-daemon
 Requires:       sanlock >= 2.8
 Requires:       sanlock-python >= 2.8
-Requires:       vdsm >= 4.14.0
-Requires:       vdsm-cli >= 4.14.0
-Requires:       vdsm-python >= 4.14.0
+Requires:       vdsm >= 4.16.0
+Requires:       vdsm-cli >= 4.16.0
+Requires:       vdsm-python >= 4.16.0
 
 BuildRequires:  python
 BuildRequires:  python2-devel
 BuildRequires:  python-nose
 BuildRequires:  python-mock
-BuildRequires:  vdsm-cli >= 4.14.0
+BuildRequires:  vdsm-cli >= 4.16.0
 
 %if 0%{?with_systemd}
 %{?systemd_requires}
@@ -193,50 +193,5 @@ exit 0
 
 
 %changelog
-* Fri Jun 20 2014 David Caro <dcaro@redhat.com> - 1.2.1-0.1.master
-- Fix missing macro systemd_requires
-
-* Tue Mar 25 2014 Martin Sivak <msivak@redhat.com> - 1.2.1-0.0.master
-- Fix in haClient direct API
-
-* Mon Mar 24 2014 Martin Sivak <msivak@redhat.com> - 1.2.0-0.0.master
-- New backend interface
-
-* Thu Dec 19 2013 Greg Padgett <gpadgett@redhat.com> - 1.1.0-0.0.master
-- New version after 1.0 branch
-
-* Tue Dec 17 2013 Greg Padgett <gpadgett@redhat.com> - 0.1.0-0.10.beta2
-- 0.1.0-0.10.beta2
-
-* Tue Dec 10 2013 Sandro Bonazzola <sbonazzo@redhat.com> - 0.1.0-0.9.beta1
-- 0.1.0-0.9.beta1
-
-* Tue Dec  3 2013 Sandro Bonazzola <sbonazzo@redhat.com> - 0.1.0-0.8.beta1
-- 0.1.0-0.8.beta1
-
-* Fri Nov 22 2013 Sandro Bonazzola <sbonazzo@redhat.com> - 0.1.0-0.7.beta1
-- 0.1.0-0.7.beta1
-
-* Tue Nov 19 2013 Sandro Bonazzola <sbonazzo@redhat.com> - 0.1.0-0.6.beta1
-- 0.1.0-0.6.beta1
-
-* Tue Nov  5 2013 Sandro Bonazzola <sbonazzo@redhat.com> - 0.1.0-0.5.beta1
-- 0.1.0-0.5.beta1
-
-* Tue Oct 29 2013 Sandro Bonazzola <sbonazzo@redhat.com> - 0.1.0-0.4.beta1
-- 0.1.0-0.4.beta1
-
-* Tue Oct 15 2013 Yedidyah Bar David <didi@redhat.com> - 0.1.0-0.3.1.beta1
-- 0.1.0-0.3.1.beta1
-
-* Tue Oct 15 2013 Sandro Bonazzola <sbonazzo@redhat.com> - 0.1.0-0.3.beta1
-- 0.1.0-0.3.beta1
-
-* Fri Sep 27 2013 Sandro Bonazzola <sbonazzo@redhat.com> - 0.1.0-0.2.beta1
-- 0.1.0-0.2.beta1
-
-* Fri Sep 13 2013 Sandro Bonazzola <sbonazzo@redhat.com> - 0.1.0-0.1.beta
-- 0.1.0-0.1.beta
-
-* Fri May 31 2013 Greg Padgett <gpadgett@redhat.com> - 0.0.0-0.0.master
-- Initial add.
+* Fri Jul 11 2014 Sandro Bonazzola <sbonazzo@redhat.com> - 1.3.0-0.0.master
+- 1.3.0-0.0.master
