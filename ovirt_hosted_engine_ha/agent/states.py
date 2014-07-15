@@ -2,6 +2,7 @@ __author__ = 'msivak'
 
 from ..lib.fsm import BaseState, BaseFSM
 from ..lib import log_filter
+from ..lib import engine
 from . import constants
 from .state_decorators import check_local_maintenance, check_timeout
 from .state_decorators import check_local_vm_unknown, check_global_maintenance
@@ -287,14 +288,14 @@ class ReinitializeFSM(EngineState):
         :type data: HostedEngineData
         :type logger: logging.Logger
         """
-        engine = data.stats.local["engine-health"]
+        engine_state = data.stats.local["engine-health"]
 
         # Cleanup some timers and counters
         data = data._replace(
             engine_vm_shutdown_time=None,
             migration_host_id=None)
 
-        if engine and engine["vm"] == "up":
+        if engine_state and engine_state["vm"] == "up":
             return EngineUp(data)
         else:
             return EngineDown(data)
@@ -655,7 +656,7 @@ class EngineStart(EngineState):
     :transition GlobalMaintenance:
     :transition UnknownLocalVmState:
     :transition LocalMaintenance:
-    :transition EngineUp:
+    :transition EngineStarting:
     :transition EngineDown:
     """
     @check_global_maintenance(GlobalMaintenance)
@@ -673,12 +674,45 @@ class EngineStart(EngineState):
             new_data = new_data._replace(
                 engine_vm_retry_time=dtime(new_data),
                 engine_vm_retry_count=0)
-            return EngineUp(new_data)
+            return EngineStarting(new_data)
         else:
             new_data = new_data._replace(
                 engine_vm_retry_time=dtime(new_data),
                 engine_vm_retry_count=retry_count + 1)
             return EngineDown(new_data)
+
+
+class EngineStarting(EngineState):
+    """
+    This state is responsible for starting the VM on the local machine.
+
+    :transition GlobalMaintenance:
+    :transition UnknownLocalVmState:
+    :transition LocalMaintenance:
+    :transition EngineUp:
+    :transition EngineDown:
+    """
+    @check_global_maintenance(GlobalMaintenance)
+    @check_local_vm_unknown(UnknownLocalVmState)
+    @check_local_maintenance(LocalMaintenance)
+    @check_timeout(EngineStop, constants.ENGINE_STARTING_TIMEOUT,
+                   BaseFSM.WAIT)
+    def consume(self, fsm, new_data, logger):
+        """
+        :type fsm: BaseFSM
+        :type new_data: HostedEngineData
+        :type logger: logging.Logger
+        """
+
+        # engine is running
+        if new_data.best_engine_status["vm"] == engine.VMState.UP:
+            if new_data.best_engine_status["health"] == 'good':
+                return EngineUp(new_data)
+            else:
+                logger.info("VM is powering up..")
+                return EngineStarting(new_data)
+
+        return EngineUnexpectedlyDown(new_data)
 
 
 class EngineMigratingAway(EngineState):
