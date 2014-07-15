@@ -27,6 +27,7 @@ from ovirt_hosted_engine_ha.lib import exceptions as exceptions
 from ovirt_hosted_engine_ha.lib import log_filter
 from ovirt_hosted_engine_ha.lib import util as util
 from ovirt_hosted_engine_ha.lib import vds_client as vdsc
+from ovirt_hosted_engine_ha.lib import engine
 
 
 def register():
@@ -77,7 +78,9 @@ class Submonitor(submonitor_base.SubmonitorBase):
         if vm_status in ('paused', 'waitforlaunch', 'restoringstate'):
             self._log.info("VM status: %s", vm_status,
                            extra=log_filter.lf_args('status', 60))
-            d = {'vm': 'up', 'health': 'bad', 'detail': vm_status,
+            d = {'vm': engine.VMState.UP,
+                 'health': engine.Health.BAD,
+                 'detail': vm_status,
                  'reason': 'bad vm status'}
             self.update_result(json.dumps(d))
             return
@@ -86,7 +89,9 @@ class Submonitor(submonitor_base.SubmonitorBase):
         if vm_status in ('down', 'migration destination'):
             self._log.info("VM not running on this host, status %s", vm_status,
                            extra=log_filter.lf_args('status', 60))
-            d = {'vm': 'down', 'health': 'bad', 'detail': vm_status,
+            d = {'vm': engine.VMState.DOWN,
+                 'health': engine.Health.BAD,
+                 'detail': vm_status,
                  'reason': 'bad vm status'}
             self.update_result(json.dumps(d))
             return
@@ -100,11 +105,15 @@ class Submonitor(submonitor_base.SubmonitorBase):
         if p.returncode == 0:
             self._log.info("VM is up on this host with healthy engine",
                            extra=log_filter.lf_args('status', 60))
-            d = {'vm': 'up', 'health': 'good', 'detail': vm_status}
+            d = {'vm': engine.VMState.UP,
+                 'health': engine.Health.GOOD,
+                 'detail': vm_status}
             self.update_result(json.dumps(d))
         else:
             self._log.warning("bad health status: %s", output[0])
-            d = {'vm': 'up', 'health': 'bad', 'detail': vm_status,
+            d = {'vm': engine.VMState.UP,
+                 'health': engine.Health.BAD,
+                 'detail': vm_status,
                  'reason': 'failed liveliness check'}
             self.update_result(json.dumps(d))
 
