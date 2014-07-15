@@ -38,7 +38,7 @@ class BrokerLink(object):
         self._log = logging.getLogger("%s.BrokerLink" % __name__)
         self._socket = None
 
-    def connect(self, retries=0):
+    def connect(self, retries=5, wait=5):
         """
         Connect to the HA Broker.  Upon failure, reconnection attempts will
         be made approximately once per second until the specified number of
@@ -60,13 +60,14 @@ class BrokerLink(object):
 
         attempt = 0
         while True:
+            attempt -= 1
             try:
                 self._socket.connect(constants.BROKER_SOCKET_FILE)
             except socket.error as e:
                 if attempt < retries:
                     self._log.info("Failed to connect to broker: %s", str(e))
                     self._log.info("Retrying broker connection...")
-                    time.sleep(1)
+                    time.sleep(wait)
                     continue
                 else:
                     self._log.error("Failed to connect to broker: %s", str(e))
