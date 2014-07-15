@@ -75,7 +75,10 @@ class Submonitor(submonitor_base.SubmonitorBase):
 
         # Report states that are not really Up, but should be
         # reported as such
-        if vm_status in ('paused', 'waitforlaunch', 'restoringstate'):
+        if vm_status in ('paused',
+                         'waitforlaunch',
+                         'restoringstate',
+                         'powering up'):
             self._log.info("VM status: %s", vm_status,
                            extra=log_filter.lf_args('status', 60))
             d = {'vm': engine.VMState.UP,
