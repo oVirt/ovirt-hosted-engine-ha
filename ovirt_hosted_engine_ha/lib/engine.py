@@ -1,6 +1,6 @@
 #
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-# Copyright (C) 2012-2013 Red Hat, Inc.
+# Copyright (C) 2014 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -17,38 +17,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-include $(top_srcdir)/build/python.inc
 
-MAINTAINERCLEANFILES = \
-	$(srcdir)/Makefile.in \
-	$(NULL)
+class VMState(object):
+    UP = "up"
+    DOWN = "down"
 
-halibdir = $(engine_ha_libdir)/lib
 
-dist_halib_PYTHON = \
-	__init__.py \
-	brokerlink.py \
-	brokerlink_test.py \
-	exceptions.py \
-	log_filter.py \
-	metadata.py \
-	storage_backends.py \
-	storage_backends_test.py \
-	util.py \
-	vds_client.py \
-	monotonic.py \
-	engine.py \
-	$(NULL)
-
-SUBDIRS = \
-	fsm \
-	$(NULL)
-
-clean-local: \
-	python-clean \
-	$(NULL)
-
-all-local: \
-	$(DISTFILES) \
-	python-syntax-check \
-	$(NULL)
+class Health(object):
+    GOOD = "good"
+    BAD = "bad"
