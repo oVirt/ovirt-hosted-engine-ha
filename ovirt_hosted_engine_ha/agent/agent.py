@@ -29,8 +29,10 @@ import os
 import pwd
 import signal
 import sys
+import time
 
 from ..lib import util
+from ..lib import exceptions as ex
 from . import constants
 from . import hosted_engine
 
@@ -151,4 +153,25 @@ class Agent(object):
 
     def _run_agent(self):
         # Only one service type for now, run it in the main thread
-        hosted_engine.HostedEngine(self.shutdown_requested).start_monitoring()
+
+        for attempt in range(constants.AGENT_START_RETRIES):
+            try:
+                hosted_engine.HostedEngine(self.shutdown_requested)\
+                    .start_monitoring()
+                # if we're here, the agent stopped gracefully,
+                # so we don't want to restart it
+                break
+            except ex.DisconnectionError as e:
+                self._log.error("Disconnected from broker '{0}'"
+                                " - reinitializing".format(str(e)))
+            except ex.BrokerInitializationError as e:
+                self._log.error("Can't initialize brokerlink '{0}'"
+                                " - reinitializing".format(str(e)))
+            except Exception as e:
+                self._log.error("")
+
+            time.sleep(constants.AGENT_START_RETRY_WAIT)
+            self._log.warn("Restarting agent, attempt '{0}'".format(attempt))
+        else:
+            self._log.error("Too many errors occurred, giving up. "
+                            "Please review the log and consider filing a bug.")
