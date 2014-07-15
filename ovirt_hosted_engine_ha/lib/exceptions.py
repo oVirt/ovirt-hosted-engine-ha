@@ -26,6 +26,10 @@ class DisconnectionError(Exception):
     pass
 
 
+class BrokerConnectionError(Exception):
+    pass
+
+
 class RequestError(Exception):
     pass
 

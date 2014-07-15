@@ -26,6 +26,7 @@ import time
 from ..env import constants
 from ..lib.exceptions import DisconnectionError
 from ..lib.exceptions import RequestError
+from ..lib.exceptions import BrokerConnectionError
 from ..lib import util
 
 
@@ -38,7 +39,7 @@ class BrokerLink(object):
         self._log = logging.getLogger("%s.BrokerLink" % __name__)
         self._socket = None
 
-    def connect(self, retries=0):
+    def connect(self, retries=0, wait=1):
         """
         Connect to the HA Broker.  Upon failure, reconnection attempts will
         be made approximately once per second until the specified number of
@@ -58,23 +59,25 @@ class BrokerLink(object):
             self._socket = None
             raise
 
-        attempt = 0
-        while True:
+        for attempt in range(retries):
             try:
                 self._socket.connect(constants.BROKER_SOCKET_FILE)
+                break
             except socket.error as e:
-                if attempt < retries:
-                    self._log.info("Failed to connect to broker: %s", str(e))
-                    self._log.info("Retrying broker connection...")
-                    time.sleep(1)
-                    continue
-                else:
-                    self._log.error("Failed to connect to broker: %s", str(e))
-                    self._socket.close()
-                    self._socket = None
-                    raise
-            self._log.debug("Successfully connected")
-            break
+                self._log.info("Failed to connect to broker: %s", str(e))
+                self._log.info("Retrying broker connection in '{0}' seconds"
+                               .format(wait))
+                time.sleep(wait)
+        else:
+            error_msg = ("Failed to connect to broker, the number of "
+                         "errors has exceeded the limit ({0})"
+                         .format(retries))
+            self._log.error(error_msg)
+            self._socket.close()
+            self._socket = None
+            raise BrokerConnectionError(error_msg)
+
+        self._log.debug("Successfully connected")
 
     def is_connected(self):
         return self._socket is not None
