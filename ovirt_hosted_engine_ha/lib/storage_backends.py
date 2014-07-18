@@ -263,7 +263,7 @@ class VdsmBackend(StorageBackend):
             return False, path
 
         elif response["status"]["code"] not in (201, 254):
-            # 100 is returned when the volume doesn't exist
+            # 201 is returned when the volume doesn't exist
             # 254 is returned when Image path doesn't exist
             raise RuntimeError(response["status"]["message"])
 
