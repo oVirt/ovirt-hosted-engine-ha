@@ -168,7 +168,8 @@ class Agent(object):
                 self._log.error("Can't initialize brokerlink '{0}'"
                                 " - reinitializing".format(str(e)))
             except Exception as e:
-                self._log.error("")
+                self._log.error("Error: '{0}' - trying to restart agent"
+                                .format(str(e)))
 
             time.sleep(constants.AGENT_START_RETRY_WAIT)
             self._log.warn("Restarting agent, attempt '{0}'".format(attempt))
