@@ -394,9 +394,14 @@ class HostedEngine(object):
         sp_uuid = self._config.get(config.ENGINE, config.SP_UUID)
         dom_type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
 
-        # use vdsm type as the default
-        storage_backend_type = StorageBackendTypes.VdsmBackend
+        # use filesystem type as the default fallback
+        storage_backend_type = StorageBackendTypes.FilesystemBackend
+        storage_params = {
+            'sd_uuid': sd_uuid,
+            'dom_type': dom_type
+        }
         try:
+            storage_backend_type = StorageBackendTypes.VdsmBackend
             storage_params = {
                 'sp_uuid': sp_uuid,
                 'sd_uuid': sd_uuid,
