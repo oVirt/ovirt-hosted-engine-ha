@@ -94,8 +94,8 @@ install -dDm 0700 %{buildroot}%{engine_ha_statedir}
 
 %if 0%{?with_systemd}
 # Install the systemd scripts
-install -Dm 0755 initscripts/ovirt-ha-agent.init %{buildroot}/lib/systemd/systemd-ovirt-ha-agent
-install -Dm 0755 initscripts/ovirt-ha-broker.init %{buildroot}/lib/systemd/systemd-ovirt-ha-broker
+install -Dm 0755 initscripts/ovirt-ha-agent.init %{buildroot}/usr/lib/systemd/systemd-ovirt-ha-agent
+install -Dm 0755 initscripts/ovirt-ha-broker.init %{buildroot}/usr/lib/systemd/systemd-ovirt-ha-broker
 install -Dm 0644 initscripts/ovirt-ha-agent.service %{buildroot}%{_unitdir}/ovirt-ha-agent.service
 install -Dm 0644 initscripts/ovirt-ha-broker.service %{buildroot}%{_unitdir}/ovirt-ha-broker.service
 %else

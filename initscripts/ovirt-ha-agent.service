@@ -6,8 +6,8 @@ After=ovirt-ha-broker.service
 [Service]
 Type=forking
 EnvironmentFile=-/etc/sysconfig/ovirt-ha-agent
-ExecStart=/lib/systemd/systemd-ovirt-ha-agent start
-ExecStop=/lib/systemd/systemd-ovirt-ha-agent stop
+ExecStart=/usr/lib/systemd/systemd-ovirt-ha-agent start
+ExecStop=/usr/lib/systemd/systemd-ovirt-ha-agent stop
 
 [Install]
 WantedBy=multi-user.target
