@@ -131,8 +131,8 @@ install -Dm 0440 sudoers/sudoers %{buildroot}%{_sysconfdir}/sudoers.d/60_ovirt-h
 %{engine_ha_libdir}/*
 
 %if 0%{?with_systemd}
-/lib/systemd/systemd-ovirt-ha-agent
-/lib/systemd/systemd-ovirt-ha-broker
+/usr/lib/systemd/systemd-ovirt-ha-agent
+/usr/lib/systemd/systemd-ovirt-ha-broker
 %{_unitdir}/ovirt-ha-agent.service
 %{_unitdir}/ovirt-ha-broker.service
 %else
