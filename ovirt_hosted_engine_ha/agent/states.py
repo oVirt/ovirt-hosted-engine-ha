@@ -273,7 +273,7 @@ class ReinitializeFSM(EngineState):
     :transition GlobalMaintenance:
     :transition LocalMaintenance:
     :transition UnknownLocalVmState:
-    :transition EngineUp:
+    :transition EngineStarting:
     :transition EngineDown:
     """
     def score(self, logger):
@@ -295,8 +295,12 @@ class ReinitializeFSM(EngineState):
             engine_vm_shutdown_time=None,
             migration_host_id=None)
 
+        # the engine might be just starting so if we go directly to EngineUp
+        # we might end up in EngineUpBadHealth and killing the VM
+        # if the engine is already up'n'running then EngineStarting will
+        # switch to EngineUp (hopefully) without any side effects
         if engine_state and engine_state["vm"] == "up":
-            return EngineUp(data)
+            return EngineStarting(data)
         else:
             return EngineDown(data)
 
@@ -400,7 +404,7 @@ class EngineDown(EngineState):
     :transition GlobalMaintenance:
     :transition UnknownLocalVmState:
     :transition LocalMaintenance:
-    :transition EngineUp:
+    :transition EngineStarting:
     :transition:
     :transition EngineStart:
     """
@@ -419,7 +423,8 @@ class EngineDown(EngineState):
                 # The engine is unexpectedly running here, start monitoring it
                 logger.info("Engine vm unexpectedly running locally,"
                             " monitoring vm")
-                return EngineUp(new_data),
+                # can't go directly up, engine needs a while to settle
+                return EngineStarting(new_data),
             else:
                 # The engine is running somewhere else
                 hostname = new_data.stats.hosts[
