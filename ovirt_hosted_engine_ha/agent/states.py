@@ -441,8 +441,13 @@ class EngineDown(EngineState):
             logger.info("The engine is not running, but we do not have enough"
                         " data to decide which hosts are alive")
             return EngineDown(new_data), fsm.WAIT
+        # there might be more hosts with the same score, so they all
+        # might try to start the VM, but only one will get the sanlock
+        # so only one VM should be started, but that's better than situation
+        # when all have the same score and noone want's to start the vm
+        # rhbz#1093638
         elif (new_data.best_score_host is None or
-              new_data.best_score_host["score"] < self.score(logger)):
+              new_data.best_score_host["score"] <= self.score(logger)):
             # we have the best score at the moment, try starting the engine
             logger.info("Engine down and local host has best score (%d),"
                         " attempting to start engine VM",
