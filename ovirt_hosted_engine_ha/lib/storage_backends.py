@@ -306,7 +306,7 @@ class VdsmBackend(StorageBackend):
 
         response = connection.getVolumePath(
             self._sd_uuid,
-            self._sp_uuid,
+            '00000000-0000-0000-0000-000000000000',
             image_uuid,
             volume_uuid
         )
@@ -358,7 +358,9 @@ class VdsmBackend(StorageBackend):
         for service, volume in self._services.iteritems():
             # Activate volumes and set the volume.path to proper path
             response = connection.prepareImage(
-                self._sp_uuid,
+                # we're not connected to any storage pool, so we need to use
+                # blank pool uuid suggested by fsimonce rhbz#1130038
+                '00000000-0000-0000-0000-000000000000',
                 self._sd_uuid,
                 volume.image_uuid,
                 volume.volume_uuid
@@ -369,7 +371,7 @@ class VdsmBackend(StorageBackend):
 
             response = connection.getVolumePath(
                 self._sd_uuid,
-                self._sp_uuid,
+                '00000000-0000-0000-0000-000000000000',
                 volume.image_uuid,
                 volume.volume_uuid
             )
