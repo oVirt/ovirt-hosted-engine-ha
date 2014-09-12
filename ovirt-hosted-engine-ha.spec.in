@@ -50,15 +50,15 @@ Requires:       python
 Requires:       python-daemon
 Requires:       sanlock >= 2.8
 Requires:       sanlock-python >= 2.8
-Requires:       vdsm >= 4.16.0
-Requires:       vdsm-cli >= 4.16.0
-Requires:       vdsm-python >= 4.16.0
+Requires:       vdsm >= 4.16.4
+Requires:       vdsm-cli >= 4.16.4
+Requires:       vdsm-python >= 4.16.4
 
 BuildRequires:  python
 BuildRequires:  python2-devel
 BuildRequires:  python-nose
 BuildRequires:  python-mock
-BuildRequires:  vdsm-cli >= 4.16.0
+BuildRequires:  vdsm-cli >= 4.16.4
 
 %if 0%{?with_systemd}
 %{?systemd_requires}
@@ -193,6 +193,9 @@ exit 0
 
 
 %changelog
+* Fri Sep 12  2014 Sandro Bonazzola - 1.2.1-0.3.master
+- 1.2.1-0.3.master
+
 * Fri Jul 11 2014 Sandro Bonazzola - 1.2.1-0.2.master
 - 1.2.1-0.2.master
 
