@@ -39,7 +39,7 @@ Version:        @PACKAGE_RPM_VERSION@
 Release:        @PACKAGE_RPM_RELEASE@%{?release_suffix}%{?dist}
 License:        LGPLv2+
 URL:            http://www.ovirt.org
-Source:         http://resources.ovirt.org/pub/ovirt-3.5-snapshot/src/%{name}/%{name}-%{package_version}.tar.gz
+Source:         http://resources.ovirt.org/pub/ovirt-3.5/src/%{name}/%{name}-%{package_version}.tar.gz
 Group:          Applications/System
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -193,10 +193,13 @@ exit 0
 
 
 %changelog
-* Fri Sep 12  2014 Sandro Bonazzola - 1.2.1-0.3.master
+* Mon Sep 22 2014 Sandro Bonazzola <sbonazzo@redhat.com> - 1.2.1-1
+- 1.2.1-1
+
+* Fri Sep 12 2014 Sandro Bonazzola <sbonazzo@redhat.com> - 1.2.1-0.3.master
 - 1.2.1-0.3.master
 
-* Fri Jul 11 2014 Sandro Bonazzola - 1.2.1-0.2.master
+* Fri Jul 11 2014 Sandro Bonazzola <sbonazzo@redhat.com> - 1.2.1-0.2.master
 - 1.2.1-0.2.master
 
 * Fri Jun 20 2014 David Caro <dcaro@redhat.com> - 1.2.1-0.1.master
