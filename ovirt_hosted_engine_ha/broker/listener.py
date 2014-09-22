@@ -296,26 +296,31 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
         to a thread and uses this to track monitors accordingly.
         """
         with self.server.sp_listener.conn_monitors_access_lock:
-            self.server.sp_listener.conn_monitors[threading
-                .current_thread().ident] = []
+            self.server.sp_listener.conn_monitors[
+                threading.current_thread().ident
+            ] = []
 
     def _get_monitors_for_conn(self):
         with self.server.sp_listener.conn_monitors_access_lock:
-            ret = self.server.sp_listener.conn_monitors[threading
-                      .current_thread().ident]
+            ret = self.server.sp_listener.conn_monitors[
+                threading.current_thread().ident
+            ]
         return ret
 
     def _add_monitor_for_conn(self, id):
         with self.server.sp_listener.conn_monitors_access_lock:
-            self.server.sp_listener.conn_monitors[threading
-                .current_thread().ident].append(id)
+            self.server.sp_listener.conn_monitors[
+                threading.current_thread().ident
+            ].append(id)
 
     def _remove_monitor_for_conn(self, id):
         with self.server.sp_listener.conn_monitors_access_lock:
-            self.server.sp_listener.conn_monitors[threading
-                .current_thread().ident].remove(id)
+            self.server.sp_listener.conn_monitors[
+                threading.current_thread().ident
+            ].remove(id)
 
     def _remove_monitor_conn_entry(self):
         with self.server.sp_listener.conn_monitors_access_lock:
-            del self.server.sp_listener.conn_monitors[threading
-                    .current_thread().ident]
+            del self.server.sp_listener.conn_monitors[
+                threading.current_thread().ident
+            ]
