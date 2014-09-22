@@ -39,7 +39,7 @@ Version:        @PACKAGE_RPM_VERSION@
 Release:        @PACKAGE_RPM_RELEASE@%{?release_suffix}%{?dist}
 License:        LGPLv2+
 URL:            http://www.ovirt.org
-Source:         http://resources.ovirt.org/pub/ovirt-3.4-snapshot/src/%{name}/%{name}-%{package_version}.tar.gz
+Source:         http://resources.ovirt.org/pub/ovirt-3.4/src/%{name}/%{name}-%{package_version}.tar.gz
 Group:          Applications/System
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -50,9 +50,9 @@ Requires:       python
 Requires:       python-daemon
 Requires:       sanlock >= 2.8
 Requires:       sanlock-python >= 2.8
-Requires:       vdsm >= 4.14.0
-Requires:       vdsm-cli >= 4.14.0
-Requires:       vdsm-python >= 4.14.0
+Requires:       vdsm >= 4.14.17
+Requires:       vdsm-cli >= 4.14.17
+Requires:       vdsm-python >= 4.14.17
 
 BuildRequires:  python2-devel
 BuildRequires:  python-nose
@@ -193,6 +193,9 @@ exit 0
 
 
 %changelog
+* Mon Sep 22 2014 Sandro Bonazzola <sbonazzo@redhat.com> - 1.1.6-1
+- updated to 1.1.6
+
 * Fri Jul 18 2014 David Caro <dcaro@redhat.com> - 1.1.6-0.1.master
 - Fix missing macro systemd_requires
 
