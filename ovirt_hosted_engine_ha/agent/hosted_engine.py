@@ -308,10 +308,11 @@ class HostedEngine(object):
                 break
 
             self._log.debug("Processing engine state %s", state)
-            self._broker.notify(brokerlink.NotifyEvents.STATE_TRANSITION,
-                                "%s-%s" % (old_state.__class__.__name__,
-                                           state.__class__.__name__),
-                                hostname=socket.gethostname())
+            if old_state.__class__.__name__ != state.__class__.__name__:
+                self._broker.notify(brokerlink.NotifyEvents.STATE_TRANSITION,
+                                    "%s-%s" % (old_state.__class__.__name__,
+                                               state.__class__.__name__),
+                                    hostname=socket.gethostname())
 
             try:
                 # make sure everything is still initialized
