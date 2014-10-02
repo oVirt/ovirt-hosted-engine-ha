@@ -21,17 +21,30 @@ import os
 
 from . import config
 from . import constants
+from vdsm import vdscli
 
 
 def get_domain_path(config_):
     """
     Return path of storage domain holding engine vm
     """
+    vdsm = vdscli.connect()
     sd_uuid = config_.get(config.ENGINE, config.SD_UUID)
     dom_type = config_.get(config.ENGINE, config.DOMAIN_TYPE)
     parent = constants.SD_MOUNT_PARENT
     if dom_type == 'glusterfs':
         parent = os.path.join(parent, 'glusterSD')
+
+    response = vdsm.getStorageDomainInfo(sd_uuid)
+    if response['status']['code'] == 0:
+        local_path = response['info']['remotePath'].replace('/', '_')
+        path = os.path.join(parent, local_path, sd_uuid)
+        if os.access(path, os.F_OK):
+            return path
+
+    # fallback in case of getStorageDomainInfo call fails
+    # please note that this code will get stuck if some of
+    # the storage domains is not accessible rhbz#1140824
     for dname in os.listdir(parent):
         path = os.path.join(parent, dname, sd_uuid)
         if os.access(path, os.F_OK):
