@@ -20,6 +20,7 @@
 import logging
 import threading
 import time
+from ..lib import monotonic
 
 
 class SubmonitorBase(object):
@@ -109,7 +110,7 @@ class SubmonitorBase(object):
             self._initialized.set()
 
         while self._execute:
-            next_execution = time.time() + self._interval
+            next_execution = monotonic.time() + self._interval
             try:
                 self.action(self._options)
             except Exception as e:
@@ -117,10 +118,10 @@ class SubmonitorBase(object):
                 self._baselog.error("Error executing submonitor %s, args %r",
                                     self._name, self._options, exc_info=True)
                 pass
-            time_remaining = next_execution - time.time()
+            time_remaining = next_execution - monotonic.time()
             while time_remaining > 0:
                 time.sleep(time_remaining)
-                time_remaining = next_execution - time.time()
+                time_remaining = next_execution - monotonic.time()
         self.teardown(self._options)
 
     def stop(self):
