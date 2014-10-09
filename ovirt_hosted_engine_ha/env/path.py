@@ -35,12 +35,17 @@ def get_domain_path(config_):
     if dom_type == 'glusterfs':
         parent = os.path.join(parent, 'glusterSD')
 
-    response = vdsm.getStorageDomainInfo(sd_uuid)
-    if response['status']['code'] == 0:
-        local_path = response['info']['remotePath'].replace('/', '_')
-        path = os.path.join(parent, local_path, sd_uuid)
-        if os.access(path, os.F_OK):
-            return path
+    if dom_type.startswith("nfs"):
+        response = vdsm.getStorageDomainInfo(sd_uuid)
+        if response['status']['code'] == 0:
+            try:
+                local_path = response['info']['remotePath'].replace('/', '_')
+                path = os.path.join(parent, local_path, sd_uuid)
+                if os.access(path, os.F_OK):
+                    return path
+            # don't have remotePath? so fallback to old logic
+            except KeyError:
+                pass
 
     # fallback in case of getStorageDomainInfo call fails
     # please note that this code will get stuck if some of
