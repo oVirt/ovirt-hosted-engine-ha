@@ -898,13 +898,19 @@ class HostedEngine(object):
                                       " already running according to VDSM")
                     return
 
-                self._log.error("Failed: %s", output[1])
                 raise Exception(output[1])
 
-            self._log.error("Engine VM started on localhost")
+            self._log.info("Engine VM started on localhost")
             return True
         except Exception as e:
-            self._log.error("Failed to start engine VM: %s", str(e))
+            self._log.info("Failed to start engine VM: '%s'. Please check the"
+                           " vdsm logs. The possible reason: the engine has"
+                           " been already started on a different host so this"
+                           " one has failed to acquire the lock and it will"
+                           " sync in a while."
+                           " For more information please visit: "
+                           "http://www.ovirt.org/Hosted_Engine_Howto"
+                           "#EngineUnexpectedlyDown", str(e))
             return False
 
     def _clean_vdsm_state(self):
