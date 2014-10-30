@@ -78,7 +78,7 @@ def engine_status(status):
         try:
             return dict([(str(k), str(v)) for (k, v)
                         in json.loads(status).iteritems()])
-        except ValueError:
+        except (ValueError, AttributeError):
             return {"vm": "unknown", "health": "unknown",
                     "detail": "serialization error"}
     else:
