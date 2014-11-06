@@ -228,6 +228,20 @@ class VdsmBackend(StorageBackend):
         self._sd_uuid = sd_uuid
         self._dom_type = dom_type
 
+    def _get_volume_path(self, connection, spUUID, sdUUID, imgUUID, volUUID):
+        retval = namedtuple('retval', ['status_code', 'path', 'message'])
+        response = connection.prepareImage(
+            spUUID,
+            sdUUID,
+            imgUUID,
+            volUUID
+        )
+        logger.debug("prepareImage: '%s'", response)
+        path = response.get('path', None)
+        logger.debug("prepareImage: returned '%s' as path", path)
+        return retval(response["status"]["code"], path,
+                      response["status"].get("message", ""))
+
     def create_volume(self, service_name, service_size,
                       volume_uuid, image_uuid):
         """
@@ -249,20 +263,20 @@ class VdsmBackend(StorageBackend):
         connection = vdsm.vdscli.connect()
 
         # Check of the volume already exists
-        response = connection.getVolumePath(
-            self._sd_uuid,
-            self._sp_uuid,
-            image_uuid,
-            volume_uuid
+        response = self._get_volume_path(
+            connection,
+            sdUUID=self._sd_uuid,
+            spUUID=self._sp_uuid,
+            imgUUID=image_uuid,
+            volUUID=volume_uuid
         )
 
-        logger.debug("getVolumePath: '%s'", response)
-        if response["status"]["code"] == 0:
+        if response.status_code == 0:
             logger.info("Image for '%s' already exists", service_name)
             path = response['path']
             return False, path
 
-        elif response["status"]["code"] not in (201, 254):
+        elif response.status_code not in (201, 254):
             # 201 is returned when the volume doesn't exist
             # 254 is returned when Image path doesn't exist
             raise RuntimeError(response["status"]["message"])
@@ -304,17 +318,16 @@ class VdsmBackend(StorageBackend):
         logger.debug("clearTask: '%s'", response)
         logger.info("Image for '%s' created successfully", service_name)
 
-        response = connection.getVolumePath(
-            self._sd_uuid,
-            '00000000-0000-0000-0000-000000000000',
-            image_uuid,
-            volume_uuid
+        response = self._get_volume_path(
+            connection, sdUUID=self._sd_uuid,
+            spUUID='00000000-0000-0000-0000-000000000000',
+            imgUUID=image_uuid,
+            volUUID=volume_uuid
         )
-        logger.debug("getVolumePath: '%s'", response)
-        if response["status"]["code"] != 0:
-            raise RuntimeError(response["status"]["message"])
-        path = response['path']
-        return True, path
+        if response.status_code != 0:
+            raise RuntimeError(response.message)
+
+        return True, response.path
 
     def create(self, service_map, force_new=False):
         base_path, self._lv_based = self.get_domain_path(self._sd_uuid,
@@ -357,29 +370,19 @@ class VdsmBackend(StorageBackend):
         connection = vdsm.vdscli.connect()
         for service, volume in self._services.iteritems():
             # Activate volumes and set the volume.path to proper path
-            response = connection.prepareImage(
+            response = self._get_volume_path(
+                connection,
+                sdUUID=self._sd_uuid,
                 # we're not connected to any storage pool, so we need to use
                 # blank pool uuid suggested by fsimonce rhbz#1130038
-                '00000000-0000-0000-0000-000000000000',
-                self._sd_uuid,
-                volume.image_uuid,
-                volume.volume_uuid
+                spUUID='00000000-0000-0000-0000-000000000000',
+                imgUUID=volume.image_uuid,
+                volUUID=volume.volume_uuid
             )
-            logger.debug("prepareImage: '%s'" % response)
-            if response["status"]["code"] != 0:
-                raise RuntimeError(response["status"]["message"])
+            if response.status_code != 0:
+                raise RuntimeError(response.message)
 
-            response = connection.getVolumePath(
-                self._sd_uuid,
-                '00000000-0000-0000-0000-000000000000',
-                volume.image_uuid,
-                volume.volume_uuid
-            )
-            logger.debug("getVolumePath: '%s'", response)
-            if response["status"]["code"] == 0:
-                volume.path = response['path']
-            else:
-                raise RuntimeError(response["status"]["message"])
+            volume.path = response.path
 
             # Create symlinks for compatibility reasons
             service_link = os.path.join(self._storage_path, service)
