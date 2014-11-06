@@ -562,20 +562,6 @@ class EngineUpBadHealth(EngineUp):
                      (now - fail_time))
         return super(EngineUpBadHealth, self).consume(fsm, new_data, logger)
 
-    def score(self, logger):
-        # the timeout_start_time is None if the state just changed
-        if self.data.timeout_start_time:
-            time_str = time.ctime(self.data.timeout_start_time
-                                  + self.data.stats.time_epoch)
-        else:
-            time_str = time.ctime()
-        # If engine has bad health status, let another host try
-        logger.info('Score is 0 due to bad engine health at %s',
-                    time_str,
-                    extra=log_filter.lf_args('score-health',
-                                             self.LF_PENALTY_INT))
-        return 0
-
     def metadata(self):
         data = super(EngineUpBadHealth, self).metadata()
         if self.data.timeout_start_time:
