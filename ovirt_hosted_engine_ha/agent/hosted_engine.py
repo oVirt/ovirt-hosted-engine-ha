@@ -771,7 +771,9 @@ class HostedEngine(object):
         self._log.debug("Refreshing all submonitors")
         for field, monitor in self._local_monitors.iteritems():
             ret = self._broker.get_monitor_status(monitor['id'])
-            if monitor['type'] is not None:
+            if ret == 'False':
+                ret = False
+            elif monitor['type'] is not None:
                 ret = monitor['type'](ret)
             data["local"][field] = ret
 
