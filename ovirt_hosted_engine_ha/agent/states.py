@@ -86,15 +86,14 @@ class EngineState(BaseState):
         failed attempts, the host's score is set to 0 to give any lesser-
         suited hosts a chance.  After ENGINE_RETRY_EXPIRATION_SECS seconds,
         this host's retry count will no longer be factored into the score.
-        If retries are still occurring amonst the HA hosts at that time, this
+        If retries are still occurring amongst the HA hosts at that time, this
         host will again have an opportunity to run the engine VM.
 
         Score weights:
-        1000 - gateway address is pingable
-         800 - host's management network bridge is up
+        1600 - gateway address is pingable
+        1000 - host's cpu load is less than 90% of capacity
+         600 - host's management network bridge is up
          400 - host has 4GB of memory free to run the engine VM
-         100 - host's cpu load is less than 80% of capacity
-         100 - host's memory usage is less than 80% of capacity
 
         Adjustments:
          -50 - subtraction for each failed start-vm retry attempt
@@ -112,13 +111,13 @@ class EngineState(BaseState):
         score = score_cfg['base-score']
         # FIXME score needed for vdsm storage pool connection?
         # (depending on storage integration, may not be able to report...)
-        if lm['gateway'] == 'False':
+        if not lm['gateway']:
             logger.info("Penalizing score by %d due to gateway status",
                         score_cfg['gateway-score-penalty'],
                         extra=log_filter.lf_args('score-gateway',
                                                  self.LF_PENALTY_INT))
             score -= score_cfg['gateway-score-penalty']
-        if lm['bridge'] == 'False':
+        if not lm['bridge']:
             logger.info("Penalizing score by %d due to mgmt bridge status",
                         score_cfg['mgmt-bridge-score-penalty'],
                         extra=log_filter.lf_args('score-mgmtbridge',
