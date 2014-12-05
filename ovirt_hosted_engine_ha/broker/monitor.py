@@ -38,8 +38,9 @@ class Monitor(object):
         smdir = os.path.join(os.path.dirname(submonitor_base.__file__),
                              "submonitors")
         self._log.info("Searching for submonitors in %s", smdir)
-        for filename in (f for f in os.listdir(smdir) if f.endswith('.py')):
-            name = filename[:-3]
+        for filename in (f for f in os.listdir(smdir) if
+                         (f.endswith('.py') or f.endswith('.pyc'))):
+            name = filename[:filename.rindex('.')]
             # TODO better error handling for __init__ and badly-written files
             module = imp.find_module(name, [smdir])
             sm = imp.load_module(name, *module)
