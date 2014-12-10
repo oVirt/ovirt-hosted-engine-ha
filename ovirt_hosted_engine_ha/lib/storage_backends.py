@@ -147,6 +147,8 @@ class VdsmBackend(StorageBackend):
         __slots__ = ["image_uuid", "volume_uuid", "path"]
 
         def __init__(self, image_uuid, volume_uuid, path=None):
+            if any(k in (None, "None", "") for k in (image_uuid, volume_uuid)):
+                raise ValueError("image_uuid or volume_uuid is missing or None")
             self.image_uuid = image_uuid
             self.volume_uuid = volume_uuid
             self.path = path
