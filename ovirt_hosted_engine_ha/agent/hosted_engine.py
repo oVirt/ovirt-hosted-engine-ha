@@ -423,7 +423,7 @@ class HostedEngine(object):
                 ).dump()
             }
             # check if we have all the needed config params needed for vdsm api
-            if [v for k, v in storage_params.items() if v is '']:
+            if any(v in ('None', None, '') for v in storage_params.values()):
                 storage_params = {
                     'sd_uuid': sd_uuid,
                     'dom_type': dom_type
