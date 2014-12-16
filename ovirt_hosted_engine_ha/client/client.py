@@ -61,7 +61,7 @@ class HAClient(object):
         LOCAL = 'LOCAL'
         GLOBAL = 'GLOBAL'
 
-    def __init__(self, log=False):
+    def __init__(self, log=False, retries=1, wait=0):
         """
         Create an instance of HAClient.  If the caller has a log handler, it
         should pass in log=True, else logging will effectively be disabled.
@@ -71,9 +71,11 @@ class HAClient(object):
                                 level=logging.CRITICAL)
         self._log = logging.getLogger("%s.HAClient" % __name__)
         self._config = None
+        self._retries = retries
+        self._wait = wait
 
     def _check_liveness_metadata(self, md, broker):
-        with broker.connection():
+        with broker.connection(self._retries, self._wait):
             self._configure_broker_conn(broker)
             service = constants.SERVICE_TYPE + agent_constants.MD_EXTENSION
             md["live-data"] = broker.is_host_alive(service, md["host-id"])
@@ -97,7 +99,7 @@ class HAClient(object):
         if self._config is None:
             self._config = config.Config()
         broker = brokerlink.BrokerLink()
-        with broker.connection():
+        with broker.connection(self._retries, self._wait):
             self._configure_broker_conn(broker)
             service = constants.SERVICE_TYPE + agent_constants.MD_EXTENSION
             stats = broker.get_stats_from_storage(service)
@@ -196,7 +198,7 @@ class HAClient(object):
             put_val = value
 
         broker = brokerlink.BrokerLink()
-        with broker.connection():
+        with broker.connection(self._retries, self._wait):
             self._configure_broker_conn(broker)
             service = constants.SERVICE_TYPE + agent_constants.MD_EXTENSION
             all_stats = broker.get_stats_from_storage(service)
@@ -232,7 +234,7 @@ class HAClient(object):
 
         host_id = int(self._config.get(config.ENGINE, config.HOST_ID))
         broker = brokerlink.BrokerLink()
-        with broker.connection():
+        with broker.connection(self._retries, self._wait):
             self._configure_broker_conn(broker)
             service = constants.SERVICE_TYPE + agent_constants.MD_EXTENSION
             stats = broker.get_stats_from_storage(service)

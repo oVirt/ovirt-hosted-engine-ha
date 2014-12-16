@@ -93,10 +93,10 @@ class BrokerLink(object):
             self._socket = None
 
     @contextlib.contextmanager
-    def connection(self):
+    def connection(self, retries=5, wait=5):
         was_connected = self.is_connected()
         if not was_connected:
-            self.connect()
+            self.connect(retries, wait)
         yield
         if not was_connected:
             self.disconnect()
