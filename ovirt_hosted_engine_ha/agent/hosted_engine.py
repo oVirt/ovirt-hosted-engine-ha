@@ -410,16 +410,20 @@ class HostedEngine(object):
                 constants.SERVICE_TYPE + constants.MD_EXTENSION:
                 VdsmBackend.Device(
                     self._config.get(config.ENGINE,
-                                     config.METADATA_IMAGE_UUID),
+                                     config.METADATA_IMAGE_UUID,
+                                     raise_on_none=True),
                     self._config.get(config.ENGINE,
-                                     config.METADATA_VOLUME_UUID),
+                                     config.METADATA_VOLUME_UUID,
+                                     raise_on_none=True),
                 ).dump(),
                 constants.SERVICE_TYPE + constants.LOCKSPACE_EXTENSION:
                 VdsmBackend.Device(
                     self._config.get(config.ENGINE,
-                                     config.LOCKSPACE_IMAGE_UUID),
+                                     config.LOCKSPACE_IMAGE_UUID,
+                                     raise_on_none=True),
                     self._config.get(config.ENGINE,
-                                     config.LOCKSPACE_VOLUME_UUID),
+                                     config.LOCKSPACE_VOLUME_UUID,
+                                     raise_on_none=True),
                 ).dump()
             }
             # check if we have all the needed config params needed for vdsm api

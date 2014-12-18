@@ -73,12 +73,17 @@ class Config(object):
                         conf[tokens[0]] = tokens[1].strip()
             self._config[type] = conf
 
-    def get(self, type, key):
+    def get(self, type, key, raise_on_none=False):
         if type in Config.dynamic_files.keys():
             self._load(dict([(type, Config.dynamic_files[type])]))
 
         try:
-            return self._config[type][key]
+            val = self._config[type][key]
+            if raise_on_none and val in (None, "None", ""):
+                raise ValueError(
+                    "'{0} can't be '{1}'".format(key, val)
+                )
+            return val
         except KeyError:
             unknown = "unknown (type={0})".format(type)
             raise Exception("Configuration value not found: file={0}, key={1}"
