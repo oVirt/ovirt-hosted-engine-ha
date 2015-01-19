@@ -1,6 +1,6 @@
 #
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-# Copyright (C) 2013-2014 Red Hat, Inc.
+# Copyright (C) 2013-2015 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -29,7 +29,7 @@
 %global         vdsm_user @VDSM_USER@
 %global         vdsm_group @VDSM_GROUP@
 
-%if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
+%if 0%{?fedora} || 0%{?rhel} >= 7
 %global with_systemd 1
 %endif
 
@@ -39,7 +39,7 @@ Version:        @PACKAGE_RPM_VERSION@
 Release:        @PACKAGE_RPM_RELEASE@%{?release_suffix}%{?dist}
 License:        LGPLv2+
 URL:            http://www.ovirt.org
-Source:         http://resources.ovirt.org/pub/ovirt-3.5-snapshot/src/%{name}/%{name}-%{package_version}.tar.gz
+Source:         http://resources.ovirt.org/pub/ovirt-3.5/src/%{name}/%{name}-%{package_version}.tar.gz
 Group:          Applications/System
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -50,15 +50,15 @@ Requires:       python
 Requires:       python-daemon
 Requires:       sanlock >= 2.8
 Requires:       sanlock-python >= 2.8
-Requires:       vdsm >= 4.16.7
-Requires:       vdsm-cli >= 4.16.7
-Requires:       vdsm-python >= 4.16.7
+Requires:       vdsm >= 4.16.10
+Requires:       vdsm-cli >= 4.16.10
+Requires:       vdsm-python >= 4.16.10
 
 BuildRequires:  python
 BuildRequires:  python2-devel
 BuildRequires:  python-nose
 BuildRequires:  python-mock
-BuildRequires:  vdsm-cli >= 4.16.4
+BuildRequires:  vdsm-cli >= 4.16.10
 
 %if 0%{?with_systemd}
 %{?systemd_requires}
@@ -193,6 +193,9 @@ exit 0
 
 
 %changelog
+* Mon Jan 19 2015 Sandro Bonazzola <sbonazzo@redhat.com> - 1.2.5-1
+- 1.2.5-1
+
 * Tue Oct 21 2014 Sandro Bonazzola <sbonazzo@redhat.com> - 1.2.5-0.0.master
 - 1.2.5-0.0.master
 
