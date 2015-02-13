@@ -40,9 +40,15 @@ start()
 {
     [ -x $AGENT ] || exit 5
     if [ ! -f $ENGINE_SETUP_CONF_FILE -o ! -f $VM_CONF_FILE ]; then
-        echo "Configuration by ovirt-hosted-engine-setup is required"
-        echo "Files: $ENGINE_SETUP_CONF_FILE $VM_CONF_FILE"
-        exit 6
+        if [ -f /etc/default/ovirt ]; then
+            # See https://bugzilla.redhat.com/1164226
+            echo -n "Not starting $prog on Node before deployment"
+            exit 0
+        else
+            echo "Configuration by ovirt-hosted-engine-setup is required"
+            echo "Files: $ENGINE_SETUP_CONF_FILE $VM_CONF_FILE"
+            exit 6
+        fi
     fi
     echo -n $"Starting $prog: "
     $AGENT $OPTIONS && success || failure
