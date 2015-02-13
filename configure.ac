@@ -1,6 +1,6 @@
 dnl
 dnl ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-dnl Copyright (C) 2013-2014 Red Hat, Inc.
+dnl Copyright (C) 2013-2015 Red Hat, Inc.
 dnl
 dnl This library is free software; you can redistribute it and/or
 dnl modify it under the terms of the GNU Lesser General Public
@@ -34,7 +34,6 @@ AC_SUBST([PACKAGE_RPM_RELEASE])
 AC_CONFIG_AUX_DIR([build/build-aux])
 AC_CONFIG_MACRO_DIR([build/m4])
 AC_CONFIG_SRCDIR([ovirt_hosted_engine_ha/broker/__init__.py])
-AC_USE_SYSTEM_EXTENSIONS
 AM_INIT_AUTOMAKE([1.9 tar-pax])
 
 AC_ARG_ENABLE(
