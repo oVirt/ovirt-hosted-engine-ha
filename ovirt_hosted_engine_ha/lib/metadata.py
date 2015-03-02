@@ -18,12 +18,15 @@
 #
 
 import re
+import binascii
 
 from ..env import constants
 from ..lib import util
 from exceptions import FatalMetadataError
 from exceptions import MetadataError
 
+EMPTY_CRC32 = '00000000'
+CRC32_FORMAT = "%08x"
 
 def to_bool_rep(value):
     """
@@ -104,6 +107,11 @@ def parse_metadata_to_dict(host_str, data):
          name - hostname of described host
          maintenance - 0 or 1 representing host is operational or in
             local maintenance
+         running - 0 or 1 representing the agent is running or
+            stopped (cleanly).
+         crc32 - eight hex characters representing the crc32 of the
+            whole 512B block (crc32 is computed with the field set
+            to '00000000').
 
      - Next 3584 bytes (for a total of 4096): human-readable description of
        data to aid in debugging, including factors considered in the host score
@@ -180,6 +188,22 @@ def parse_metadata_to_dict(host_str, data):
     # support maintenance flag if present, but ignore if it isn't
     if len(tokens) >= 8:
         ret['maintenance'] = int(tokens[7]) > 0
+
+    # support stopped cleanly flag if present, but ignore if it isn't
+    if len(tokens) >= 9:
+        ret['stopped'] = int(tokens[8]) > 0
+
+    # support crc32 field if present, but ignore if it isn't
+    if len(tokens) >= 10:
+        ret['crc32'] = tokens[9]
+        tokens[9] = EMPTY_CRC32
+        data = "|".join(tokens)
+        crc32 = CRC32_FORMAT % (binascii.crc32(data) & 0xffffffff)
+        if ret['crc32'] != crc32:
+            raise MetadataError("Malformed metadata for host {0}:"
+                                " provided checksum {1} does not match"
+                                " the data {2}."
+                                .format(host_id, ret[9], crc32))
 
     # Add human-readable summary from bytes 512+
     extra = data[512:].rstrip('\0')

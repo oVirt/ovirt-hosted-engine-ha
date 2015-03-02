@@ -26,6 +26,7 @@ import re
 import socket
 import subprocess
 import time
+import binascii
 
 import sanlock
 
@@ -40,6 +41,7 @@ from ..lib import util
 from ..lib import vds_client as vdsc
 from ..lib.storage_backends import StorageBackendTypes, VdsmBackend
 from .state_machine import EngineStateMachine
+from .states import AgentStopped
 
 
 class MetadataTooNewError(Exception):
@@ -290,6 +292,11 @@ class HostedEngine(object):
     def host_id(self):
         return int(self._config.get(config.ENGINE, config.HOST_ID))
 
+    def publish(self, state):
+        blocks = self._generate_local_blocks(state)
+        self._push_to_storage(blocks)
+        self.update_hosts_state(state)
+
     def start_monitoring(self):
         error_count = 0
 
@@ -332,9 +339,7 @@ class HostedEngine(object):
                                    state.data.best_score_host["score"])
 
                 # publish the current state
-                blocks = self._generate_local_blocks(state)
-                self._push_to_storage(blocks)
-                self.update_hosts_state(state)
+                self.publish(state)
             except Exception as e:
                 self._log.warning("Error while monitoring engine: %s", str(e))
                 if not (isinstance(e, ex.DisconnectionError) or
@@ -357,6 +362,10 @@ class HostedEngine(object):
 
             self._log.log(log_level, "Sleeping %d seconds", delay)
             time.sleep(delay)
+
+        # Publish stopped status
+        stopped = AgentStopped(self.fsm.state.data)
+        self.publish(stopped)
 
         self._log.debug("Disconnecting from ha-broker")
         if self._broker and self._broker.is_connected():
@@ -677,17 +686,34 @@ class HostedEngine(object):
         score = state.score(self.fsm.logger)
         lm = state.data.stats.local
         md = state.metadata()
-        data = ("{md_parse_vers}|{md_feature_vers}|{ts_int}"
-                "|{host_id}|{score}|{engine_status}|{name}|{maintenance}"
-                .format(md_parse_vers=constants.METADATA_PARSE_VERSION,
-                        md_feature_vers=constants.METADATA_FEATURE_VERSION,
-                        # system timestamp
-                        ts_int=state.data.stats.collect_start,
-                        host_id=state.data.stats.host_id,
-                        score=score,
-                        engine_status=json.dumps(lm['engine-health']),
-                        name=self._hostname,
-                        maintenance=1 if md["maintenance"] else 0))
+
+        tokens = []
+        # Metadata lowest compatible version
+        tokens.append(constants.METADATA_PARSE_VERSION)
+        # Metadata highest compatible version
+        tokens.append(constants.METADATA_FEATURE_VERSION)
+        # System timestamp
+        tokens.append(state.data.stats.collect_start)
+        # Host ID
+        tokens.append(state.data.stats.host_id)
+        # Host score
+        tokens.append(score)
+        # Engine status
+        tokens.append(json.dumps(lm['engine-health']))
+        # System hostname
+        tokens.append(self._hostname)
+        # Local maintenance flag
+        tokens.append(1 if md["maintenance"] else 0)
+        # Agent stopped cleanly flag
+        tokens.append(1 if "stopped" in md and md["stopped"] else 0)
+        # CRC32 in hex (use 0 for computing the crc)
+        tokens.append(metadata.EMPTY_CRC32)
+
+        data = "|".join(str(t) for t in tokens)
+        crc32 = metadata.CRC32_FORMAT % (binascii.crc32(data) & 0xffffffff)
+        tokens[9] = crc32
+        data = "|".join(str(t) for t in tokens)
+
         if len(data) > constants.METADATA_BLOCK_BYTES:
             raise Exception("Output metadata too long ({0} bytes)"
                             .format(data))

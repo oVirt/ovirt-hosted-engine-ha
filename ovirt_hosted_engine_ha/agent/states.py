@@ -188,8 +188,19 @@ class EngineState(BaseState):
 
     def metadata(self):
         data = {"state": self.__class__.__name__,
-                "maintenance": False}
+                "maintenance": False,
+                "stopped": False}
         return data
+
+
+class AgentStopped(EngineState):
+    def score(self, logger):
+        return 0
+
+    def metadata(self):
+        md = super(AgentStopped, self).metadata()
+        md["stopped"] = True
+        return md
 
 
 class LocalMaintenance(EngineState):
