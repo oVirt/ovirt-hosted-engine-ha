@@ -58,7 +58,6 @@ BuildRequires:  python
 BuildRequires:  python2-devel
 BuildRequires:  python-nose
 BuildRequires:  python-mock
-BuildRequires:  vdsm-cli >= 4.17.0
 
 %if 0%{?with_systemd}
 %{?systemd_requires}
