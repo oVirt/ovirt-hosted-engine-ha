@@ -28,6 +28,7 @@ from exceptions import MetadataError
 EMPTY_CRC32 = '00000000'
 CRC32_FORMAT = "%08x"
 
+
 def to_bool_rep(value):
     """
     Transformation function for global metadata.  Serves to verify input as

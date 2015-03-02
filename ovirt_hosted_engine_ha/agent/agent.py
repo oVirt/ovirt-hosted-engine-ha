@@ -47,8 +47,31 @@ class Agent(object):
                           dest="daemon", help="don't start as a daemon")
         parser.add_option("--pdb", action="store_true",
                           dest="pdb", help="start pdb in case of crash")
+        parser.add_option("--cleanup", action="store_true",
+                          dest="cleanup", help="purge the metadata block")
+        parser.add_option("--force-cleanup", action="store_true",
+                          dest="force_cleanup", help="purge the metadata block"
+                                                     "even when not clean")
+        parser.add_option("--host-id", action="store", default=None,
+                          type="int", dest="host_id",
+                          help="override the host id")
+
         parser.set_defaults(daemon=True)
         (options, args) = parser.parse_args()
+
+        def action_proper(he):
+            he.start_monitoring()
+
+        def action_clean(he):
+            he.clean(options.force_cleanup)
+
+        action = action_proper
+        retries = constants.AGENT_START_RETRIES
+
+        if options.cleanup:
+            options.daemon = False
+            action = action_clean
+            retries = 1
 
         self._initialize_logging(options.daemon)
         self._log.info("%s started", constants.FULL_PROG_NAME)
@@ -96,10 +119,10 @@ class Agent(object):
 
                 with daemon.DaemonContext(signal_map=self._get_signal_map(),
                                           files_preserve=logs):
-                    self._run_agent()
+                    self._run_agent(action, options.host_id, retries)
             else:
                 self._log.debug("Running agent in foreground")
-                self._run_agent()
+                self._run_agent(action, options.host_id, retries)
 
         except Exception as e:
             self._log.critical("Could not start ha-agent", exc_info=True)
@@ -151,13 +174,14 @@ class Agent(object):
     def shutdown_requested(self):
         return self._shutdown
 
-    def _run_agent(self):
+    def _run_agent(self, action, host_id=None,
+                   retries=constants.AGENT_START_RETRIES):
         # Only one service type for now, run it in the main thread
 
-        for attempt in range(constants.AGENT_START_RETRIES):
+        for attempt in range(retries):
             try:
-                hosted_engine.HostedEngine(self.shutdown_requested)\
-                    .start_monitoring()
+                action(hosted_engine.HostedEngine(self.shutdown_requested,
+                                                  host_id=host_id))
                 # if we're here, the agent stopped gracefully,
                 # so we don't want to restart it
                 break

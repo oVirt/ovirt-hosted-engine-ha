@@ -130,7 +130,7 @@ class HostedEngine(object):
         GLOBAL = 'GLOBAL'
         LOCAL = 'LOCAL'
 
-    def __init__(self, shutdown_requested_callback):
+    def __init__(self, shutdown_requested_callback, host_id=None):
         """
         Initialize hosted engine monitoring logic.  shutdown_requested_callback
         is a callback returning True/False depending on whether ha agent
@@ -144,6 +144,8 @@ class HostedEngine(object):
 
         self._score_cfg = self._get_score_config()
         self._hostname = self._get_hostname()
+
+        self._host_id = host_id
 
         self._broker = None
         self._required_monitors = self._get_required_monitors()
@@ -290,12 +292,52 @@ class HostedEngine(object):
 
     @property
     def host_id(self):
-        return int(self._config.get(config.ENGINE, config.HOST_ID))
+        if self._host_id is not None:
+            return self._host_id
+        else:
+            return int(self._config.get(config.ENGINE, config.HOST_ID))
 
     def publish(self, state):
         blocks = self._generate_local_blocks(state)
         self._push_to_storage(blocks)
         self.update_hosts_state(state)
+
+    def clean(self, force=False):
+        """
+        Make sure the metadata storage is connected and publish
+        an empty record to purge the old data.
+        """
+        self._log.debug("Connecting to ha-broker")
+        self._initialize_vdsm()
+        self._initialize_domain_monitor()
+        self._initialize_broker(monitors=[])
+        self._initialize_sanlock()
+
+        data = {}
+
+        try:
+            data = self.collect_stats(get_local=True)
+        except Exception as e:
+            level = self._log.warn if force else self._log.error
+            level("Metadata block has wrong format: %s", e)
+
+        try:
+            if force or data["hosts"][self.host_id].get("stopped", False):
+                self._log.info("Cleaning the metadata block!")
+                self._push_to_storage("")
+            else:
+                self._log.error("Cannot clean unclean metadata block."
+                                " Consider --force-clean.")
+        except (ValueError, KeyError) as e:
+            self._log.error("Metadata for current host missing.")
+
+        # Free lockspace
+        self._log.debug("Releasing sanlock")
+        self._release_sanlock()
+
+        self._log.debug("Disconnecting from ha-broker")
+        if self._broker and self._broker.is_connected():
+            self._broker.disconnect()
 
     def start_monitoring(self):
         error_count = 0
@@ -367,11 +409,15 @@ class HostedEngine(object):
         stopped = AgentStopped(self.fsm.state.data)
         self.publish(stopped)
 
+        # Free lockspace
+        self._log.debug("Releasing sanlock")
+        self._release_sanlock()
+
         self._log.debug("Disconnecting from ha-broker")
         if self._broker and self._broker.is_connected():
             self._broker.disconnect()
 
-    def _initialize_broker(self):
+    def _initialize_broker(self, monitors=None):
         if self._broker and self._broker.is_connected():
             return
         self._log.info("Initializing ha-broker connection")
@@ -384,7 +430,9 @@ class HostedEngine(object):
             self._log.error("Failed to connect to ha-broker: %s", str(e))
             raise
 
-        for m in self._required_monitors:
+        required_monitors = monitors or self._required_monitors
+
+        for m in required_monitors:
             try:
                 lm = {}
                 lm['id'] = self._broker.start_monitor(m['monitor'],
@@ -536,6 +584,12 @@ class HostedEngine(object):
                 if p.returncode != 0:
                     raise Exception("Could not start {0}: {1}"
                                     .format(service_name, res[1]))
+
+    def _release_sanlock(self):
+        lease_file = self._broker.get_service_path(
+            constants.SERVICE_TYPE + constants.LOCKSPACE_EXTENSION)
+        sanlock.rem_lockspace(constants.LOCKSPACE_NAME,
+                              self.host_id, lease_file)
 
     def _initialize_sanlock(self):
         self._cond_start_service('sanlock')
@@ -746,16 +800,16 @@ class HostedEngine(object):
     def _push_to_storage(self, blocks):
         self._broker.put_stats_on_storage(
             constants.SERVICE_TYPE + constants.MD_EXTENSION,
-            self._config.get(config.ENGINE, config.HOST_ID),
+            self.host_id,
             blocks)
 
     def update_hosts_state(self, engine_state):
         self._broker.put_hosts_state_on_storage(
             constants.SERVICE_TYPE + constants.MD_EXTENSION,
-            self._config.get(config.ENGINE, config.HOST_ID),
+            self.host_id,
             engine_state.data.alive_hosts)
 
-    def collect_stats(self):
+    def collect_stats(self, get_local=False):
 
         data = {
             # Flag is set if the local agent discovers metadata too new for it
@@ -790,7 +844,7 @@ class HostedEngine(object):
             try:
                 # we are not interested in stale data about local
                 # machine
-                if host_id == self.host_id:
+                if host_id == self.host_id and not get_local:
                     continue
                 stats = self.process_remote_metadata(host_id, remote_data)
                 data["hosts"][host_id] = stats
