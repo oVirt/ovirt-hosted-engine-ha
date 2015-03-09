@@ -18,6 +18,8 @@
 #
 
 import logging
+import os.path
+import sanlock
 
 from ..agent import constants as agent_constants
 from ..env import config
@@ -256,3 +258,48 @@ class HAClient(object):
 
         else:
             raise Exception("Invalid maintenance mode: {0}".format(mode))
+
+    def reset_lockspace(self, force=False):
+        # Lockspace file
+        lockspace_file = None
+
+        # Service names
+        lockspace = (constants.SERVICE_TYPE +
+                     agent_constants.LOCKSPACE_EXTENSION)
+        service = (constants.SERVICE_TYPE +
+                   agent_constants.MD_EXTENSION)
+
+        # Connect to a broker and read all stats
+        if self._config is None:
+            self._config = config.Config()
+        broker = brokerlink.BrokerLink()
+
+        with broker.connection():
+            self._configure_broker_conn(broker)
+            stats = broker.get_stats_from_storage(service)
+            lockspace_file = broker.get_service_path(lockspace)
+
+        # Process raw stats
+        try:
+            all_stats = self._parse_stats(stats, self.StatModes.ALL)
+            self._check_liveness_for_stats(all_stats, broker)
+        except Exception as ex:
+            self._log.exception(ex)
+            all_stats = {}
+
+        # Check whether it is safe to perform lockfile reset
+        for id, stats in all_stats.iteritems():
+            if id == 0:
+                if (not force and
+                        not stats.get(self.GlobalMdFlags.MAINTENANCE, False)):
+                    raise Exception("Lockfile reset can be performed in"
+                                    " global maintenance mode only.")
+            else:
+                if not force and not stats.get("stopped", False):
+                    raise Exception("Lockfile reset cannot be performed with"
+                                    " an active agent.")
+
+        if os.path.exists(lockspace_file):
+            sanlock.write_lockspace(lockspace=constants.SERVICE_TYPE,
+                                    path=lockspace_file,
+                                    offset=0)
