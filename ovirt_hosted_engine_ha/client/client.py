@@ -202,8 +202,12 @@ class HAClient(object):
 
             global_stats = all_stats.get(0)
             if global_stats and len(global_stats):
-                md_dict = metadata.parse_global_metadata_to_dict(
-                    self._log, global_stats)
+                try:
+                    md_dict = metadata.parse_global_metadata_to_dict(
+                        self._log, global_stats)
+                except Exception:
+                    self._log.warn("Metadata block corrupted. Correcting.")
+                    md_dict = {}
             else:
                 md_dict = {}
 
