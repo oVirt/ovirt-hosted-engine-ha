@@ -27,12 +27,12 @@ class TestLVMBackend(unittest.TestCase):
 
         # Test if the create call happened
         self.assertEqual(
-            [call("uuid", constants.SD_METADATA_DIR+"-test", 500)],
+            [call("uuid", constants.SD_METADATA_DIR + "-test", 500)],
             dev.lvcreate.mock_calls)
 
         # Test if the zero call happened
         self.assertEqual(
-            [call("uuid", constants.SD_METADATA_DIR+"-test", 500)],
+            [call("uuid", constants.SD_METADATA_DIR + "-test", 500)],
             dev.lvzero.mock_calls)
 
     def test_lvmcreate_enough(self):
@@ -70,7 +70,7 @@ class TestLVMBackend(unittest.TestCase):
 
         # Test if the zero call happened
         self.assertEqual(
-            [call("uuid", constants.SD_METADATA_DIR+"-test", 500)],
+            [call("uuid", constants.SD_METADATA_DIR + "-test", 500)],
             dev.lvzero.mock_calls)
 
     def test_lvmcreate_not_enough(self):
@@ -115,7 +115,7 @@ class StorageBackendTests(unittest.TestCase):
         b = BlockBackend("/dev/null", "test-1")
         blocks = b.create_info_blocks({"test1": 300,
                                        "test2": 512,
-                                       "test3": 1024*1024*50})
+                                       "test3": 1024 * 1024 * 50})
 
         self.assertEqual(3, len(blocks))
 
@@ -150,7 +150,7 @@ class StorageBackendTests(unittest.TestCase):
         b = BlockBackend("/dev/null", "test-1")
         blocks = b.create_info_blocks({"test1": 300,
                                        "test2": 512,
-                                       "test3": 1024*1024*50},
+                                       "test3": 1024 * 1024 * 50},
                                       first_free=1000)
 
         self.assertEqual(3, len(blocks))
@@ -192,7 +192,7 @@ class StorageBackendTests(unittest.TestCase):
         rawcrc = struct.pack("!L", zlib.crc32(raw) & 0xffffffff)
         b = BlockBackend("/dev/null", "test-1")
         block = b.create_block([(1, 100), (102, 100)], 1, "test")
-        self.assertEqual(raw+rawcrc, block)
+        self.assertEqual(raw + rawcrc, block)
 
     def test_create_empty_block(self):
         raw = struct.pack("!4sQ64pQQ",
@@ -202,7 +202,7 @@ class StorageBackendTests(unittest.TestCase):
         rawcrc = struct.pack("!L", zlib.crc32(raw) & 0xffffffff)
         b = BlockBackend("/dev/null", "test-1")
         block = b.create_block([], 1, "test")
-        self.assertEqual(raw+rawcrc, block)
+        self.assertEqual(raw + rawcrc, block)
 
     def test_single_good_block_decode(self):
         raw = struct.pack("!4sQ64pQQQQQQ",
@@ -213,7 +213,7 @@ class StorageBackendTests(unittest.TestCase):
                           0, 0)
         rawcrc = struct.pack("!L", zlib.crc32(raw) & 0xffffffff)
         b = BlockBackend("/dev/null", "test-1")
-        block = b.parse_meta_block(raw+rawcrc)
+        block = b.parse_meta_block(raw + rawcrc)
         self.assertEqual(block, BlockBackend.BlockInfo(
             self.SIGNATURE, 1, "test", ((1, 100), (102, 100)), True))
 
@@ -266,7 +266,7 @@ class StorageBackendTests(unittest.TestCase):
             "d": [(0, 1)]
         }
         updates = b._compute_updates({
-            "a": 15*b.blocksize + 5,  # should add another 5B
+            "a": 15 * b.blocksize + 5,  # should add another 5B
             "b": 5,  # no update, the space is already there
             "c": 5,  # new service
             "d": 5  # won't update because we always allocate a whole block
@@ -282,7 +282,7 @@ class StorageBackendTests(unittest.TestCase):
         dev = io.BytesIO()
         info = ['\0', '\1']
         b._write(dev, info)
-        self.assertEqual('\0'*512+'\1', dev.getvalue())
+        self.assertEqual('\0' * 512 + '\1', dev.getvalue())
 
     def test_write_update(self):
         b = BlockBackend("/dev/null", "test-1")
@@ -298,6 +298,6 @@ class StorageBackendTests(unittest.TestCase):
         expected.write(b.create_block([], 1, "test"))
         expected.seek(b.blocksize)
         expected.write(b.create_block([], 2, "test2"))
-        expected.seek(2*b.blocksize)
+        expected.seek(2 * b.blocksize)
         expected.write(b.create_block([], 0, "test3"))
         self.assertEqual(expected.getvalue(), dev.getvalue())

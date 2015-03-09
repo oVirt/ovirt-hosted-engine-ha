@@ -1,10 +1,10 @@
-__author__ = 'msivak'
-__all__ = ["BaseFSM", "BaseState"]
-
 import logging
 import abc
 from abc import abstractmethod
 import copy
+
+__author__ = 'msivak'
+__all__ = ["BaseFSM", "BaseState"]
 
 
 class FSMLoggerAdapter(logging.LoggerAdapter):

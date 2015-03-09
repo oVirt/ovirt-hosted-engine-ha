@@ -131,7 +131,7 @@ class StorageBroker(object):
                             path, exc_info=True)
             raise RequestError("failed to read metadata: {0}".format(str(e)))
 
-        return dict(((i / bs, data[i:i+bs])
+        return dict(((i / bs, data[i:i + bs])
                      for i in range(0, len(data), bs)
                      if data[i] != '\0'))
 

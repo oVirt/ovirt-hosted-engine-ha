@@ -1,5 +1,3 @@
-__author__ = 'msivak'
-
 from ..lib.fsm import BaseFSM, BaseState
 from ..lib import util
 from ..lib.util import engine_status_score
@@ -8,6 +6,8 @@ import time
 from states import ReinitializeFSM
 from state_data import HostedEngineData, StatsData
 from ..lib import monotonic
+
+__author__ = 'msivak'
 
 
 class StartState(BaseState):

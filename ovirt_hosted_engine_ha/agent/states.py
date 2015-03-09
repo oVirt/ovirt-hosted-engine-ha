@@ -1,5 +1,3 @@
-__author__ = 'msivak'
-
 from ..lib.fsm import BaseState, BaseFSM
 from ..lib import log_filter
 from ..lib import engine
@@ -8,6 +6,8 @@ from .state_decorators import check_local_maintenance, check_timeout
 from .state_decorators import check_local_vm_unknown, check_global_maintenance
 from .state_data import time as dtime, load_factor
 import time
+
+__author__ = 'msivak'
 
 
 class EngineState(BaseState):

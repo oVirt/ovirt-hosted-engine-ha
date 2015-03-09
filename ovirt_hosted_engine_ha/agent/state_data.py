@@ -1,6 +1,6 @@
-__author__ = 'msivak'
-
 import collections
+
+__author__ = 'msivak'
 
 # Prepare the state data type as namedtuple to prevent
 # accidental modification to it
@@ -105,7 +105,7 @@ def load_factor(he_data):
             seg_time = last_time - cur_time
             seg_area = (seg_time *
                         (last_load + cur_load) / 2.0)
-            return area+seg_area, time+seg_time, cur_load, cur_time
+            return area + seg_area, time + seg_time, cur_load, cur_time
         else:
             return area, time, cur_load, cur_time
 

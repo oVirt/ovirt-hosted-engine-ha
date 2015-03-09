@@ -1,6 +1,7 @@
-__author__ = 'msivak'
 import state_data
 import unittest
+
+__author__ = 'msivak'
 
 
 class TestCases(unittest.TestCase):

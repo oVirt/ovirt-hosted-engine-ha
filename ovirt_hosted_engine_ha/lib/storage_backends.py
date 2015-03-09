@@ -494,7 +494,7 @@ class FilesystemBackend(StorageBackend):
         """
         lvc = popen(stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    args=["lvm", "lvcreate", "-L", str(size_bytes)+"B",
+                    args=["lvm", "lvcreate", "-L", str(size_bytes) + "B",
                           "-n", lv_name, vg_uuid])
         stdout, stderr = lvc.communicate()
         lvc.wait()
@@ -682,7 +682,7 @@ class BlockBackend(StorageBackend):
                     % block_device_fo.tell())
             services.setdefault(parsed.name, [])
             services[parsed.name].extend(parsed.pieces)
-            first_free_block = reduce(lambda acc, p: max(acc, p[0]+p[1]),
+            first_free_block = reduce(lambda acc, p: max(acc, p[0] + p[1]),
                                       parsed.pieces,
                                       first_free_block)
             if parsed.next == 0:

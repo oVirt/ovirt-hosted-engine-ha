@@ -1,7 +1,5 @@
 import socket
 
-__author__ = 'msivak'
-
 import smtplib
 import ConfigParser
 import re
@@ -9,6 +7,8 @@ import os
 import logging
 
 from . import constants
+
+__author__ = 'msivak'
 
 # regular expression used to split the email addresses
 EMAIL_SPLIT_RE = re.compile(' *, *')
@@ -57,7 +57,7 @@ def notify(**kwargs):
         return False
 
     try:
-        template_path = os.path.join(constants.NOTIFY_TEMPLATES, type+".txt")
+        template_path = os.path.join(constants.NOTIFY_TEMPLATES, type + ".txt")
         template = open(template_path).read()
     except (OSError, IOError) as e:
         logging.getLogger("%s.Notifications" % __name__).exception(e)

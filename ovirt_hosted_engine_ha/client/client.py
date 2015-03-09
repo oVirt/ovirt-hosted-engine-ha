@@ -74,7 +74,7 @@ class HAClient(object):
     def _check_liveness_metadata(self, md, broker):
         with broker.connection():
             self._configure_broker_conn(broker)
-            service = constants.SERVICE_TYPE+agent_constants.MD_EXTENSION
+            service = constants.SERVICE_TYPE + agent_constants.MD_EXTENSION
             md["live-data"] = broker.is_host_alive(service, md["host-id"])
             self._log.debug("Is host '{0}' alive? -> '{1}'"
                             .format(md["host-id"], md["live-data"]))
@@ -98,7 +98,7 @@ class HAClient(object):
         broker = brokerlink.BrokerLink()
         with broker.connection():
             self._configure_broker_conn(broker)
-            service = constants.SERVICE_TYPE+agent_constants.MD_EXTENSION
+            service = constants.SERVICE_TYPE + agent_constants.MD_EXTENSION
             stats = broker.get_stats_from_storage(service)
 
         stats = self._parse_stats(stats, mode)
@@ -214,7 +214,7 @@ class HAClient(object):
             md_dict[flag] = put_val
             block = metadata.create_global_metadata_from_dict(md_dict)
             broker.put_stats_on_storage(
-                constants.SERVICE_TYPE+agent_constants.MD_EXTENSION,
+                constants.SERVICE_TYPE + agent_constants.MD_EXTENSION,
                 0,
                 block)
 

@@ -2,12 +2,11 @@
 This module provides a monotonic time. It's a time which doesn't depend on the
 system time which means is not influenced by time shifts.
 """
-
-__all__ = ["time"]
-
 import ctypes
 import os
 import logging
+
+__all__ = ["time"]
 
 logger = logging.getLogger(__name__)
 
