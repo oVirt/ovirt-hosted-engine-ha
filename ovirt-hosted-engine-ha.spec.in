@@ -42,10 +42,9 @@ URL:            http://www.ovirt.org
 Source:         http://resources.ovirt.org/pub/ovirt-master-snapshot/src/%{name}/%{name}-%{package_version}.tar.gz
 Group:          Applications/System
 
-BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}
 BuildArch:      noarch
 
-# FIXME any additional dependencies?
 Requires:       python
 Requires:       python-daemon
 Requires:       sanlock >= 2.8
