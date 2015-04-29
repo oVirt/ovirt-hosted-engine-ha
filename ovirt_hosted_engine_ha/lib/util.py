@@ -26,6 +26,7 @@ import os
 import socket
 import time
 
+from ovirt_hosted_engine_ha.env import constants as envconst
 from .exceptions import DisconnectionError
 
 
@@ -50,17 +51,32 @@ def mkdir_recursive(path):
             raise
 
 
-def socket_readline(sock, log):
+def socket_readline(sock, log,
+                    isTimed=False,
+                    timeoutSec=envconst.MESSAGE_READ_TIMEOUT_SEC):
     """
-    Reads from a socket until newline is received.  Returns string read
-    (without trailing newline), or raises either DisconnectionError on
-    disconnect or socket.timeout on timeout.
+    Reads a line from socket.
+    Returns string read (without trailing newline),
+    Raises either DisconnectionError on disconnect or timeout (default 30 sec).
     """
     try:
-        sockfile = sock.makefile()
-        msg = sockfile.readline()
+        if isTimed is None:
+            # No timeout
+            sockfile = sock.makefile()
+            msg = sockfile.readline()
+        else:
+            # Reading a line with timeout
+            msg = ""
+            rcvChar = 0
+            sock.settimeout(timeoutSec)
+            while rcvChar != '\n':
+                rcvChar = sock.recv(1)
+                msg = msg + rcvChar
+
     except socket.timeout:
-        raise
+        log.debug("Connection timeout while reading from socket")
+        raise DisconnectionError("Connection timed out")
+
     except IOError as e:
         log.debug("Connection closed while reading from socket: %s", str(e))
         raise DisconnectionError("Connection closed")

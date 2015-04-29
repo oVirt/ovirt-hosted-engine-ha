@@ -273,7 +273,8 @@ class BrokerLink(object):
         self._log.debug("Sending request: %s", request)
         try:
             util.socket_sendline(self._socket, self._log, request)
-            response = util.socket_readline(self._socket, self._log)
+            response = util.socket_readline(self._socket, self._log,
+                                            isTimed=True)
         except DisconnectionError:
             self._log.error("Connection closed")
             self.disconnect()

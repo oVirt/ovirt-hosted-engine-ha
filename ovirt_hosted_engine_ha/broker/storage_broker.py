@@ -62,6 +62,7 @@ class StorageBroker(object):
             self._backends[client].disconnect()
             del self._backends[client]
         self._backends[client] = self.DOMAINTYPES[sd_type](**kwargs)
+        self._log.debug("Connecting to %s", self._backends[client])
         self._backends[client].connect()
         return str(id(self._backends[client]))
 
@@ -126,7 +127,7 @@ class StorageBroker(object):
                 os.lseek(f, offset, os.SEEK_SET)
                 data = os.read(f, read_size)
                 os.close(f)
-        except IOError as e:
+        except (IOError, OSError) as e:
             self._log.error("Failed to read metadata from %s",
                             path, exc_info=True)
             raise RequestError("failed to read metadata: {0}".format(str(e)))

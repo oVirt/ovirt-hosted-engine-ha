@@ -27,6 +27,7 @@ HOST_SEGMENT_BYTES = 4096
 METADATA_BLOCK_BYTES = 512
 SERVICE_TYPE = 'hosted-engine'
 HOST_ALIVE_TIMEOUT_SECS = 60
+MESSAGE_READ_TIMEOUT_SEC = 30
 
 # See http://www.gnu.org/software/automake/manual/html_node/Scripts.html
 BROKER_SOCKET_FILE = '@ENGINE_HA_RUNDIR@/broker.socket'
