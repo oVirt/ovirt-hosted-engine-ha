@@ -39,7 +39,7 @@ Version:        @PACKAGE_RPM_VERSION@
 Release:        @PACKAGE_RPM_RELEASE@%{?release_suffix}%{?dist}
 License:        LGPLv2+
 URL:            http://www.ovirt.org
-Source:         http://resources.ovirt.org/pub/ovirt-3.5-snapshot/src/%{name}/%{name}-%{package_version}.tar.gz
+Source:         http://resources.ovirt.org/pub/ovirt-3.5/src/%{name}/%{name}-%{package_version}.tar.gz
 Group:          Applications/System
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -50,15 +50,15 @@ Requires:       python
 Requires:       python-daemon
 Requires:       sanlock >= 2.8
 Requires:       sanlock-python >= 2.8
-Requires:       vdsm >= 4.16.10
-Requires:       vdsm-cli >= 4.16.10
-Requires:       vdsm-python >= 4.16.10
+Requires:       vdsm >= 4.16.14
+Requires:       vdsm-cli >= 4.16.14
+Requires:       vdsm-python >= 4.16.14
 
 BuildRequires:  python
 BuildRequires:  python2-devel
 BuildRequires:  python-nose
 BuildRequires:  python-mock
-BuildRequires:  vdsm-cli >= 4.16.10
+BuildRequires:  vdsm-cli >= 4.16.14
 
 %if 0%{?with_systemd}
 %{?systemd_requires}
@@ -193,6 +193,9 @@ exit 0
 
 
 %changelog
+* Wed May 13 2015 Sandro Bonazzola <sbonazzo@redhat.com> - 1.2.6-1
+- 1.2.6-1
+
 * Mon Jan 19 2015 Sandro Bonazzola <sbonazzo@redhat.com> - 1.2.6-0.0.master
 - 1.2.6-0.0.master
 
