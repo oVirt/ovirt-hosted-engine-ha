@@ -47,7 +47,7 @@ class EngineStateMachine(BaseFSM):
             migration_host_id=None,
             migration_result=None,
             score_cfg=he.score_config,
-            min_memory_threshold=he.min_memory_threshold,
+            min_memory_threshold=None,
             best_engine_status=None,
             best_engine_host_id=None,
             best_score_host=None,
@@ -104,8 +104,8 @@ class EngineStateMachine(BaseFSM):
         if historic:
             for hid, st in stats.hosts.iteritems():
                 st["alive"] = (hid not in historic.hosts or
-                               historic.hosts[hid].get("host-ts", None)
-                               != st.get("host-ts", None))
+                               historic.hosts[hid].get("host-ts", None) !=
+                               st.get("host-ts", None))
 
             alive_hosts = [st for hid, st in stats.hosts.iteritems()
                            if st["alive"] if "engine-status" in st]
@@ -117,6 +117,10 @@ class EngineStateMachine(BaseFSM):
         # save the copy of alive_hosts right after we compute it to avoid
         # any changes that might be done to the list
         new_data["alive_hosts"] = [host['host-id'] for host in alive_hosts]
+
+        new_data[
+            "min_memory_threshold"
+        ] = self.hosted_engine.min_memory_threshold,
 
         if alive_hosts:
             # Pre-compute the best remote engine (skip old metadata
@@ -131,8 +135,10 @@ class EngineStateMachine(BaseFSM):
 
         # Compare the best engine remote values with the local state
         lm = stats.local
-        if (not alive_hosts or engine_status_score(lm["engine-health"])
-                >= engine_status_score(best_engine["engine-status"])):
+        if (
+            not alive_hosts or engine_status_score(lm["engine-health"]) >=
+            engine_status_score(best_engine["engine-status"])
+        ):
             new_data["best_engine_status"] = lm["engine-health"]
             new_data["best_engine_host_id"] = self.hosted_engine.host_id
         else:

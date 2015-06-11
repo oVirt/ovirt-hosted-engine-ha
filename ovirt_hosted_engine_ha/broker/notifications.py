@@ -7,6 +7,7 @@ import os
 import logging
 
 from . import constants
+from ..env import config
 
 __author__ = 'msivak'
 
@@ -37,12 +38,17 @@ def notify(**kwargs):
 
     The configuration is refreshed with every call of this method.
     """
-    logging.getLogger("%s.Notifications" % __name__)\
-        .debug("nofity: %s" % (repr(kwargs),))
+    logger = logging.getLogger("%s.Notifications" % __name__)
+    logger.debug("nofity: %s" % (repr(kwargs),))
 
     assert "type" in kwargs
     type = kwargs["type"]
 
+    heconf = config.Config(logger=logger)
+    heconf.refresh_local_conf_file(
+        localcopy_filename=constants.NOTIFY_CONF_FILE,
+        archive_fname=constants.NOTIFY_CONF_FILE_ARCHIVE_FNAME,
+    )
     cfg = ConfigParser.SafeConfigParser()
     cfg.read(constants.NOTIFY_CONF_FILE)
 

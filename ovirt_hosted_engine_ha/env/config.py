@@ -21,6 +21,9 @@ import fcntl
 
 from . import constants
 
+from ovirt_hosted_engine_setup import heconflib
+from ovirt_hosted_engine_setup import util as ohostedutil
+
 # constants for hosted-engine.conf options
 ENGINE = 'engine'
 DOMAIN_TYPE = 'domainType'
@@ -35,7 +38,10 @@ METADATA_VOLUME_UUID = 'metadata_volume_UUID'
 METADATA_IMAGE_UUID = 'metadata_image_UUID'
 LOCKSPACE_VOLUME_UUID = 'lockspace_volume_UUID'
 LOCKSPACE_IMAGE_UUID = 'lockspace_image_UUID'
-
+CONF_VOLUME_UUID = 'conf_volume_UUID'
+CONF_IMAGE_UUID = 'conf_image_UUID'
+CONF_FILE = 'conf'
+HEVMID = 'vmid'
 
 # constants for vm.conf options
 VM = 'vm'
@@ -50,17 +56,19 @@ LOCAL_MAINTENANCE = 'local_maintenance'
 class Config(object):
     static_files = {
         ENGINE: constants.ENGINE_SETUP_CONF_FILE,
-        VM: constants.VM_CONF_FILE,
-    }
-    # Config files in dynamic_files may change at runtime and are re-read
-    # whenever configuration values are retrieved from them.
-    dynamic_files = {
-        HA: constants.HA_AGENT_CONF_FILE,
     }
 
-    def __init__(self):
+    def __init__(self, logger=None):
         self._config = {}
+        self._logger = logger
         self._load(Config.static_files)
+
+        # Config files in dynamic_files may change at runtime and are re-read
+        # whenever configuration values are retrieved from them.
+        self._dynamic_files = {
+            HA: constants.HA_AGENT_CONF_FILE,
+            VM: self._config[ENGINE][CONF_FILE],
+        }
 
     def _load(self, files):
         conf = {}
@@ -74,8 +82,8 @@ class Config(object):
             self._config[type] = conf
 
     def get(self, type, key, raise_on_none=False):
-        if type in Config.dynamic_files.keys():
-            self._load(dict([(type, Config.dynamic_files[type])]))
+        if type in self._dynamic_files.keys():
+            self._load(dict([(type, self._dynamic_files[type])]))
 
         try:
             val = self._config[type][key]
@@ -94,16 +102,16 @@ class Config(object):
         Writes 'key=value' to the config file for 'type'.
         Note that this method is not thread safe.
         """
-        if type not in Config.dynamic_files:
+        if type not in self._dynamic_files:
             raise Exception("Configuration type {0} cannot be updated"
                             .format(type))
 
-        with open(Config.dynamic_files[type], 'r+') as f:
+        with open(self._dynamic_files[type], 'r+') as f:
             fcntl.flock(f, fcntl.LOCK_EX)
 
             # self._load() can re-open the exclusively-locked file because
             # it's being called from the same process as the lock holder
-            self._load(dict([(type, Config.dynamic_files[type])]))
+            self._load(dict([(type, self._dynamic_files[type])]))
             self._config[type][key] = str(value)
 
             text = ''
@@ -112,3 +120,43 @@ class Config(object):
 
             f.write(text)
             f.truncate()
+
+    def refresh_local_conf_file(self, localcopy_filename, archive_fname):
+        source = ohostedutil.get_volume_path(
+            self.get(ENGINE, DOMAIN_TYPE),
+            self.get(ENGINE, SD_UUID),
+            self.get(ENGINE, CONF_IMAGE_UUID),
+            self.get(ENGINE, CONF_VOLUME_UUID),
+        )
+        if self._logger:
+            self._logger.debug(
+                "Reading '{archive_fname}' from '{source}'".format(
+                    archive_fname=archive_fname,
+                    source=source,
+                )
+            )
+
+        if heconflib.validateConfImage(self._logger, source):
+            content = heconflib.extractConfFile(
+                self._logger,
+                source,
+                archive_fname,
+            )
+            if self._logger:
+                self._logger.debug(
+                    "Writing to '{target}'".format(
+                        target=localcopy_filename,
+                    )
+                )
+            with open(localcopy_filename, 'w') as target:
+                target.write(content)
+            if self._logger:
+                self._logger.debug(
+                    "local conf file was correctly written"
+                )
+            return True
+        if self._logger:
+            self._logger.debug(
+                "failed trying to write local conf file"
+            )
+        return False

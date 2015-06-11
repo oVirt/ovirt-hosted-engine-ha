@@ -108,6 +108,14 @@ install -Dm 0755 initscripts/ovirt-ha-broker.init %{buildroot}%{_initrddir}/ovir
 install -dDm 0750 %{buildroot}%{_sysconfdir}/sudoers.d
 install -Dm 0440 sudoers/sudoers %{buildroot}%{_sysconfdir}/sudoers.d/60_ovirt-ha
 
+%pre
+# Copy previous broker.conf on upgrade path
+if [ $1 -gt 1 ] ; then
+    if [ -e "%{engine_ha_confdir}/broker.conf" ] && ! [ -s "%{engine_ha_statedir}/broker.conf" ]; then
+            cp "%{engine_ha_confdir}/broker.conf" "%{engine_ha_statedir}/broker.conf"
+            chown %{vdsm_user}:%{vdsm_group}  "%{engine_ha_statedir}/broker.conf"
+    fi
+fi
 
 %files
 %defattr(-, root, root, -)

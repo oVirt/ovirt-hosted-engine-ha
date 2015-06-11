@@ -79,7 +79,7 @@ PID_FILE = '@ENGINE_HA_RUNDIR@/agent.pid'
 
 AGENT_CONF_FILE = '@ENGINE_HA_CONFDIR@/agent.conf'
 ENGINE_SETUP_CONF_FILE = '/etc/ovirt-hosted-engine/hosted-engine.conf'
-VM_CONF_FILE = '/etc/ovirt-hosted-engine/vm.conf'
+VM_CONF_FILE_ARCHIVE_FNAME = 'vm.conf'
 
 VDSM_CERT_FILE = '/etc/pki/vdsm/certs/vdsmcert.pem'
 

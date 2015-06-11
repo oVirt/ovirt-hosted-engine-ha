@@ -30,7 +30,6 @@ lockfile=/var/lock/subsys/$prog
 
 BROKER=@ENGINE_HA_BINDIR@/ovirt-ha-broker
 ENGINE_SETUP_CONF_FILE=/etc/ovirt-hosted-engine/hosted-engine.conf
-VM_CONF_FILE=/etc/ovirt-hosted-engine/vm.conf
 
 [ -f /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
 

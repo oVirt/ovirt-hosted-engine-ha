@@ -30,7 +30,6 @@ lockfile=/var/lock/subsys/$prog
 
 AGENT=@ENGINE_HA_BINDIR@/ovirt-ha-agent
 ENGINE_SETUP_CONF_FILE=/etc/ovirt-hosted-engine/hosted-engine.conf
-VM_CONF_FILE=/etc/ovirt-hosted-engine/vm.conf
 
 [ -f /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
 
@@ -39,14 +38,14 @@ runlevel=$(set -- $(runlevel); eval "echo \$$#" )
 start()
 {
     [ -x $AGENT ] || exit 5
-    if [ ! -f $ENGINE_SETUP_CONF_FILE -o ! -f $VM_CONF_FILE ]; then
+    if [ ! -f $ENGINE_SETUP_CONF_FILE ]; then
         if [ -f /etc/default/ovirt ]; then
             # See https://bugzilla.redhat.com/1164226
             echo -n "Not starting $prog on Node before deployment"
             exit 0
         else
             echo "Configuration by ovirt-hosted-engine-setup is required"
-            echo "Files: $ENGINE_SETUP_CONF_FILE $VM_CONF_FILE"
+            echo "File: $ENGINE_SETUP_CONF_FILE"
             exit 6
         fi
     fi

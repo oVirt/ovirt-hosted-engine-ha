@@ -140,7 +140,7 @@ class HostedEngine(object):
         self._log.addFilter(log_filter.IntermittentFilter())
 
         self._shutdown_requested_callback = shutdown_requested_callback
-        self._config = config.Config()
+        self._config = config.Config(logger=self._log)
 
         self._score_cfg = self._get_score_config()
         self._hostname = self._get_hostname()
@@ -277,7 +277,7 @@ class HostedEngine(object):
             'options': {
                 'address': '0',
                 'use_ssl': self._config.get(config.ENGINE, config.VDSM_SSL),
-                'vm_uuid': self._config.get(config.VM, config.VM_UUID)}
+                'vm_uuid': self._config.get(config.ENGINE, config.HEVMID)}
         })
         req.append({
             'field': 'engine-health',
@@ -286,7 +286,7 @@ class HostedEngine(object):
             'options': {
                 'address': '0',
                 'use_ssl': self._config.get(config.ENGINE, config.VDSM_SSL),
-                'vm_uuid': self._config.get(config.VM, config.VM_UUID)}
+                'vm_uuid': self._config.get(config.ENGINE, config.HEVMID)}
         })
         return req
 
@@ -317,7 +317,9 @@ class HostedEngine(object):
             if not force:
                 raise
             else:
-                self._log.warning("Force requested, overriding sanlock failure.")
+                self._log.warning(
+                    "Force requested, overriding sanlock failure."
+                )
 
         data = {}
 
@@ -362,6 +364,16 @@ class HostedEngine(object):
         self._initialize_domain_monitor()
         self._initialize_broker()
         self._initialize_sanlock()
+
+        self._log.info("Reloading vm.conf from the shared storage domain")
+        local_vm_conf_path = self._config.get(
+            config.ENGINE,
+            config.CONF_FILE
+        )
+        self._config.refresh_local_conf_file(
+            localcopy_filename=local_vm_conf_path,
+            archive_fname=constants.VM_CONF_FILE_ARCHIVE_FNAME,
+        )
 
         for old_state, state, delay in self.fsm:
             if self._shutdown_requested_callback():
@@ -791,16 +803,16 @@ class HostedEngine(object):
                 .format(md_parse_vers=constants.METADATA_PARSE_VERSION,
                         md_feature_vers=constants.METADATA_FEATURE_VERSION,
                         ts_int=state.data.stats.collect_start,
-                        ts_str=time.ctime(state.data.stats.collect_start
-                                          + state.data.stats.time_epoch),
+                        ts_str=time.ctime(state.data.stats.collect_start +
+                                          state.data.stats.time_epoch),
                         host_id=state.data.host_id,
                         score=score))
         # state | metadata
         for (k, v) in sorted(md.iteritems()):
             info += "{0}={1}\n".format(k, str(v))
 
-        info_count = int((len(info) + constants.METADATA_BLOCK_BYTES - 1)
-                         / constants.METADATA_BLOCK_BYTES)
+        info_count = int((len(info) + constants.METADATA_BLOCK_BYTES - 1) /
+                         constants.METADATA_BLOCK_BYTES)
         self._log.debug("Generated %d blocks:\n%s\n<\\0 padding>\n%s",
                         info_count + 1, data, info)
         data = data.ljust(constants.METADATA_BLOCK_BYTES, '\0')
@@ -968,6 +980,16 @@ class HostedEngine(object):
 
     def _start_engine_vm(self):
         try:
+            self._log.info("Reloading vm.conf from the shared storage domain")
+            local_vm_conf_path = self._config.get(
+                config.ENGINE,
+                config.CONF_FILE
+            )
+            self._config.refresh_local_conf_file(
+                localcopy_filename=local_vm_conf_path,
+                archive_fname=constants.VM_CONF_FILE_ARCHIVE_FNAME,
+            )
+
             # Ensure there isn't any stale VDSM state from a prior VM lifecycle
             self._clean_vdsm_state()
 
@@ -1057,8 +1079,8 @@ class HostedEngine(object):
             output = p.communicate()
             self._log.info("stdout: %s", output[0])
             self._log.info("stderr: %s", output[1])
-            if (p.returncode != 0
-                    and not output[0].startswith(
+            if (p.returncode != 0 and
+                    not output[0].startswith(
                     "Virtual machine does not exist")):
                 self._log.error("Failed to stop engine vm with %s %s: %s",
                                 constants.HOSTED_ENGINE_BINARY, cmd, output[1])
