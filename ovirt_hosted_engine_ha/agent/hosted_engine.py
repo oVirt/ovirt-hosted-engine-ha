@@ -311,7 +311,13 @@ class HostedEngine(object):
         self._initialize_vdsm()
         self._initialize_domain_monitor()
         self._initialize_broker(monitors=[])
-        self._initialize_sanlock()
+        try:
+            self._initialize_sanlock()
+        except sanlock.SanlockException:
+            if not force:
+                raise
+            else:
+                self._log.warning("Force requested, overriding sanlock failure.")
 
         data = {}
 
@@ -333,7 +339,12 @@ class HostedEngine(object):
 
         # Free lockspace
         self._log.debug("Releasing sanlock")
-        self._release_sanlock()
+        try:
+            self._release_sanlock()
+        except sanlock.SanlockException:
+            # This could happen when force was in effect
+            if not force:
+                raise
 
         self._log.debug("Disconnecting from ha-broker")
         if self._broker and self._broker.is_connected():
