@@ -5,7 +5,6 @@ After=ovirt-ha-broker.service
 
 # See https://bugzilla.redhat.com/1164226
 ConditionPathExists=/etc/ovirt-hosted-engine/hosted-engine.conf
-ConditionPathExists=/etc/ovirt-hosted-engine/vm.conf
 
 [Service]
 Type=forking
