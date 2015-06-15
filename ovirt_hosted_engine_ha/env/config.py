@@ -23,6 +23,8 @@ import logging
 from . import constants
 
 from ovirt_hosted_engine_ha.lib import heconflib
+from ovirt_hosted_engine_ha.lib.ovf import ovf_store
+from ovirt_hosted_engine_ha.lib.ovf import ovf2VmParams
 
 
 # constants for hosted-engine.conf options
@@ -181,6 +183,7 @@ class Config(object):
         sd_uuid = self.get(ENGINE, SD_UUID)
         conf_img_id = None
         conf_vol_id = None
+        content = None
         try:
             conf_img_id = self.get(ENGINE, CONF_IMAGE_UUID)
             conf_vol_id = self.get(ENGINE, CONF_VOLUME_UUID)
@@ -195,48 +198,87 @@ class Config(object):
                     "Failing back to conf file from a previous release"
                 )
             return False
-        else:
+
+        if archive_fname == constants.HEConfFiles.HECONFD_VM_CONF:
+            if self._logger:
+                self._logger.info(
+                    "Trying to get a fresher copy of vm configuration "
+                    "from the OVF_STORE"
+                )
+
+            ovfs = ovf_store.OVFStore()
+            conf = None
+            scan = False
+
+            try:
+                scan = ovfs.scan()
+            except (EnvironmentError, Exception) as err:
+                self._logger.error(
+                    "Failed scanning for OVF_STORE due to %s",
+                    err
+                )
+
+            if scan:
+                heovf = ovfs.getEngineVMOVF()
+                if heovf is not None:
+                    self._logger.info(
+                        "Found an OVF for HE VM, "
+                        "trying to convert"
+                    )
+                    conf = ovf2VmParams.confFromOvf(heovf)
+            if conf is not None:
+                self._logger.info('Got vm.conf from OVF_STORE')
+                content = conf
+            else:
+                self._logger.error(
+                    'Unable to get vm.conf from OVF_STORE, '
+                    'falling back to initial vm.conf'
+                )
+
+        if not content:
             source = heconflib.get_volume_path(
                 domain_type,
                 sd_uuid,
                 conf_img_id,
                 conf_vol_id,
             )
+
             if self._logger:
                 self._logger.debug(
                     "Reading '{archive_fname}' from '{source}'".format(
                         archive_fname=archive_fname,
                         source=source,
+
                     )
                 )
-
             if heconflib.validateConfImage(self._logger, source):
                 content = heconflib.extractConfFile(
                     self._logger,
                     source,
                     archive_fname,
                 )
-                if not content:
-                    if self._logger:
-                        self._logger.error(
-                            "unable to get a valid content"
-                        )
-                    return False
-                if self._logger:
-                    self._logger.debug(
-                        "Writing to '{target}'".format(
-                            target=localcopy_filename,
-                        )
-                    )
-                with open(localcopy_filename, 'w') as target:
-                    target.write(content)
-                if self._logger:
-                    self._logger.debug(
-                        "local conf file was correctly written"
-                    )
-                return True
+
+        if not content:
             if self._logger:
-                self._logger.error(
-                    "failed trying to write local conf file"
+                self._logger.debug(
+                    "unable to get a valid content"
                 )
+            return False
+        if self._logger:
+            self._logger.debug(
+                "Writing to '{target}'".format(
+                    target=localcopy_filename,
+                )
+            )
+        with open(localcopy_filename, 'w') as target:
+            target.write(content)
+            if self._logger:
+                self._logger.debug(
+                    "local conf file was correctly written"
+                )
+            return True
+        if self._logger:
+            self._logger.error(
+                "Unable to get conf file"
+            )
             return False
