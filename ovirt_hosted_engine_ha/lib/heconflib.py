@@ -138,13 +138,6 @@ def extractConfFile(logger, imagepath, file):
                 imagepath=imagepath,
             )
         )
-    if file not in _CONF_FILES:
-        if logger:
-            logger.debug(
-                "'{file}' is not in the HE configuration image".format(
-                )
-            )
-        return None
     rc, stdout, stderr = _dd_pipe_tar(logger, imagepath, ['-xOf', '-', file, ])
     if rc != 0:
         return None

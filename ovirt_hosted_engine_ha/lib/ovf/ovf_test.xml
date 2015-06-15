@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ovf:Envelope xmlns:ovf="http://schemas.dmtf.org/ovf/envelope/1/" xmlns:rasd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_ResourceAllocationSettingData" xmlns:vssd="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_VirtualSystemSettingData" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ovf:version="3.6.0.0">
+  <References>
+    <File ovf:href="1b52d184-a370-48a7-8335-a4755b01ec0a/05f1031c-6c9a-48c3-9a62-930984e52e11" ovf:id="05f1031c-6c9a-48c3-9a62-930984e52e11" ovf:size="53687091200" ovf:description="Active VM snapshot"/>
+  </References>
+  <Section xsi:type="ovf:NetworkSection_Type">
+    <Info>List of networks</Info>
+    <Network ovf:name="Network 1"/>
+  </Section>
+  <Section xsi:type="ovf:DiskSection_Type">
+    <Info>List of Virtual Disks</Info>
+    <Disk ovf:diskId="05f1031c-6c9a-48c3-9a62-930984e52e11" ovf:size="50" ovf:actual_size="2" ovf:vm_snapshot_id="47093b30-ef1b-4b7f-be3e-d2421fe7c6ef" ovf:parentRef="" ovf:fileRef="1b52d184-a370-48a7-8335-a4755b01ec0a/05f1031c-6c9a-48c3-9a62-930984e52e11" ovf:format="http://www.vmware.com/specifications/vmdk.html#sparse" ovf:volume-format="RAW" ovf:volume-type="Preallocated" ovf:disk-interface="IDE" ovf:boot="false" ovf:disk-alias="virtio-disk0" ovf:wipe-after-delete="false"/>
+  </Section>
+  <Content ovf:id="out" xsi:type="ovf:VirtualSystem_Type">
+    <CreationDate>2015/06/12 08:01:11</CreationDate>
+    <ExportDate>2015/06/13 20:44:22</ExportDate>
+    <DeleteProtected>false</DeleteProtected>
+    <SsoMethod>guest_agent</SsoMethod>
+    <IsSmartcardEnabled>false</IsSmartcardEnabled>
+    <TimeZone/>
+    <default_boot_sequence>0</default_boot_sequence>
+    <Generation>9</Generation>
+    <VmType>0</VmType>
+    <MinAllocatedMem>4096</MinAllocatedMem>
+    <IsStateless>false</IsStateless>
+    <IsRunAndPause>false</IsRunAndPause>
+    <AutoStartup>false</AutoStartup>
+    <Priority>1</Priority>
+    <MigrationSupport>0</MigrationSupport>
+    <IsBootMenuEnabled>false</IsBootMenuEnabled>
+    <IsSpiceFileTransferEnabled>true</IsSpiceFileTransferEnabled>
+    <IsSpiceCopyPasteEnabled>true</IsSpiceCopyPasteEnabled>
+    <CustomEmulatedMachine>rhel6.5.0</CustomEmulatedMachine>
+    <CustomCpuName>SandyBridge</CustomCpuName>
+    <PredefinedProperties/>
+    <UserDefinedProperties/>
+    <Name>HostedEngine</Name>
+    <TemplateId>00000000-0000-0000-0000-000000000000</TemplateId>
+    <TemplateName>Blank</TemplateName>
+    <IsInitilized>false</IsInitilized>
+    <Origin>6</Origin>
+    <app_list>rhevm-guest-agent-common-1.0.10-2.el6ev,kernel-2.6.32-504.16.2.el6</app_list>
+    <DefaultDisplayType>1</DefaultDisplayType>
+    <TrustedService>false</TrustedService>
+    <UseHostCpu>false</UseHostCpu>
+    <UseLatestVersion>false</UseLatestVersion>
+    <Section ovf:id="50e59bbd-f829-4761-ba1b-6db1a6acc3b8" ovf:required="false" xsi:type="ovf:OperatingSystemSection_Type">
+      <Info>Guest Operating System</Info>
+      <Description>other_linux</Description>
+    </Section>
+    <Section xsi:type="ovf:VirtualHardwareSection_Type">
+      <Info>1 CPU, 4096 Memeory</Info>
+      <System>
+        <vssd:VirtualSystemType>ENGINE 3.6.0.0</vssd:VirtualSystemType>
+      </System>
+      <Item>
+        <rasd:Caption>1 virtual cpu</rasd:Caption>
+        <rasd:Description>Number of virtual CPU</rasd:Description>
+        <rasd:InstanceId>1</rasd:InstanceId>
+        <rasd:ResourceType>3</rasd:ResourceType>
+        <rasd:num_of_sockets>1</rasd:num_of_sockets>
+        <rasd:cpu_per_socket>1</rasd:cpu_per_socket>
+      </Item>
+      <Item>
+        <rasd:Caption>4096 MB of memory</rasd:Caption>
+        <rasd:Description>Memory Size</rasd:Description>
+        <rasd:InstanceId>2</rasd:InstanceId>
+        <rasd:ResourceType>4</rasd:ResourceType>
+        <rasd:AllocationUnits>MegaBytes</rasd:AllocationUnits>
+        <rasd:VirtualQuantity>4096</rasd:VirtualQuantity>
+      </Item>
+      <Item>
+        <rasd:Caption>virtio-disk0</rasd:Caption>
+        <rasd:InstanceId>05f1031c-6c9a-48c3-9a62-930984e52e11</rasd:InstanceId>
+        <rasd:ResourceType>17</rasd:ResourceType>
+        <rasd:HostResource>1b52d184-a370-48a7-8335-a4755b01ec0a/05f1031c-6c9a-48c3-9a62-930984e52e11</rasd:HostResource>
+        <rasd:Parent>00000000-0000-0000-0000-000000000000</rasd:Parent>
+        <rasd:Template>00000000-0000-0000-0000-000000000000</rasd:Template>
+        <rasd:DiskStorageType>IMAGE</rasd:DiskStorageType>
+        <rasd:ApplicationList/>
+        <rasd:StorageId>475e7578-33a2-474f-8647-aa46f01200f9</rasd:StorageId>
+        <rasd:StoragePoolId>00000001-0001-0001-0001-00000000014a</rasd:StoragePoolId>
+        <rasd:CreationDate>2015/06/12 08:01:11</rasd:CreationDate>
+        <rasd:LastModified>1970/01/01 00:00:00</rasd:LastModified>
+        <rasd:last_modified_date>2015/06/13 20:44:22</rasd:last_modified_date>
+        <Type>disk</Type>
+        <Device>disk</Device>
+        <rasd:Address>{slot=0x06, bus=0x00, domain=0x0000, type=pci, function=0x0}</rasd:Address>
+        <BootOrder>1</BootOrder>
+        <IsPlugged>true</IsPlugged>
+        <IsReadOnly>false</IsReadOnly>
+        <Alias>virtio-disk0</Alias>
+      </Item>
+      <Item>
+        <rasd:Caption>USB Controller</rasd:Caption>
+        <rasd:InstanceId>3</rasd:InstanceId>
+        <rasd:ResourceType>23</rasd:ResourceType>
+        <rasd:UsbPolicy>DISABLED</rasd:UsbPolicy>
+      </Item>
+      <Item>
+        <rasd:Caption>CDROM</rasd:Caption>
+        <rasd:InstanceId>131ab170-8626-4473-b22a-6724a057336b</rasd:InstanceId>
+        <rasd:ResourceType>15</rasd:ResourceType>
+        <Type>disk</Type>
+        <Device>cdrom</Device>
+        <rasd:Address/>
+        <BootOrder>0</BootOrder>
+        <IsPlugged>true</IsPlugged>
+        <IsReadOnly>true</IsReadOnly>
+        <Alias/>
+        <SpecParams>
+          <path/>
+        </SpecParams>
+      </Item>
+      <Item>
+        <rasd:ResourceType>0</rasd:ResourceType>
+        <rasd:InstanceId>a039f105-4a1f-40dd-8c5a-0af238f82aca</rasd:InstanceId>
+        <Type>channel</Type>
+        <Device>unix</Device>
+        <rasd:Address>{bus=0, controller=0, type=virtio-serial, port=3}</rasd:Address>
+        <BootOrder>0</BootOrder>
+        <IsPlugged>true</IsPlugged>
+        <IsReadOnly>false</IsReadOnly>
+        <Alias>channel2</Alias>
+      </Item>
+      <Item>
+        <rasd:ResourceType>0</rasd:ResourceType>
+        <rasd:InstanceId>243e6a18-ae41-47dc-af9e-29f2df1b3713</rasd:InstanceId>
+        <Type>controller</Type>
+        <Device>scsi</Device>
+        <rasd:Address>{bus=0x00, slot=0x06, domain=0x0000, type=pci, function=0x0}</rasd:Address>
+        <BootOrder>0</BootOrder>
+        <IsPlugged>true</IsPlugged>
+        <IsReadOnly>false</IsReadOnly>
+        <Alias>scsi0</Alias>
+      </Item>
+      <Item>
+        <rasd:Caption>Ethernet adapter on ovirtmgmt</rasd:Caption>
+        <rasd:InstanceId>7442c4a6-c63d-4734-8a7e-3b2878efd7df</rasd:InstanceId>
+        <rasd:ResourceType>10</rasd:ResourceType>
+        <rasd:OtherResourceType>ovirtmgmt</rasd:OtherResourceType>
+        <rasd:ResourceSubType>3</rasd:ResourceSubType>
+        <rasd:Connection>ovirtmgmt</rasd:Connection>
+        <rasd:Linked>true</rasd:Linked>
+        <rasd:Name>nic1</rasd:Name>
+        <rasd:MACAddress>00:16:3e:43:ed:b5</rasd:MACAddress>
+        <rasd:Address>{slot=0x03, bus=0x00, domain=0x0000, type=pci, function=0x0}</rasd:Address>
+        <rasd:speed>1000</rasd:speed>
+        <Type>interface</Type>
+        <Device>bridge</Device>
+        <rasd:Address/>
+        <BootOrder>0</BootOrder>
+        <IsPlugged>true</IsPlugged>
+        <IsReadOnly>false</IsReadOnly>
+        <Alias/>
+      </Item>
+
+      <Item>
+        <rasd:ResourceType>0</rasd:ResourceType>
+        <rasd:InstanceId>9ae636d9-f23f-4050-84c3-096c798b4851</rasd:InstanceId>
+        <Type>controller</Type>
+        <Device>usb</Device>
+        <rasd:Address>{slot=0x01, bus=0x00, domain=0x0000, type=pci, function=0x2}</rasd:Address>
+        <BootOrder>0</BootOrder>
+        <IsPlugged>true</IsPlugged>
+        <IsReadOnly>false</IsReadOnly>
+        <Alias>usb0</Alias>
+      </Item>
+      <Item>
+        <rasd:ResourceType>0</rasd:ResourceType>
+        <rasd:InstanceId>90cf38c4-ae28-45be-a38f-42f19ac83929</rasd:InstanceId>
+        <Type>controller</Type>
+        <Device>ide</Device>
+        <rasd:Address>{slot=0x01, bus=0x00, domain=0x0000, type=pci, function=0x1}</rasd:Address>
+        <BootOrder>0</BootOrder>
+        <IsPlugged>true</IsPlugged>
+        <IsReadOnly>false</IsReadOnly>
+        <Alias>ide0</Alias>
+      </Item>
+      <Item>
+        <rasd:ResourceType>0</rasd:ResourceType>
+        <rasd:InstanceId>e354e922-b612-49ca-9474-adacc2dc388e</rasd:InstanceId>
+        <Type>controller</Type>
+        <Device>virtio-serial</Device>
+        <rasd:Address>{slot=0x05, bus=0x00, domain=0x0000, type=pci, function=0x0}</rasd:Address>
+        <BootOrder>0</BootOrder>
+        <IsPlugged>true</IsPlugged>
+        <IsReadOnly>false</IsReadOnly>
+        <Alias>virtio-serial0</Alias>
+      </Item>
+      <Item>
+        <rasd:ResourceType>0</rasd:ResourceType>
+        <rasd:InstanceId>b56c7e91-5f05-42f6-a559-e60507a01c04</rasd:InstanceId>
+        <Type>channel</Type>
+        <Device>unix</Device>
+        <rasd:Address>{bus=0, controller=0, type=virtio-serial, port=1}</rasd:Address>
+        <BootOrder>0</BootOrder>
+        <IsPlugged>true</IsPlugged>
+        <IsReadOnly>false</IsReadOnly>
+        <Alias>channel0</Alias>
+      </Item>
+      <Item>
+        <rasd:ResourceType>0</rasd:ResourceType>
+        <rasd:InstanceId>e6b13d23-0912-492b-8d52-a58696612bdf</rasd:InstanceId>
+        <Type>channel</Type>
+        <Device>unix</Device>
+        <rasd:Address>{bus=0, controller=0, type=virtio-serial, port=2}</rasd:Address>
+        <BootOrder>0</BootOrder>
+        <IsPlugged>true</IsPlugged>
+        <IsReadOnly>false</IsReadOnly>
+        <Alias>channel1</Alias>
+      </Item>
+      <Item>
+        <rasd:ResourceType>0</rasd:ResourceType>
+        <rasd:InstanceId>1d65fb1e-d133-4ed9-a726-db8b4c4ec710</rasd:InstanceId>
+        <Type>sound</Type>
+        <Device>ich6</Device>
+        <rasd:Address/>
+        <BootOrder>0</BootOrder>
+        <IsPlugged>true</IsPlugged>
+        <IsReadOnly>true</IsReadOnly>
+        <Alias/>
+      </Item>
+    </Section>
+    <Section xsi:type="ovf:SnapshotsSection_Type">
+      <Snapshot ovf:id="47093b30-ef1b-4b7f-be3e-d2421fe7c6ef">
+        <Type>ACTIVE</Type>
+        <Description>Active VM snapshot</Description>
+        <CreationDate>2015/06/12 08:01:11</CreationDate>
+      </Snapshot>
+      <Snapshot ovf:id="04d0a7b2-17b9-4b19-a749-6715e353d9c6">
+        <Type>NEXT_RUN</Type>
+        <Description>Next Run configuration snapshot</Description>
+        <CreationDate>2015/06/13 20:03:58</CreationDate>
+        <VmConfiguration>PD94bWwgdmVyc2lvbj0nMS4wJyBlbmNvZGluZz0nVVRGLTgnPz48b3ZmOkVudmVsb3BlIHhtbG5z&#13;
+          Om92Zj0iaHR0cDovL3NjaGVtYXMuZG10Zi5vcmcvb3ZmL2VudmVsb3BlLzEvIiB4bWxuczpyYXNk&#13;
+          dD48L292ZjpFbnZlbG9wZT4=&#13;
+        </VmConfiguration>
+      </Snapshot>
+    </Section>
+  </Content>
+</ovf:Envelope>

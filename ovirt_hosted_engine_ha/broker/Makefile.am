@@ -34,6 +34,7 @@ CLEANFILES = \
 SUBDIRS = \
 	submonitors \
 	notifications \
+	test \
 	$(NULL)
 
 brokerdir = $(engine_ha_libdir)/broker

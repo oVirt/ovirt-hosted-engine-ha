@@ -46,6 +46,7 @@ dist_halib_PYTHON = \
 
 SUBDIRS = \
 	fsm \
+	ovf \
 	$(NULL)
 
 clean-local: \

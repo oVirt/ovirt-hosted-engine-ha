@@ -1,6 +1,6 @@
 #
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-# Copyright (C) 2013 Red Hat, Inc.
+# Copyright (C) 2015 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -17,26 +17,40 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-import logging
-import time
+include $(top_srcdir)/build/python.inc
 
-from .. import monitor
+PYTHON_SYNTAX_CHECK_FILES := \
+	$(srcdir)/__init__.py \
+	$(srcdir)/ovf2VmParams.py \
+	$(srcdir)/ovf2VmParams_test.py \
+	$(NULL)
 
+MAINTAINERCLEANFILES = \
+	$(srcdir)/Makefile.in \
+	$(NULL)
 
-def main():
-    logging.basicConfig(filename='/dev/stdout', filemode='w+',
-                        level=logging.DEBUG)
-    log = logging.getLogger("%s.monitor test" % __name__)
-    log.warn("Could not init proper logging", exc_info=True)
-    m = monitor.Monitor()
+ovflibdir = $(engine_ha_libdir)/lib/ovf
 
-    sm_id = m.start_submonitor('ping', {'addr': '127.0.0.1'})
-    m.stop_submonitor(sm_id)
-    sm_id = m.start_submonitor('ping', {'addr': '192.168.1.1'})
-    while m.get_value(sm_id) is None:
-        time.sleep(1)
-    log.info("Got result: {0}".format(m.get_value(sm_id)))
-    m.stop_submonitor(sm_id)
+dist_ovflib_PYTHON = \
+	__init__.py \
+	ovf2VmParams.py \
+	ovfenvelope.py \
+	ovf_store.py \
+	$(NULL)
 
-if __name__ == '__main__':
-    main()
+dist_noinst_PYTHON = \
+	ovf2VmParams_test.py \
+	$(NULL)
+
+dist_noinst_DATA = \
+	ovf_test.xml \
+	$(NULL)
+
+clean-local: \
+	python-clean \
+	$(NULL)
+
+all-local: \
+	$(DISTFILES) \
+	python-syntax-check \
+	$(NULL)

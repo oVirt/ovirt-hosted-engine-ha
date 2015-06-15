@@ -85,10 +85,12 @@ AC_CONFIG_FILES([
 	ovirt_hosted_engine_ha/broker/Makefile
 	ovirt_hosted_engine_ha/broker/notifications/Makefile
 	ovirt_hosted_engine_ha/broker/submonitors/Makefile
+	ovirt_hosted_engine_ha/broker/test/Makefile
 	ovirt_hosted_engine_ha/client/Makefile
 	ovirt_hosted_engine_ha/env/Makefile
 	ovirt_hosted_engine_ha/lib/Makefile
 	ovirt_hosted_engine_ha/lib/fsm/Makefile
+	ovirt_hosted_engine_ha/lib/ovf/Makefile
 	sudoers/Makefile
 ])
 AC_OUTPUT
