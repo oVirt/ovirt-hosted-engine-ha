@@ -221,7 +221,9 @@ class HAClient(object):
     def get_local_host_id(self):
         if self._config is None:
             self._config = config.Config()
-        return int(self._config.get(config.ENGINE, config.HOST_ID))
+
+        host_id = self._config.get(config.ENGINE, config.HOST_ID)
+        return int(host_id) if host_id else None
 
     def get_local_host_score(self):
         if self._config is None:
@@ -273,9 +275,17 @@ class HAClient(object):
         service = (constants.SERVICE_TYPE +
                    agent_constants.MD_EXTENSION)
 
-        # Connect to a broker and read all stats
         if self._config is None:
             self._config = config.Config()
+
+        host_id = self._config.get(config.ENGINE, config.HOST_ID)
+        is_configured = self._config.get(config.ENGINE, config.CONFIGURED)
+        if (not host_id or
+                (is_configured != "True" and is_configured is not None)):
+            self._log.error("Hosted engine is not configured.")
+            return
+
+        # Connect to a broker and read all stats
         broker = brokerlink.BrokerLink()
 
         with broker.connection():
