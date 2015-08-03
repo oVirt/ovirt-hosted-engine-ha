@@ -28,15 +28,19 @@ import subprocess
 import time
 import binascii
 
+from vdsm import vdscli
 import sanlock
 
 from . import constants
+from ..env import constants as envconstants
 from ..env import config
 from ..env import path as env_path
 from ..lib import brokerlink
 from ..lib import exceptions as ex
+from ..lib import image
 from ..lib import log_filter
 from ..lib import metadata
+from ..lib import storage_server
 from ..lib import util
 from ..lib import vds_client as vdsc
 from ..lib.storage_backends import StorageBackendTypes, VdsmBackend
@@ -329,6 +333,7 @@ class HostedEngine(object):
 
         self._log.debug("Connecting to ha-broker")
         self._initialize_vdsm()
+        self._initialize_storage_images()
         self._initialize_domain_monitor()
         self._initialize_broker(monitors=[])
         try:
@@ -383,11 +388,12 @@ class HostedEngine(object):
             return -1
 
         # make sure everything is initialized
-        # VDSM has to be initialized first, because it prepares the
-        # storage domain connection
+        # VDSM has to be initialized first, because it's needed to prepare the
+        # storage domain connection. Then the storage.
         # Broker then initializes the pieces needed for metadata and leases
         # which are then used by sanlock
         self._initialize_vdsm()
+        self._initialize_storage_images()
         self._initialize_domain_monitor()
         self._initialize_broker()
         self._initialize_sanlock()
@@ -416,6 +422,7 @@ class HostedEngine(object):
             try:
                 # make sure everything is still initialized
                 self._initialize_vdsm()
+                self._initialize_storage_images()
                 self._initialize_domain_monitor()
                 self._initialize_broker()
                 self._initialize_sanlock()
@@ -567,7 +574,9 @@ class HostedEngine(object):
         self._log.info("Broker initialized, all submonitors started")
 
     def _initialize_vdsm(self):
+        self._log.info("Initializing VDSM")
         tries = 0
+
         while tries < constants.MAX_VDSM_START_RETRIES:
             tries += 1
             try:
@@ -584,38 +593,51 @@ class HostedEngine(object):
                                .format(constants.MAX_VDSM_WAIT_SECS))
                 time.sleep(constants.MAX_VDSM_WAIT_SECS)
 
-        self._log.debug("Verifying storage is attached")
-        for attempt in xrange(constants.MAX_VDSM_START_RETRIES):
-            # `hosted-engine --connect-storage` internally calls vdsClient's
-            # connectStorageServer command, which can be executed repeatedly
-            # without issue even if the storage is already connected.  Note
-            # that if vdsm was just started, it might take a few seconds to
-            # initialize before accepting commands, thus the retries.
-            cmd = [constants.HOSTED_ENGINE_BINARY, '--connect-storage']
-            self._log.debug("Executing {0}".format(cmd))
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE)
-            output = p.communicate()
-            self._log.debug("Attempt %d, return code: %d", attempt,
-                            p.returncode)
-            self._log.debug("stdout: %s", output[0])
-            self._log.debug("stderr: %s", output[1])
-            if p.returncode == 0:
-                self._log.debug("Successfully verified that VDSM"
-                                " is attached to storage")
-                break
+        cli = vdscli.connect(timeout=envconstants.VDSCLI_SSL_TIMEOUT)
+        vdsmReady = False
+        retry = 0
+        while not vdsmReady:
+            retry += 1
+            if retry > constants.MAX_VDSM_START_RETRIES:
+                self._log.error(
+                    "Failed trying to connect vdsm after %s retries",
+                    retry
+                )
+                raise Exception("Failed trying to connect vdsm")
+            try:
+                hwinfo = cli.getVdsHardwareInfo()
+                self._log.debug(str(hwinfo))
+                if hwinfo['status']['code'] == 0:
+                    vdsmReady = True
+                else:
+                    self._log.debug('Waiting for VDSM hardware info')
+                    time.sleep(1)
+            except socket.error:
+                self._log.debug('Waiting for VDSM hardware info')
+                time.sleep(1)
 
-            self._log.warn("Failed to connect storage, waiting '{0}' seconds "
-                           "before the next attempt"
-                           .format(constants.MAX_VDSM_WAIT_SECS))
-            time.sleep(constants.MAX_VDSM_WAIT_SECS)
-        else:
-            self._log.error("Failed trying to connect storage: %s", output[1])
-            raise Exception("Failed trying to connect storage")
+    def _initialize_storage_images(self):
+        self._log.info("Connecting the storage")
+        sserver = storage_server.StorageServer()
+        sserver.connect_storage_server()
+
+        self._log.info("Preparing images")
+        img = image.Image()
+        img.prepare_images()
 
         # Update to the current mount path for the domain
         self._sd_path = env_path.get_domain_path(self._config)
         self._log.debug("Path to storage domain is %s", self._sd_path)
+
+        self._log.info("Reloading vm.conf from the shared storage domain")
+        local_vm_conf_path = self._config.get(
+            config.ENGINE,
+            config.CONF_FILE
+        )
+        self._config.refresh_local_conf_file(
+            localcopy_filename=local_vm_conf_path,
+            archive_fname=constants.VM_CONF_FILE_ARCHIVE_FNAME,
+        )
 
     def _cond_start_service(self, service_name):
         self._log.debug("Checking %s status", service_name)

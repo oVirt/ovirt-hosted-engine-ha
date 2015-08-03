@@ -26,6 +26,7 @@ from ..env import config
 from ..env import constants
 from ..lib import brokerlink
 from ..lib import metadata
+from ..lib import storage_server
 from ..lib import util
 from ..lib.exceptions import MetadataError
 from ..lib.storage_backends import StorageBackendTypes
@@ -317,3 +318,7 @@ class HAClient(object):
             sanlock.write_lockspace(lockspace=constants.SERVICE_TYPE,
                                     path=lockspace_file,
                                     offset=0)
+
+    def connect_storage_server(self):
+        sserver = storage_server.StorageServer()
+        sserver.connect_storage_server()

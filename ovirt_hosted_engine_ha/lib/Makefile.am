@@ -30,10 +30,12 @@ dist_halib_PYTHON = \
 	brokerlink.py \
 	brokerlink_test.py \
 	exceptions.py \
+	image.py \
 	log_filter.py \
 	metadata.py \
 	storage_backends.py \
 	storage_backends_test.py \
+	storage_server.py \
 	util.py \
 	vds_client.py \
 	monotonic.py \

@@ -36,6 +36,8 @@ SD_UUID = 'sdUUID'
 SP_UUID = 'spUUID'
 VDSM_SSL = 'vdsm_use_ssl'
 BRIDGE_NAME = 'bridge'
+VM_DISK_IMG_ID = 'vm_disk_id'
+VM_DISK_VOL_ID = 'vm_disk_vol_id'
 METADATA_VOLUME_UUID = 'metadata_volume_UUID'
 METADATA_IMAGE_UUID = 'metadata_image_UUID'
 LOCKSPACE_VOLUME_UUID = 'lockspace_volume_UUID'
@@ -44,6 +46,15 @@ CONF_VOLUME_UUID = 'conf_volume_UUID'
 CONF_IMAGE_UUID = 'conf_image_UUID'
 CONF_FILE = 'conf'
 HEVMID = 'vmid'
+STORAGE = 'storage'
+CONNECTIONUUID = 'connectionUUID'
+# The following are used only for iSCSI storage
+ISCSI_IQN = 'iqn'
+ISCSI_PORTAL = 'portal'
+ISCSI_USER = 'user'
+ISCSI_PASSWORD = 'password'
+ISCSI_PORT = 'port'
+ISCSI_TPGT = 'tpgt'
 
 # constants for vm.conf options
 VM = 'vm'
@@ -129,9 +140,17 @@ class Config(object):
                 )
             return val
         except KeyError:
-            unknown = "unknown (type={0})".format(type)
-            raise Exception("Configuration value not found: file={0}, key={1}"
-                            .format(self._files.get(type, unknown), key))
+            fname = "unknown (type={0})".format(type)
+            if type in Config.static_files.keys():
+                fname = Config.static_files[type]
+            elif type in self._dynamic_files.keys():
+                fname = self._dynamic_files[type]
+            raise KeyError(
+                "Configuration value not found: file={0}, key={1}".format(
+                    fname,
+                    key
+                )
+            )
 
     def set(self, type, key, value):
         """
