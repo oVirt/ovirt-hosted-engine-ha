@@ -217,7 +217,9 @@ class HAClient(object):
     def get_local_host_id(self):
         if self._config is None:
             self._config = config.Config()
-        return int(self._config.get(config.ENGINE, config.HOST_ID))
+
+        host_id = self._config.get(config.ENGINE, config.HOST_ID)
+        return int(host_id) if host_id else None
 
     def get_local_host_score(self):
         if self._config is None:

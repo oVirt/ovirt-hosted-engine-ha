@@ -18,6 +18,7 @@
 #
 
 import fcntl
+import logging
 
 from . import constants
 
@@ -25,6 +26,7 @@ from . import constants
 ENGINE = 'engine'
 DOMAIN_TYPE = 'domainType'
 ENGINE_FQDN = 'fqdn'
+CONFIGURED = 'configured'
 GATEWAY_ADDR = 'gateway'
 HOST_ID = 'host_id'
 SD_UUID = 'sdUUID'
@@ -58,20 +60,57 @@ class Config(object):
         HA: constants.HA_AGENT_CONF_FILE,
     }
 
-    def __init__(self):
-        self._config = {}
+    def __init__(self, logger=None):
+        if logger is None:
+            self._logger = logging.getLogger(__name__)
+        else:
+            # TODO use logger.getChild() when Python 2.6 support is dropped
+            self._logger = logging.getLogger(logger.name + ".config")
+
+        self._config = {
+            ENGINE: {
+                HOST_ID: None,
+                CONFIGURED: None
+            }
+        }
+
+        # Config files in dynamic_files may change at runtime and are re-read
+        # whenever configuration values are retrieved from them.
+        self._dynamic_files = {
+            HA: constants.HA_AGENT_CONF_FILE,
+        }
+
         self._load(Config.static_files)
 
     def _load(self, files):
-        conf = {}
-
         for type, fname in files.iteritems():
-            with open(fname, 'r') as f:
-                for line in f:
-                    tokens = line.split('=', 1)
-                    if len(tokens) > 1:
-                        conf[tokens[0]] = tokens[1].strip()
-            self._config[type] = conf
+            conf = {}
+
+            try:
+                with open(fname, 'r') as f:
+                    for line in f:
+                        tokens = line.split('=', 1)
+                        if len(tokens) > 1:
+                            conf[tokens[0]] = tokens[1].strip()
+            except (OSError, IOError) as ex:
+                log = self._logger
+
+                if type in self._dynamic_files:
+                    level = log.debug
+                else:
+                    level = log.error
+
+                level("Configuration file '%s' not available [%s]", fname, ex)
+
+            self._config.setdefault(type, {})
+            self._config[type].update(conf)
+
+    @property
+    def _files(self):
+        all_files = {}
+        all_files.update(self.static_files)
+        all_files.update(self._dynamic_files)
+        return all_files
 
     def get(self, type, key, raise_on_none=False):
         if type in Config.dynamic_files.keys():

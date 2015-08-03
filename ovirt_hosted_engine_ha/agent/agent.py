@@ -50,6 +50,9 @@ class Agent(object):
         parser.set_defaults(daemon=True)
         (options, args) = parser.parse_args()
 
+        retries = constants.AGENT_START_RETRIES
+        errcode = 0
+
         self._initialize_logging(options.daemon)
         self._log.info("%s started", constants.FULL_PROG_NAME)
 
@@ -96,10 +99,10 @@ class Agent(object):
 
                 with daemon.DaemonContext(signal_map=self._get_signal_map(),
                                           files_preserve=logs):
-                    self._run_agent()
+                    errcode = self._run_agent(retries)
             else:
                 self._log.debug("Running agent in foreground")
-                self._run_agent()
+                errcode = self._run_agent(retries)
 
         except Exception as e:
             self._log.critical("Could not start ha-agent", exc_info=True)
@@ -108,7 +111,7 @@ class Agent(object):
             if options.pdb:
                 import pdb
                 pdb.post_mortem()
-            sys.exit(1)
+            sys.exit(-98)
         except KeyboardInterrupt:
             if options.pdb:
                 import pdb
@@ -117,7 +120,7 @@ class Agent(object):
         # Agent shutdown...
         self._log.info("Agent shutting down")
         os.unlink(constants.PID_FILE)
-        sys.exit(0)
+        sys.exit(errcode)
 
     def _initialize_logging(self, is_daemon):
         try:
@@ -151,16 +154,18 @@ class Agent(object):
     def shutdown_requested(self):
         return self._shutdown
 
-    def _run_agent(self):
+    def _run_agent(self, retries=constants.AGENT_START_RETRIES):
         # Only one service type for now, run it in the main thread
 
-        for attempt in range(constants.AGENT_START_RETRIES):
+        for attempt in range(retries):
             try:
-                hosted_engine.HostedEngine(self.shutdown_requested)\
+                he = hosted_engine.HostedEngine(self.shutdown_requested)\
                     .start_monitoring()
+
                 # if we're here, the agent stopped gracefully,
                 # so we don't want to restart it
-                break
+                return he
+
             except ex.DisconnectionError as e:
                 self._log.error("Disconnected from broker '{0}'"
                                 " - reinitializing".format(str(e)))
@@ -176,3 +181,4 @@ class Agent(object):
         else:
             self._log.error("Too many errors occurred, giving up. "
                             "Please review the log and consider filing a bug.")
+            return -99

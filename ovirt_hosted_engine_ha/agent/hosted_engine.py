@@ -139,12 +139,17 @@ class HostedEngine(object):
 
         self._shutdown_requested_callback = shutdown_requested_callback
         self._config = config.Config()
-
-        self._score_cfg = self._get_score_config()
         self._hostname = self._get_hostname()
 
+        if self.configured:
+            self._score_cfg = self._get_score_config()
+            self._required_monitors = self._get_required_monitors()
+        else:
+            self._score_cfg = {}
+            self._required_monitors = []
+
         self._broker = None
-        self._required_monitors = self._get_required_monitors()
+
         self._local_monitors = {}
         self.fsm = EngineStateMachine(self, self._log, actions={
             "START_VM": self._start_engine_vm,
@@ -288,10 +293,24 @@ class HostedEngine(object):
 
     @property
     def host_id(self):
-        return int(self._config.get(config.ENGINE, config.HOST_ID))
+        host_id = self._config.get(config.ENGINE, config.HOST_ID)
+        return int(host_id) if host_id else None
+
+    @property
+    def configured(self):
+        """Hosted engine is configured when host id is present and the
+           configured value is not explicitly set to False
+        """
+        configured = self._config.get(config.ENGINE, config.CONFIGURED)
+        return self.host_id and (configured is None or configured == "True")
 
     def start_monitoring(self):
         error_count = 0
+
+        # Shut down the agent when HE is not fully configured
+        if not self.configured:
+            self._log.error("Hosted Engine is not configured. Shutting down.")
+            return -1
 
         # make sure everything is initialized
         # VDSM has to be initialized first, because it prepares the
@@ -361,6 +380,8 @@ class HostedEngine(object):
         self._log.debug("Disconnecting from ha-broker")
         if self._broker and self._broker.is_connected():
             self._broker.disconnect()
+
+        return 0
 
     def _initialize_broker(self):
         if self._broker and self._broker.is_connected():
