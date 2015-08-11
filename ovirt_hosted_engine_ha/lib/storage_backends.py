@@ -313,7 +313,21 @@ class VdsmBackend(StorageBackend):
         logger.debug("getVolumePath: '%s'", response)
         if response["status"]["code"] != 0:
             raise RuntimeError(response["status"]["message"])
+
         path = response['path']
+
+        # Clear the volume (VDSM does not do that automatically for iSCSI)
+        # use 10KiB blocks to do the writing
+        BLOCK_SIZE = 10240
+        stat = os.stat(path)
+        remaining_size = stat.st_size
+        with open(path, 'r+') as of:
+            while remaining_size > 0:
+                of.write('\0' * (BLOCK_SIZE if remaining_size > BLOCK_SIZE
+                                 else remaining_size))
+                remaining_size -= BLOCK_SIZE
+            of.flush()
+
         return True, path
 
     def create(self, service_map, force_new=False):
