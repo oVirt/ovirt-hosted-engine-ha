@@ -51,3 +51,11 @@ STORAGE_TYPE_NFS = 1
 STORAGE_TYPE_FC = 2
 STORAGE_TYPE_ISCSI = 3
 STORAGE_TYPE_GLUSTERFS = 7
+
+
+class HEConfFiles(object):
+    HECONFD_VERSION = 'version'
+    HECONFD_ANSWERFILE = 'fhanswers.conf'
+    HECONFD_HECONF = 'hosted-engine.conf'
+    HECONFD_BROKER_CONF = 'broker.conf'
+    HECONFD_VM_CONF = 'vm.conf'

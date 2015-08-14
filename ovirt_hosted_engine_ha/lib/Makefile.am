@@ -33,6 +33,7 @@ dist_halib_PYTHON = \
 	image.py \
 	log_filter.py \
 	metadata.py \
+	heconflib.py \
 	storage_backends.py \
 	storage_backends_test.py \
 	storage_server.py \

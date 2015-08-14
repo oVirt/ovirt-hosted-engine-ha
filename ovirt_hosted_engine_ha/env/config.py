@@ -22,8 +22,7 @@ import logging
 
 from . import constants
 
-from ovirt_hosted_engine_setup import heconflib
-from ovirt_hosted_engine_setup import util as ohostedutil
+from ovirt_hosted_engine_ha.lib import heconflib
 
 # constants for hosted-engine.conf options
 ENGINE = 'engine'
@@ -177,7 +176,7 @@ class Config(object):
             f.truncate()
 
     def refresh_local_conf_file(self, localcopy_filename, archive_fname):
-        source = ohostedutil.get_volume_path(
+        source = heconflib.get_volume_path(
             self.get(ENGINE, DOMAIN_TYPE),
             self.get(ENGINE, SD_UUID),
             self.get(ENGINE, CONF_IMAGE_UUID),
