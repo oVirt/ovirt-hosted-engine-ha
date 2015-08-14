@@ -32,7 +32,15 @@ HOST_ALIVE_TIMEOUT_SECS = 60
 BROKER_SOCKET_FILE = '@ENGINE_HA_RUNDIR@/broker.socket'
 
 ENGINE_SETUP_CONF_FILE = '/etc/ovirt-hosted-engine/hosted-engine.conf'
+NOTIFY_CONF_FILE_35 = '@ENGINE_HA_CONFDIR@/broker.conf'
+ANSWER_FILE_35 = '/etc/ovirt-hosted-engine/answers.conf'
+VM_CONF_FILE_35 = '/etc/ovirt-hosted-engine/vm.conf'
+
+LOCAL_VM_CONF_PATH = '@ENGINE_HA_RUNDIR@/vm.conf'
+
 HA_AGENT_CONF_FILE = '@ENGINE_HA_STATEDIR@/ha.conf'
+
+OVIRT_HOSTED_ENGINE_LB_DIR = '@ENGINE_HA_STATEDIR@'
 
 SD_MOUNT_PARENT = '/rhev/data-center/mnt'
 SD_METADATA_DIR = 'ha_agent'
@@ -52,6 +60,11 @@ STORAGE_TYPE_FC = 2
 STORAGE_TYPE_ISCSI = 3
 STORAGE_TYPE_GLUSTERFS = 7
 
+CONF_IMAGE_DESC = 'HostedEngineConfigurationImage'
+DEFAULT_CONF_IMAGE_SIZE_GB = 1
+
+BLANK_UUID = '00000000-0000-0000-0000-000000000000'
+
 
 class HEConfFiles(object):
     HECONFD_VERSION = 'version'
@@ -59,3 +72,29 @@ class HEConfFiles(object):
     HECONFD_HECONF = 'hosted-engine.conf'
     HECONFD_BROKER_CONF = 'broker.conf'
     HECONFD_VM_CONF = 'vm.conf'
+
+
+class VolumeFormat(object):
+    UNKNOWN_FORMAT = 3
+    COW_FORMAT = 4
+    RAW_FORMAT = 5
+
+
+class VolumeTypes(object):
+    UNKNOWN_VOL = 0
+    PREALLOCATED_VOL = 1
+    SPARSE_VOL = 2
+
+
+class VDSMEnv(object):
+    VDSM_UID = 36
+    KVM_GID = 36
+
+
+class VDSMConstants(object):
+    NFS_DOMAIN = 1
+    FC_DOMAIN = 2
+    ISCSI_DOMAIN = 3
+    POSIXFS_DOMAIN = 6
+    GLUSTERFS_DOMAIN = 7
+    DATA_DOMAIN = 1

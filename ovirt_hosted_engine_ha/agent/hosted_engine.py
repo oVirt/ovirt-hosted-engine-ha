@@ -44,6 +44,7 @@ from ..lib import storage_server
 from ..lib import util
 from ..lib import vds_client as vdsc
 from ..lib.storage_backends import StorageBackendTypes, VdsmBackend
+from ovirt_hosted_engine_ha.lib import upgrade
 from .state_machine import EngineStateMachine
 from .states import AgentStopped
 
@@ -187,6 +188,8 @@ class HostedEngine(object):
             'engine-retry-score-penalty': constants.ENGINE_RETRY_SCORE_PENALTY,
             'cpu-load-penalty-min': constants.CPU_LOAD_PENALTY_MIN,
             'cpu-load-penalty-max': constants.CPU_LOAD_PENALTY_MAX,
+            'not-uptodate-config-penalty':
+                constants.NOT_UPTODATE_CONFIG_PENALITY,
         }
         float_keys = set((
             'cpu-load-penalty-min',
@@ -397,6 +400,13 @@ class HostedEngine(object):
         self._initialize_domain_monitor()
         self._initialize_broker()
         self._initialize_sanlock()
+
+        # check if configuration is up to date, otherwise upgrade
+        upg = upgrade.Upgrade()
+        upgraded = upg.upgrade()
+        if upgraded:
+            self._log.info("Reloading hosted-engine.conf after upgrade")
+            self._config = config.Config(logger=self._log)
 
         self._log.info("Reloading vm.conf from the shared storage domain")
         local_vm_conf_path = self._config.get(

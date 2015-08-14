@@ -1,6 +1,7 @@
 from ..lib.fsm import BaseState, BaseFSM
 from ..lib import log_filter
 from ..lib import engine
+from ovirt_hosted_engine_ha.lib import upgrade
 from . import constants
 from .state_decorators import check_local_maintenance, check_timeout
 from .state_decorators import check_local_vm_unknown, check_global_maintenance
@@ -109,6 +110,11 @@ class EngineState(BaseState):
         score_cfg = self.data.score_cfg
 
         score = score_cfg['base-score']
+
+        upgrademgr = upgrade.Upgrade()
+        if not upgrademgr.is_conf_file_uptodate():
+            score -= score_cfg['not-uptodate-config-penalty']
+
         # FIXME score needed for vdsm storage pool connection?
         # (depending on storage integration, may not be able to report...)
         if not lm['gateway']:
@@ -142,11 +148,14 @@ class EngineState(BaseState):
         else:
             # Penalty is normalized to [0, max penalty] and is linear based on
             # (magnitude of value within penalty range) / (size of range)
-            penalty = int((load_average
-                           - score_cfg['cpu-load-penalty-min'])
-                          / (score_cfg['cpu-load-penalty-max']
-                             - score_cfg['cpu-load-penalty-min'])
-                          * score_cfg['cpu-load-score-penalty'])
+            penalty = int(
+                (load_average - score_cfg['cpu-load-penalty-min']) /
+                (
+                    score_cfg['cpu-load-penalty-max'] -
+                    score_cfg['cpu-load-penalty-min']
+                ) *
+                score_cfg['cpu-load-score-penalty']
+            )
             penalty = max(0, min(score_cfg['cpu-load-score-penalty'],
                                  penalty))
         if penalty > 0:
@@ -160,8 +169,10 @@ class EngineState(BaseState):
                                       lm, logger, score, score_cfg)
 
         # If too many retries occur, give a less-suited host a chance
-        if (self.data.engine_vm_retry_count
-                > constants.ENGINE_RETRY_MAX_ATTEMPTS):
+        if (
+            self.data.engine_vm_retry_count >
+            constants.ENGINE_RETRY_MAX_ATTEMPTS
+        ):
             logger.info('Score is 0 due to %d engine vm retry attempts',
                         self.data.engine_vm_retry_count,
                         extra=log_filter.lf_args('score-retries',
@@ -170,8 +181,10 @@ class EngineState(BaseState):
         elif self.data.engine_vm_retry_count > 0:
             # Subtracting a small amount each time causes round-robin attempts
             # between hosts that are otherwise equally suited to run the engine
-            penalty = (score_cfg['engine-retry-score-penalty']
-                       * self.data.engine_vm_retry_count)
+            penalty = (
+                score_cfg['engine-retry-score-penalty'] *
+                self.data.engine_vm_retry_count
+            )
             logger.info('Penalizing score by %d'
                         ' due to %d engine vm retry attempts',
                         penalty, self.data.engine_vm_retry_count,
@@ -448,10 +461,12 @@ class EngineDown(EngineState):
                 return EngineDown(new_data),
 
         # VM is not running, who should be starting it?
-        if (not new_data.history or
-                (new_data.history[0].collect_finish
-                 - new_data.history[-1].collect_finish)
-                < constants.HOST_ALIVE_TIMEOUT_SECS):
+        if (
+            not new_data.history or (
+                new_data.history[0].collect_finish -
+                new_data.history[-1].collect_finish
+            ) < constants.HOST_ALIVE_TIMEOUT_SECS
+        ):
             # we do not have enough data to decide yet..
             logger.info("The engine is not running, but we do not have enough"
                         " data to decide which hosts are alive")
@@ -546,8 +561,10 @@ class EngineStop(EngineState):
     def metadata(self):
         data = super(EngineStop, self).metadata()
         if self.data.timeout_start_time:
-            timeout = (self.data.timeout_start_time
-                       + constants.ENGINE_BAD_HEALTH_TIMEOUT_SECS)
+            timeout = (
+                self.data.timeout_start_time +
+                constants.ENGINE_BAD_HEALTH_TIMEOUT_SECS
+            )
             data["timeout"] = time.ctime(timeout)
         return data
 
@@ -576,8 +593,10 @@ class EngineUpBadHealth(EngineUp):
     def metadata(self):
         data = super(EngineUpBadHealth, self).metadata()
         if self.data.timeout_start_time:
-            timeout = (self.data.timeout_start_time
-                       + constants.ENGINE_BAD_HEALTH_TIMEOUT_SECS)
+            timeout = (
+                self.data.timeout_start_time +
+                constants.ENGINE_BAD_HEALTH_TIMEOUT_SECS
+            )
             data["timeout"] = time.ctime(timeout)
         return data
 
@@ -635,8 +654,9 @@ class EngineUnexpectedlyDown(EngineState):
 
     def score(self, logger):
         if self.data.timeout_start_time:
-            time_str = time.ctime(self.data.timeout_start_time
-                                  + self.data.stats.time_epoch)
+            time_str = time.ctime(
+                self.data.timeout_start_time + self.data.stats.time_epoch
+            )
         else:
             time_str = time.ctime()
 
@@ -649,8 +669,10 @@ class EngineUnexpectedlyDown(EngineState):
     def metadata(self):
         data = super(EngineUnexpectedlyDown, self).metadata()
         if self.data.timeout_start_time:
-            timeout = (self.data.timeout_start_time
-                       + constants.VM_UNEXPECTED_SHUTDOWN_EXPIRATION_SECS)
+            timeout = (
+                self.data.timeout_start_time +
+                constants.VM_UNEXPECTED_SHUTDOWN_EXPIRATION_SECS
+            )
             data["timeout"] = time.ctime(timeout)
         return data
 

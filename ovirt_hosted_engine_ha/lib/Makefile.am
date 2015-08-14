@@ -41,6 +41,7 @@ dist_halib_PYTHON = \
 	vds_client.py \
 	monotonic.py \
 	engine.py \
+	upgrade.py \
 	$(NULL)
 
 SUBDIRS = \

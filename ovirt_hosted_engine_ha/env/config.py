@@ -22,7 +22,8 @@ import logging
 
 from . import constants
 
-from ovirt_hosted_engine_ha.lib import heconflib
+from ovirt_hosted_engine_setup import heconflib
+from ovirt_hosted_engine_setup import util as ohostedutil
 
 # constants for hosted-engine.conf options
 ENGINE = 'engine'
@@ -176,41 +177,60 @@ class Config(object):
             f.truncate()
 
     def refresh_local_conf_file(self, localcopy_filename, archive_fname):
-        source = heconflib.get_volume_path(
-            self.get(ENGINE, DOMAIN_TYPE),
-            self.get(ENGINE, SD_UUID),
-            self.get(ENGINE, CONF_IMAGE_UUID),
-            self.get(ENGINE, CONF_VOLUME_UUID),
-        )
-        if self._logger:
-            self._logger.debug(
-                "Reading '{archive_fname}' from '{source}'".format(
-                    archive_fname=archive_fname,
-                    source=source,
-                )
-            )
+        domain_type = self.get(ENGINE, DOMAIN_TYPE)
+        sd_uuid = self.get(ENGINE, SD_UUID)
+        conf_img_id = None
+        conf_vol_id = None
+        try:
+            conf_img_id = self.get(ENGINE, CONF_IMAGE_UUID)
+            conf_vol_id = self.get(ENGINE, CONF_VOLUME_UUID)
+        except (KeyError, ValueError):
+            if self._logger:
+                self._logger.debug("Configuration image doesn't exist")
+            pass
 
-        if heconflib.validateConfImage(self._logger, source):
-            content = heconflib.extractConfFile(
-                self._logger,
-                source,
-                archive_fname,
+        if not (conf_img_id and conf_vol_id):
+            if self._logger:
+                self._logger.debug(
+                    "Failing back to conf file from a previous release"
+                )
+            return False
+        else:
+            source = ohostedutil.get_volume_path(
+                domain_type,
+                sd_uuid,
+                conf_img_id,
+                conf_vol_id,
             )
             if self._logger:
                 self._logger.debug(
-                    "Writing to '{target}'".format(
-                        target=localcopy_filename,
+                    "Reading '{archive_fname}' from '{source}'".format(
+                        archive_fname=archive_fname,
+                        source=source,
                     )
                 )
-            with open(localcopy_filename, 'w') as target:
-                target.write(content)
+
+            if heconflib.validateConfImage(self._logger, source):
+                content = heconflib.extractConfFile(
+                    self._logger,
+                    source,
+                    archive_fname,
+                )
+                if self._logger:
+                    self._logger.debug(
+                        "Writing to '{target}'".format(
+                            target=localcopy_filename,
+                        )
+                    )
+                with open(localcopy_filename, 'w') as target:
+                    target.write(content)
+                if self._logger:
+                    self._logger.debug(
+                        "local conf file was correctly written"
+                    )
+                return True
             if self._logger:
                 self._logger.debug(
-                    "local conf file was correctly written"
+                    "failed trying to write local conf file"
                 )
-            return True
-        if self._logger:
-            self._logger.debug(
-                "failed trying to write local conf file"
-            )
-        return False
+            return False

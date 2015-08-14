@@ -35,13 +35,11 @@ class Image(object):
         self._config = config.Config(logger=self._log)
         self._spUUID = self._config.get(config.ENGINE, config.SP_UUID)
         self._sdUUID = self._config.get(config.ENGINE, config.SD_UUID)
-
         self._vm_disk_img_id = self._config.get(
             config.ENGINE, config.VM_DISK_IMG_ID
         )
-        self._vm_disk_vol_id = self._config.get(
-            config.ENGINE, config.VM_DISK_VOL_ID
-        )
+        # VM disk vol uuid was not in 3.5 conf file but now vdsm requires it
+        # reading or fetching it only when needed
         self._metadata_img_id = self._config.get(
             config.ENGINE, config.METADATA_IMAGE_UUID
         )
@@ -54,17 +52,38 @@ class Image(object):
         self._lockspace_vol_id = self._config.get(
             config.ENGINE, config.LOCKSPACE_VOLUME_UUID
         )
-        self._conf_img_id = self._config.get(
-            config.ENGINE, config.CONF_IMAGE_UUID
-        )
-        self._conf_vol_id = self._config.get(
-            config.ENGINE, config.CONF_VOLUME_UUID
-        )
+        # Shared conf volume wasn't present in oVirt 3.5
+        self._conf_img_id = None
+        self._conf_vol_id = None
 
     def prepare_images(self):
         # prepareImage to populate /var/run/vdsm/storage
         self._log.info("Preparing images")
         cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
+
+        try:
+            self._vm_disk_vol_id = self._config.get(
+                config.ENGINE,
+                config.VM_DISK_VOL_ID
+            )
+        except (KeyError, ValueError):
+            vm_vol_uuid_list = cli.getVolumesList(
+                self._sdUUID,
+                self._spUUID,
+                self._vm_disk_img_id,
+            )
+            if vm_vol_uuid_list['status']['code'] == 0:
+                self._vm_disk_vol_id = vm_vol_uuid_list['uuidlist'][0]
+
+        try:
+            self._conf_img_id = self._config.get(
+                config.ENGINE, config.CONF_IMAGE_UUID
+            )
+            self._conf_vol_id = self._config.get(
+                config.ENGINE, config.CONF_VOLUME_UUID
+            )
+        except (KeyError, ValueError):
+            self._log.debug("Configuration image doesn't exist")
 
         for imgUUID, volUUID in [
             [
@@ -84,17 +103,19 @@ class Image(object):
                 self._conf_vol_id
             ],
         ]:
-            self._log.debug(
-                "Prepare image {spuuid} {sduuid} {imguuid} {voluuid}".format(
-                    spuuid=self._spUUID,
-                    sduuid=self._sdUUID,
-                    imguuid=imgUUID,
-                    voluuid=volUUID,
+            if imgUUID and volUUID:
+                self._log.debug(
+                    "Prepare image {spuuid} {sduuid} "
+                    "{imguuid} {voluuid}".format(
+                        spuuid=self._spUUID,
+                        sduuid=self._sdUUID,
+                        imguuid=imgUUID,
+                        voluuid=volUUID,
+                    )
                 )
-            )
-            cli.prepareImage(
-                self._spUUID,
-                self._sdUUID,
-                imgUUID,
-                volUUID,
-            )
+                cli.prepareImage(
+                    self._spUUID,
+                    self._sdUUID,
+                    imgUUID,
+                    volUUID,
+                )

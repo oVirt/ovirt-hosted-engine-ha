@@ -26,6 +26,7 @@ import os
 import subprocess
 import tarfile
 import tempfile
+import time
 
 from io import StringIO
 
@@ -267,6 +268,119 @@ def get_volume_path(type, sd_uuid, img_uuid, vol_uuid):
             )
         )
     return volumes[0]
+
+
+def task_wait(cli, logger):
+    wait = True
+    while wait:
+        if logger:
+            logger.debug('Waiting for existing tasks to complete')
+        statuses = cli.getAllTasksStatuses()
+        code = statuses['status']['code']
+        message = statuses['status']['message']
+        if code != 0:
+            raise RuntimeError(
+                'Error getting task status: {error}'.format(
+                    error=message
+                )
+            )
+        tasksStatuses = statuses['allTasksStatus']
+        all_completed = True
+        for taskID in tasksStatuses:
+            if tasksStatuses[taskID]['taskState'] != 'finished':
+                all_completed = False
+            else:
+                cli.clearTask(taskID)
+        if all_completed:
+            wait = False
+        else:
+            time.sleep(1)
+
+
+def domain_wait(sdUUID, cli, logger):
+    POLLING_INTERVAL = 5
+    acquired = False
+    while not acquired:
+        time.sleep(POLLING_INTERVAL)
+        if logger:
+            logger.debug('Waiting for domain monitor')
+        response = cli.getVdsStats()
+        if logger:
+            logger.debug(response)
+        if response['status']['code'] != 0:
+            if logger:
+                logger.debug(response['status']['message'])
+            raise RuntimeError('Error acquiring VDS status')
+        try:
+            domains = response['info']['storageDomains']
+            acquired = domains[sdUUID]['acquired']
+        except KeyError:
+            if logger:
+                logger.debug(
+                    'Error getting VDS status',
+                    exc_info=True,
+                )
+            raise RuntimeError('Error acquiring VDS status')
+
+
+def create_and_prepare_image(
+        logger,
+        cli,
+        volFormat,
+        preallocate,
+        sdUUID,
+        spUUID,
+        imgUUID,
+        volUUID,
+        diskType,
+        sizeGB,
+        desc
+):
+    # creates a volume on the storage (SPM verb)
+    status = cli.createVolume(
+        sdUUID,
+        spUUID,
+        imgUUID,
+        str(int(sizeGB) * pow(2, 30)),
+        volFormat,
+        preallocate,
+        diskType,
+        volUUID,
+        desc,
+    )
+    if logger:
+        logger.debug(status)
+
+    if status['status']['code'] != 0:
+        raise RuntimeError(status['status']['message'])
+    else:
+        if logger:
+            logger.debug(
+                (
+                    'Created configuration volume {newUUID}, request was:\n'
+                    '- image: {imgUUID}\n'
+                    '- volume: {volUUID}'
+                ).format(
+                    newUUID=status['status']['message'],
+                    imgUUID=imgUUID,
+                    volUUID=volUUID,
+                )
+            )
+
+    task_wait(cli, logger)
+    # Expose the image (e.g., activates the lv) on the host (HSM verb).
+    if logger:
+        logger.debug('configuration volume: prepareImage')
+    response = cli.prepareImage(
+        spUUID,
+        sdUUID,
+        imgUUID,
+        volUUID
+    )
+    if logger:
+        logger.debug(response)
+    if response['status']['code'] != 0:
+        raise RuntimeError(response['status']['message'])
 
 
 # vim: expandtab tabstop=4 shiftwidth=4

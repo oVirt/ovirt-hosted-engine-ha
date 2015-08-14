@@ -1,5 +1,13 @@
 Cmnd_Alias OVIRT_HA = \
     @SERVICE_PATH@ vdsmd *, \
-    @SERVICE_PATH@ sanlock *
+    @SERVICE_PATH@ sanlock *, \
+    /sbin/losetup --find --show --sizelimit=* @ENGINE_HA_STATEDIR@/*, \
+    /sbin/losetup --detach /dev/loop*, \
+    /sbin/mkfs -t * /dev/loop*, \
+    /bin/mv -b -f -Z @ENGINE_HA_STATEDIR@/* /etc/ovirt-hosted-engine/hosted-engine.conf, \
+    /usr/bin/chown -R vdsm @ENGINE_HA_STATEDIR@/*, \
+    /usr/bin/chown root /etc/ovirt-hosted-engine/hosted-engine.conf, \
+    /usr/bin/chgrp root /etc/ovirt-hosted-engine/hosted-engine.conf, \
+    /usr/bin/chmod 644 /etc/ovirt-hosted-engine/hosted-engine.conf
 
 @VDSM_USER@  ALL=(ALL) NOPASSWD: OVIRT_HA
