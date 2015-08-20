@@ -63,10 +63,10 @@ class StorageServer(object):
         if self._domain_type == constants.DOMAIN_TYPE_NFS3:
             storageType = constants.STORAGE_TYPE_NFS
             conDict['protocol_version'] = 3
-        if self._domain_type == constants.DOMAIN_TYPE_NFS4:
+        elif self._domain_type == constants.DOMAIN_TYPE_NFS4:
             storageType = constants.STORAGE_TYPE_NFS
             conDict['protocol_version'] = 4
-        if self._self.storageType == constants.DOMAIN_TYPE_GLUSTERFS:
+        elif self._domain_type == constants.DOMAIN_TYPE_GLUSTERFS:
             storageType = constants.STORAGE_TYPE_GLUSTERFS
             conDict['vfs_type'] = 'glusterfs'
         conList = [conDict]
