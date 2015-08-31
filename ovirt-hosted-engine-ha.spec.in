@@ -193,6 +193,9 @@ exit 0
 
 
 %changelog
+* Mon Aug 31 2015 Sandro Bonazzola <sbonazzo@redhat.com> - 1.2.6.1-1
+- 1.2.6.1-1
+
 * Thu May 21 2015 Martin Sivak <msivak@redhat.com> - 1.2.6-2
 - 1.2.6-2
 

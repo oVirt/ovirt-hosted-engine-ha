@@ -20,9 +20,9 @@ AC_PREREQ(2.60)
 
 define([VERSION_MAJOR], [1])
 define([VERSION_MINOR], [2])
-define([VERSION_FIX], [6])
+define([VERSION_FIX], [6.1])
 define([VERSION_NUMBER], VERSION_MAJOR[.]VERSION_MINOR[.]VERSION_FIX)
-define([VERSION_RELEASE], [2])
+define([VERSION_RELEASE], [1])
 define([VERSION_SUFFIX], [])
 
 AC_INIT([ovirt-hosted-engine-ha], VERSION_NUMBER)
