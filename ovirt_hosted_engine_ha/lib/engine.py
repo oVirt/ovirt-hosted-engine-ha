@@ -21,6 +21,7 @@
 class VMState(object):
     UP = "up"
     DOWN = "down"
+    ALREADY_LOCKED = "already_locked"
 
 
 class Health(object):

@@ -35,6 +35,7 @@ def register():
 
 
 class Submonitor(submonitor_base.SubmonitorBase):
+
     def setup(self, options):
         self._log = logging.getLogger("%s.CpuLoadNoEngine" % __name__)
         self._log.addFilter(log_filter.IntermittentFilter())
@@ -85,6 +86,19 @@ class Submonitor(submonitor_base.SubmonitorBase):
                  'health': engine.Health.BAD,
                  'detail': vm_status,
                  'reason': 'bad vm status'}
+            self.update_result(json.dumps(d))
+            return
+
+        # Check if another host was faster in acquiring the storage lock
+        exit_message = stats['statsList'][0].get('exitMessage', "")
+        if vm_status == 'down' \
+                and exit_message.endswith(
+                    'Failed to acquire lock: error -243'):
+            d = {'vm': engine.VMState.ALREADY_LOCKED,
+                 'health': engine.Health.BAD,
+                 'detail': vm_status,
+                 'reason': 'Storage of VM is locked. '
+                           'Is another host already starting the VM?'}
             self.update_result(json.dumps(d))
             return
 

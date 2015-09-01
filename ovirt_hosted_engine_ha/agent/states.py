@@ -494,7 +494,9 @@ class EngineDown(EngineState):
 class EngineForceStop(EngineState):
     """
     This state is used to force-stop the local VM. Used only
-    if the regular stop procedure did not finish on time.
+    if the regular stop procedure did not finish on time or
+    you already know that the VM is not running and you have
+    to clean up.
 
     :transition GlobalMaintenance:
     :transition LocalMaintenance:
@@ -733,12 +735,16 @@ class EngineStarting(EngineState):
         """
 
         # engine is running
-        if new_data.best_engine_status["vm"] == engine.VMState.UP:
-            if new_data.best_engine_status["health"] == 'good':
+        engine_state = new_data.stats.local["engine-health"]
+        if engine_state["vm"] == engine.VMState.UP:
+            if engine_state["health"] == 'good':
                 return EngineUp(new_data)
             else:
                 logger.info("VM is powering up..")
                 return EngineStarting(new_data)
+        if engine_state["vm"] == engine.VMState.ALREADY_LOCKED:
+            logger.info("Another host already took over..")
+            return EngineForceStop(new_data), fsm.NOWAIT
 
         return EngineUnexpectedlyDown(new_data)
 
