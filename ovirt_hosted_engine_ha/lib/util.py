@@ -103,7 +103,7 @@ def engine_status_score(status):
     """
     if status['vm'] == 'unknown':
         return 0
-    elif status['vm'] == 'down':
+    elif status['vm'] in ('down', 'already_locked'):
         return 1
     elif status['health'] == 'bad':
         return 2
