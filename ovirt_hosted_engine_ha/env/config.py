@@ -22,8 +22,8 @@ import logging
 
 from . import constants
 
-from ovirt_hosted_engine_setup import heconflib
-from ovirt_hosted_engine_setup import util as ohostedutil
+from ovirt_hosted_engine_ha.lib import heconflib
+
 
 # constants for hosted-engine.conf options
 ENGINE = 'engine'
@@ -196,7 +196,7 @@ class Config(object):
                 )
             return False
         else:
-            source = ohostedutil.get_volume_path(
+            source = heconflib.get_volume_path(
                 domain_type,
                 sd_uuid,
                 conf_img_id,

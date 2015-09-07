@@ -22,7 +22,9 @@
 
 
 import glob
+import grp
 import os
+import pwd
 import subprocess
 import tarfile
 import tempfile
@@ -54,6 +56,9 @@ def _add_to_tar(tar, fname, content):
 
 def _dd_pipe_tar(logger, path, tar_parameters):
     cmd_dd_list = [
+        'sudo',
+        '-u',
+        agentconst.VDSM_USER,
         'dd',
         'if={source}'.format(source=path),
         'bs=4k',
@@ -208,11 +213,19 @@ def create_heconfimage(
         vm_conf_content,
     )
     tar.close()
+    os.chown(
+        _tmp_tar,
+        pwd.getpwnam(agentconst.VDSM_USER).pw_uid,
+        grp.getgrnam(agentconst.VDSM_GROUP).gr_gid,
+    )
 
     if logger:
         logger.debug('saving on: ' + dest)
 
     cmd_list = [
+        'sudo',
+        '-u',
+        agentconst.VDSM_USER,
         'dd',
         'if={source}'.format(source=_tmp_tar),
         'of={dest}'.format(dest=dest),
