@@ -60,7 +60,7 @@ def socket_readline(sock, log,
     Raises either DisconnectionError on disconnect or timeout (default 30 sec).
     """
     try:
-        if isTimed is None:
+        if not isTimed:
             # No timeout
             sockfile = sock.makefile()
             msg = sockfile.readline()
