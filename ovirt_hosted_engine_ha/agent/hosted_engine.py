@@ -57,6 +57,14 @@ class MetadataTooNewError(Exception):
     pass
 
 
+class ServiceNotUpException(Exception):
+    """
+    This exception is raised when a required service is not up.
+
+    The agent should return to the main loop and try again later.
+    """
+
+
 def handler_cleanup(f):
     """
     Call a cleanup function when transitioning out of a state
@@ -335,12 +343,15 @@ class HostedEngine(object):
             return -1
 
         self._log.debug("Connecting to ha-broker")
-        self._initialize_vdsm()
-        self._initialize_storage_images()
-        self._initialize_domain_monitor()
-        self._initialize_broker(monitors=[])
         try:
+            self._initialize_vdsm()
+            self._initialize_storage_images()
+            self._initialize_domain_monitor()
+            self._initialize_broker(monitors=[])
             self._initialize_sanlock()
+        except ServiceNotUpException as e:
+            self._log.error("Required service %s is not up.", e.message)
+            return -2
         except sanlock.SanlockException:
             if not force:
                 raise
@@ -395,11 +406,17 @@ class HostedEngine(object):
         # storage domain connection. Then the storage.
         # Broker then initializes the pieces needed for metadata and leases
         # which are then used by sanlock
-        self._initialize_vdsm()
-        self._initialize_storage_images()
-        self._initialize_domain_monitor()
-        self._initialize_broker()
-        self._initialize_sanlock()
+        try:
+            self._initialize_vdsm()
+            self._initialize_storage_images()
+            self._initialize_domain_monitor()
+            self._initialize_broker()
+            self._initialize_sanlock()
+        except ServiceNotUpException as e:
+            self._log.error("Service %s is not running and the admin"
+                            " is responsible for starting it."
+                            " Shutting down." % e.message)
+            return -2
 
         # check if configuration is up to date, otherwise upgrade
         upg = upgrade.Upgrade()
@@ -449,6 +466,12 @@ class HostedEngine(object):
 
                 # publish the current state
                 self.publish(state)
+
+            except ServiceNotUpException as e:
+                self._log.info("Required service %s is not up." % e.message)
+                delay = max(delay, 30)
+                log_level = logging.INFO
+
             except Exception as e:
                 self._log.warning("Error while monitoring engine: %s", str(e))
                 if not (isinstance(e, ex.DisconnectionError) or
@@ -590,8 +613,10 @@ class HostedEngine(object):
         while tries < constants.MAX_VDSM_START_RETRIES:
             tries += 1
             try:
-                self._cond_start_service('vdsmd')
+                self._check_service('vdsmd')
                 break
+            except ServiceNotUpException:
+                raise
             except Exception as _ex:
                 if tries > constants.MAX_VDSM_START_RETRIES:
                     self._log.error("Can't start vdsmd, the number of errors "
@@ -649,7 +674,7 @@ class HostedEngine(object):
             archive_fname=constants.VM_CONF_FILE_ARCHIVE_FNAME,
         )
 
-    def _cond_start_service(self, service_name):
+    def _check_service(self, service_name):
         self._log.debug("Checking %s status", service_name)
         with open(os.devnull, "w") as devnull:
             p = subprocess.Popen(['sudo',
@@ -658,16 +683,8 @@ class HostedEngine(object):
             if p.wait() == 0:
                 self._log.debug("%s running", service_name)
             else:
-                self._log.info("Starting %s", service_name)
-                with open(os.devnull, "w") as devnull:
-                    p = subprocess.Popen(['sudo',
-                                          'service', service_name, 'start'],
-                                         stdout=devnull,
-                                         stderr=subprocess.PIPE)
-                    res = p.communicate()
-                if p.returncode != 0:
-                    raise Exception("Could not start {0}: {1}"
-                                    .format(service_name, res[1]))
+                # Wait for the service to start properly
+                raise ServiceNotUpException(service_name)
 
     def _release_sanlock(self):
         lease_file = self._broker.get_service_path(
@@ -676,7 +693,7 @@ class HostedEngine(object):
                               self.host_id, lease_file)
 
     def _initialize_sanlock(self):
-        self._cond_start_service('sanlock')
+        self._check_service('sanlock')
         lease_file = self._broker.get_service_path(
             constants.SERVICE_TYPE + constants.LOCKSPACE_EXTENSION)
         if not self._sanlock_initialized:

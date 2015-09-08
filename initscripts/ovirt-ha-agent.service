@@ -1,6 +1,8 @@
 [Unit]
 Description=oVirt Hosted Engine High Availability Monitoring Agent
 Wants=ovirt-ha-broker.service
+Wants=vdsmd.service
+Wants=sanlock.service
 After=ovirt-ha-broker.service
 
 # See https://bugzilla.redhat.com/1164226
