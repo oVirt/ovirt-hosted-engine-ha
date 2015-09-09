@@ -59,16 +59,24 @@ def socket_readline(sock, log,
     Returns string read (without trailing newline),
     Raises either DisconnectionError on disconnect or timeout (default 30 sec).
     """
+    prevTimeout = sock.gettimeout()
     try:
         if not isTimed:
             # No timeout
+            log.debug('socket_readline in blocking mode')
+            sock.setblocking(1)
             sockfile = sock.makefile()
             msg = sockfile.readline()
         else:
             # Reading a line with timeout
+            log.debug(
+                'socket_readline with {timeout} seconds timeout'.format(
+                    timeout=timeoutSec,
+                )
+            )
             msg = ""
             rcvChar = 0
-            sock.settimeout(timeoutSec)
+            sock.settimeout(float(timeoutSec))
             while rcvChar != '\n':
                 rcvChar = sock.recv(1)
                 msg = msg + rcvChar
@@ -80,6 +88,9 @@ def socket_readline(sock, log,
     except IOError as e:
         log.debug("Connection closed while reading from socket: %s", str(e))
         raise DisconnectionError("Connection closed")
+
+    finally:
+        sock.settimeout(prevTimeout)
 
     if len(msg) == 0:
         log.debug("Connection closed while reading from socket")
