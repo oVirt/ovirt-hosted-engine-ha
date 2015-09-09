@@ -40,7 +40,7 @@ EXTRA_DIST = \
 sudoers: sudoers.in
 	$(SED) \
 	-e 's|@SERVICE_PATH[@]|$(SERVICE_PATH)|g' \
-	-e 's|@ENGINE_HA_STATEDIR[@]|$(ENGINE_HA_STATEDIR)|g' \
+	-e 's|@ENGINE_HA_STATEDIR[@]|$(engine_ha_statedir)|g' \
 	-e 's|@VDSM_USER[@]|$(VDSM_USER)|g' < $< > $@
 
 clean-local: \
