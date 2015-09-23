@@ -128,7 +128,6 @@ fi
 %config(noreplace) %{engine_ha_confdir}/agent-log.conf
 %config(noreplace) %{engine_ha_confdir}/agent.conf
 %config(noreplace) %{engine_ha_confdir}/broker-log.conf
-%config(noreplace) %{engine_ha_confdir}/broker.conf
 
 %dir %{engine_ha_confdir}/notifications
 %config(noreplace) %{engine_ha_confdir}/notifications/*
@@ -159,7 +158,7 @@ fi
 
 %dir %{engine_ha_statedir}
 %config(noreplace) %{engine_ha_statedir}/ha.conf
-
+%config(noreplace) %{engine_ha_statedir}/broker.conf
 
 %post
 %if 0%{?with_systemd}
