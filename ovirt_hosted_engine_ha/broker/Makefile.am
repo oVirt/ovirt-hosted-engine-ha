@@ -52,12 +52,18 @@ broker_PYTHON = \
 	constants.py \
 	$(NULL)
 
-brokerconfdir = $(engine_ha_confdir)
+brokerlogconfdir = $(engine_ha_confdir)
+
+brokerlogconf_DATA = \
+	broker-log.conf \
+	$(NULL)
+
+brokerconfdir = $(engine_ha_statedir)
 
 brokerconf_DATA = \
-	broker-log.conf \
 	broker.conf \
 	$(NULL)
+
 
 EXTRA_DIST = \
     broker.conf \
