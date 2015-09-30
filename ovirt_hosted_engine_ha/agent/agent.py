@@ -189,6 +189,10 @@ class Agent(object):
                 # so we don't want to restart it
                 return action(he)
 
+            except hosted_engine.ServiceNotUpException as e:
+                self._log.error("Service %s is not running and the admin"
+                                " is responsible for starting it."
+                                " Waiting..." % e.message)
             except ex.DisconnectionError as e:
                 self._log.error("Disconnected from broker '{0}'"
                                 " - reinitializing".format(str(e)))

@@ -406,17 +406,11 @@ class HostedEngine(object):
         # storage domain connection. Then the storage.
         # Broker then initializes the pieces needed for metadata and leases
         # which are then used by sanlock
-        try:
-            self._initialize_vdsm()
-            self._initialize_storage_images()
-            self._initialize_domain_monitor()
-            self._initialize_broker()
-            self._initialize_sanlock()
-        except ServiceNotUpException as e:
-            self._log.error("Service %s is not running and the admin"
-                            " is responsible for starting it."
-                            " Shutting down." % e.message)
-            return -2
+        self._initialize_vdsm()
+        self._initialize_storage_images()
+        self._initialize_domain_monitor()
+        self._initialize_broker()
+        self._initialize_sanlock()
 
         # check if configuration is up to date, otherwise upgrade
         upg = upgrade.Upgrade()
