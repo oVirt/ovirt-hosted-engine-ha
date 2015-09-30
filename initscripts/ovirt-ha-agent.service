@@ -4,6 +4,8 @@ Wants=ovirt-ha-broker.service
 Wants=vdsmd.service
 Wants=sanlock.service
 After=ovirt-ha-broker.service
+After=vdsmd.service
+After=sanlock.service
 
 # See https://bugzilla.redhat.com/1164226
 ConditionPathExists=/etc/ovirt-hosted-engine/hosted-engine.conf
