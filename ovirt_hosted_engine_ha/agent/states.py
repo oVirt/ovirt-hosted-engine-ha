@@ -60,9 +60,13 @@ class EngineState(BaseState):
         The score should not be touched when the VM is in On state,
         so we should probably override it in the relevant class.
         """
-        if self._float_or_default(lm['mem-free'], 0) < vm_mem:
-            logger.info('Penalizing score by %d due to low free memory',
+        free_mem = self._float_or_default(lm['mem-free'], 0)
+        if free_mem < vm_mem:
+            logger.info('Penalizing score by %d due to free memory %d'
+                        ' being lower than required %d',
                         score_cfg['free-memory-score-penalty'],
+                        free_mem,
+                        vm_mem,
                         extra=log_filter.lf_args('score-memory',
                                                  self.LF_PENALTY_INT))
             score -= score_cfg['free-memory-score-penalty']

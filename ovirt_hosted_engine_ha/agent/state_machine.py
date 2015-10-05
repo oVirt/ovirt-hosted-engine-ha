@@ -120,7 +120,7 @@ class EngineStateMachine(BaseFSM):
 
         new_data[
             "min_memory_threshold"
-        ] = self.hosted_engine.min_memory_threshold,
+        ] = self.hosted_engine.min_memory_threshold
 
         if alive_hosts:
             # Pre-compute the best remote engine (skip old metadata
