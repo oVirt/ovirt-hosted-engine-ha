@@ -15,7 +15,7 @@ Type=forking
 EnvironmentFile=-/etc/sysconfig/ovirt-ha-agent
 ExecStart=/usr/lib/systemd/systemd-ovirt-ha-agent start
 ExecStop=/usr/lib/systemd/systemd-ovirt-ha-agent stop
-Restart=on-abnormal
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
