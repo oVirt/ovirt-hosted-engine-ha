@@ -6,6 +6,7 @@ Type=forking
 EnvironmentFile=-/etc/sysconfig/ovirt-ha-broker
 ExecStart=/usr/lib/systemd/systemd-ovirt-ha-broker start
 ExecStop=/usr/lib/systemd/systemd-ovirt-ha-broker stop
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
