@@ -10,7 +10,7 @@
 
 ### BEGIN INIT INFO
 # Provides: ovirt-ha-agent
-# Required-Start: $local_fs $syslog ovirt-ha-broker
+# Required-Start: $local_fs $syslog ovirt-ha-broker vdsmd sanlock
 # Required-Stop: $local_fs $syslog ovirt-ha-broker
 # Should-Start: $syslog
 # Should-Stop: $syslog

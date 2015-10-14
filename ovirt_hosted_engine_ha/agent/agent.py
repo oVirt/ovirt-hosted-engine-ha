@@ -166,6 +166,11 @@ class Agent(object):
                 # so we don't want to restart it
                 return he
 
+            except hosted_engine.ServiceNotUpException as e:
+                self._log.error("Service %s is not running and the node is in"
+                                " maintenance mode. It is the sysadmin's job"
+                                " to make sure all dependencies are running."
+                                % e.message)
             except ex.DisconnectionError as e:
                 self._log.error("Disconnected from broker '{0}'"
                                 " - reinitializing".format(str(e)))

@@ -3,6 +3,11 @@ Description=oVirt Hosted Engine High Availability Monitoring Agent
 Wants=ovirt-ha-broker.service
 After=ovirt-ha-broker.service
 
+Wants=vdsmd.service
+Wants=sanlock.service
+After=vdsmd.service
+After=sanlock.service
+
 [Service]
 Type=forking
 EnvironmentFile=-/etc/sysconfig/ovirt-ha-agent

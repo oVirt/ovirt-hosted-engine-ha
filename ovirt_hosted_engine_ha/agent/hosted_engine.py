@@ -50,6 +50,15 @@ class MetadataTooNewError(Exception):
     pass
 
 
+class ServiceNotUpException(Exception):
+    """
+    This exception is raised when a needed service is not up
+    and the agent is not able to start it, because it is in
+    maintenance mode.
+    """
+    pass
+
+
 def handler_cleanup(f):
     """
     Call a cleanup function when transitioning out of a state
@@ -354,6 +363,10 @@ class HostedEngine(object):
                 blocks = self._generate_local_blocks(state)
                 self._push_to_storage(blocks)
                 self.update_hosts_state(state)
+            except ServiceNotUpException as e:
+                self._log.warning("Needed service %s is not up and the node is"
+                                  " in maintenance mode.", e.message)
+                delay = max(delay, 30)
             except Exception as e:
                 self._log.warning("Error while monitoring engine: %s", str(e))
                 if not (isinstance(e, ex.DisconnectionError) or
@@ -485,6 +498,8 @@ class HostedEngine(object):
             try:
                 self._cond_start_service('vdsmd')
                 break
+            except ServiceNotUpException:
+                raise
             except Exception as _ex:
                 if tries > constants.MAX_VDSM_START_RETRIES:
                     self._log.error("Can't start vdsmd, the number of errors "
@@ -538,6 +553,9 @@ class HostedEngine(object):
             if p.wait() == 0:
                 self._log.debug("%s running", service_name)
             else:
+                if self.in_maintenance():
+                    raise ServiceNotUpException(service_name)
+
                 self._log.info("Starting %s", service_name)
                 with open(os.devnull, "w") as devnull:
                     p = subprocess.Popen(['sudo',
@@ -803,13 +821,15 @@ class HostedEngine(object):
             data["local"][field] = ret
 
         # check local maintenance
-        data["local"]["maintenance"] = util.to_bool(self._config.get(
-            config.HA,
-            config.LOCAL_MAINTENANCE))
+        data["local"]["maintenance"] = self.in_maintenance()
 
         self._log.debug("Refresh complete")
 
         return data
+
+    def in_maintenance(self):
+        return util.to_bool(self._config.get(config.HA,
+                                             config.LOCAL_MAINTENANCE))
 
     def process_remote_metadata(self, host_id, data):
         try:
