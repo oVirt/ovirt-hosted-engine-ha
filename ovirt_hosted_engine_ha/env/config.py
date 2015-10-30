@@ -216,6 +216,12 @@ class Config(object):
                     source,
                     archive_fname,
                 )
+                if not content:
+                    if self._logger:
+                        self._logger.debug(
+                            "unable to get a valid content"
+                        )
+                    return False
                 if self._logger:
                     self._logger.debug(
                         "Writing to '{target}'".format(
