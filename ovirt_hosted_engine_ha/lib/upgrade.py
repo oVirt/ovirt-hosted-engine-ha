@@ -127,11 +127,14 @@ class Upgrade(object):
         self._conf_imgUUID = None
         self._conf_volUUID = None
 
-        imageslist = self._cli.getImagesList(self._sdUUID)
+        imageslist = heconflib.my_getImagesList(
+            self._type,
+            self._sdUUID,
+            self._vm_img_uuid,
+            self._vm_vol_uuid,
+        )
         self._log.debug(imageslist)
-        if imageslist['status']['code'] != 0:
-            raise RuntimeError(imageslist['status']['message'])
-        for image in imageslist['imageslist']:
+        for image in imageslist:
             volumeslist = self._cli.getVolumesList(
                 self._sdUUID,
                 self._spUUID,
