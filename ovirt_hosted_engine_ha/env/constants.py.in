@@ -34,6 +34,7 @@ BROKER_SOCKET_FILE = '@ENGINE_HA_RUNDIR@/broker.socket'
 
 ENGINE_SETUP_CONF_FILE = '/etc/ovirt-hosted-engine/hosted-engine.conf'
 NOTIFY_CONF_FILE_35 = '@ENGINE_HA_CONFDIR@/broker.conf'
+NOTIFY_CONF_FILE = '@ENGINE_HA_STATEDIR@/broker.conf'
 ANSWER_FILE_35 = '/etc/ovirt-hosted-engine/answers.conf'
 VM_CONF_FILE_35 = '/etc/ovirt-hosted-engine/vm.conf'
 

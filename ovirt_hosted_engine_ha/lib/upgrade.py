@@ -297,7 +297,7 @@ class Upgrade(object):
             path = constants.ENGINE_SETUP_CONF_FILE
             update_func = self._update_conf_file
         elif type == constants.HEConfFiles.HECONFD_BROKER_CONF:
-            path = constants.NOTIFY_CONF_FILE_35
+            path = constants.NOTIFY_CONF_FILE
         elif type == constants.HEConfFiles.HECONFD_VM_CONF:
             path = constants.VM_CONF_FILE_35
 
