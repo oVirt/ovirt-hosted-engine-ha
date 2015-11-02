@@ -698,7 +698,7 @@ class Upgrade(object):
 
     def _remove_storage_pool(self):
         self._spmStart()
-        if not self._is_storage_pool_connected():
+        if not self._is_storage_pool_attached():
             self._spmStop()
             return False
         self._attach_loopback_device()
@@ -717,7 +717,7 @@ class Upgrade(object):
             }
         )
         self._spmStart()
-        if not self._is_storage_pool_connected():
+        if not self._is_storage_pool_attached():
             self._spmStop()
             return False
         self._detachStorageDomain(self._sdUUID, self._fake_mastersd_uuid)
@@ -730,12 +730,12 @@ class Upgrade(object):
         )
         return True
 
-    def _is_storage_pool_connected(self):
+    def _is_storage_pool_attached(self):
         sdinfo = self._cli.getStorageDomainInfo(self._sdUUID)
         if sdinfo['status']['code'] != 0:
             raise RuntimeError(sdinfo['status']['message'])
-        connected = (sdinfo['info']['pool'] is not None)
-        return connected
+        attached = (len(sdinfo['info']['pool']) > 0)
+        return attached
 
     def _wrote_updated_conf_file(self):
         content = self._get_conffile_content(
@@ -847,7 +847,7 @@ class Upgrade(object):
                         'Avoid moving to the shared conf to avoid race '
                         'conditions.'
                     )
-            if self._is_storage_pool_connected():
+            if self._is_storage_pool_attached():
                 removed = self._remove_storage_pool()
                 if not removed:
                     self._log.error(
