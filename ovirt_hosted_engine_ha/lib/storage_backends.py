@@ -53,7 +53,7 @@ class StorageBackend(object):
 
     @property
     def direct_io(self):
-        return False
+        return True
 
     @abstractmethod
     def connect(self):
@@ -445,8 +445,7 @@ class FilesystemBackend(StorageBackend):
 
     @StorageBackend.direct_io.getter
     def direct_io(self):
-        # if it's not lv_based then it's NFS and we cna use direct_io
-        return not self._lv_based
+        return True
 
     def filename(self, service):
         fname = os.path.join(self._storage_path, service)

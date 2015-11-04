@@ -25,6 +25,8 @@ import errno
 import os
 import socket
 import time
+import mmap
+from contextlib import contextmanager, closing
 
 from ovirt_hosted_engine_ha.env import constants as envconst
 from .exceptions import DisconnectionError
@@ -138,3 +140,24 @@ def engine_status_score(status):
         return 3
     else:
         raise ValueError("Invalid engine status: %r" % status)
+
+
+@contextmanager
+def aligned_buffer(size):
+    """Context manager that creates a file like object in shared memory.
+       MMAPped memory is always page aligned and this can be used to
+       work with direct IO files.
+    """
+    buf = mmap.mmap(-1, size, mmap.MAP_PRIVATE)
+    with closing(buf):
+        yield buf
+
+
+def uninterruptible(method, *args, **kwargs):
+    """Make sure to repeat an operation when EINTR is received."""
+    while True:
+        try:
+            return method(*args, **kwargs)
+        except OSError as e:
+            if e.errno != errno.EINTR:
+                raise

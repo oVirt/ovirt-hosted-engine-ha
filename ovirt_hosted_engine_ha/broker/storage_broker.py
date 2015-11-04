@@ -18,7 +18,6 @@
 #
 
 import base64
-import io
 import logging
 import os
 import threading
@@ -28,6 +27,7 @@ from ..lib import monotonic
 from ..lib.exceptions import RequestError
 from ..lib.storage_backends import FilesystemBackend, BlockBackend, VdsmBackend
 from ..lib.storage_backends import StorageBackendTypes
+from ..lib.util import aligned_buffer, uninterruptible
 
 
 class StorageBroker(object):
@@ -111,26 +111,37 @@ class StorageBroker(object):
             self._log.error("No storage configured for %s", client)
             return {}
 
-        # Use direct I/O if possible, to avoid the local filesystem cache
-        # from hiding metadata file updates from other hosts.  For NFS, we
-        # don't have to worry about alignment; see man open(2) for details.
-        # TODO it would be better if this was configurable
-        direct_flag = (os.O_DIRECT if self._backends[client].direct_io else 0)
-
         bs = constants.HOST_SEGMENT_BYTES
         # TODO it would be better if this was configurable
         read_size = bs * (constants.MAX_HOST_ID_SCAN + 1)
 
-        try:
-            with self._storage_access_lock:
-                f = os.open(path, direct_flag | os.O_RDONLY)
+        fin = None
+
+        with self._storage_access_lock,\
+                aligned_buffer(read_size) as direct_io_buffer:
+
+            try:
+                # Use direct I/O if possible, to avoid the local filesystem
+                # cache from hiding metadata file updates from other hosts.
+                direct_flag = (os.O_DIRECT
+                               if self._backends[client].direct_io else 0)
+
+                f = os.open(path, direct_flag | os.O_RDONLY | os.O_SYNC)
                 os.lseek(f, offset, os.SEEK_SET)
-                data = os.read(f, read_size)
-                os.close(f)
-        except (IOError, OSError) as e:
-            self._log.error("Failed to read metadata from %s",
-                            path, exc_info=True)
-            raise RequestError("failed to read metadata: {0}".format(str(e)))
+
+                fin = os.fdopen(f, 'r', 0) # 0 disables unneeded buffer
+                fin.readinto(direct_io_buffer)
+                data = direct_io_buffer.read(read_size)
+
+            except EnvironmentError as e:
+                self._log.error("Failed to read metadata from %s",
+                                path, exc_info=True)
+                raise RequestError("failed to read metadata: {0}"
+                                   .format(str(e)))
+            finally:
+                # Cleanup
+                if fin:
+                    fin.close()
 
         return dict(((i / bs, data[i:i + bs])
                      for i in range(0, len(data), bs)
@@ -161,20 +172,29 @@ class StorageBroker(object):
 
         byte_data = base64.b16decode(data)
         byte_data = byte_data.ljust(constants.HOST_SEGMENT_BYTES, '\0')
-        with self._storage_access_lock:
+
+        with self._storage_access_lock,\
+                aligned_buffer(len(byte_data)) as direct_io_buffer:
             f = None
+
             try:
-                f = io.open(path, "r+b")
-                f.seek(offset, os.SEEK_SET)
-                f.write(byte_data)
-            except IOError as e:
+                direct_flag = (os.O_DIRECT
+                               if self._backends[client].direct_io else 0)
+
+                f = os.open(path, direct_flag | os.O_WRONLY | os.O_SYNC)
+                os.lseek(f, offset, os.SEEK_SET)
+
+                direct_io_buffer.write(byte_data)
+                uninterruptible(os.write, f, direct_io_buffer)
+
+            except EnvironmentError as e:
                 self._log.error("Failed to write metadata for host %d to %s",
                                 host_id, path, exc_info=True)
                 raise RequestError("failed to write metadata: {0}"
                                    .format(str(e)))
             finally:
                 if f:
-                    f.close()
+                    os.close(f)
 
         self._log.debug("Finished")
 
