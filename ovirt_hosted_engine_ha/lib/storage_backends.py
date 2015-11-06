@@ -49,6 +49,7 @@ class StorageBackend(object):
     def __init__(self):
         # the atomic block size of the underlying storage
         self._blocksize = constants.METADATA_BLOCK_BYTES
+        self._logger = logger
 
     @property
     def direct_io(self):
@@ -106,10 +107,17 @@ class StorageBackend(object):
         raise BackendFailureException("path to storage domain {0} not found"
                                       " in {1}".format(sd_uuid, parent))
 
+    def set_external_logger(self, extlogger):
+        """
+        Let the consumer pass an external logger
+        """
+        if extlogger:
+            self._logger = extlogger
+
     def _check_symlinks(self, storage_path, volume_path, service_link):
         try:
             os.unlink(service_link)
-            logger.info("Cleaning up stale LV link '%s'", service_link)
+            self._logger.info("Cleaning up stale LV link '%s'", service_link)
         except OSError as e:
             if e.errno != errno.ENOENT:
                 # If the file is not there it is not a failure,
@@ -236,9 +244,9 @@ class VdsmBackend(StorageBackend):
             imgUUID,
             volUUID
         )
-        logger.debug("prepareImage: '%s'", response)
+        self._logger.debug("prepareImage: '%s'", response)
         path = response.get('path', None)
-        logger.debug("prepareImage: returned '%s' as path", path)
+        self._logger.debug("prepareImage: returned '%s' as path", path)
         return retval(response["status"]["code"], path,
                       response["status"].get("message", ""))
 
@@ -259,7 +267,7 @@ class VdsmBackend(StorageBackend):
             )
 
         # Connect to local VDSM
-        logger.debug("Connecting to VDSM")
+        self._logger.debug("Connecting to VDSM")
         connection = vdsm.vdscli.connect()
 
         # Check of the volume already exists
@@ -272,7 +280,7 @@ class VdsmBackend(StorageBackend):
         )
 
         if response.status_code == 0:
-            logger.info("Image for '%s' already exists", service_name)
+            self._logger.info("Image for '%s' already exists", service_name)
             path = response['path']
             return False, path
 
@@ -281,7 +289,7 @@ class VdsmBackend(StorageBackend):
             # 254 is returned when Image path doesn't exist
             raise RuntimeError(response["status"]["message"])
 
-        logger.info("Creating Image for '%s' ...", service_name)
+        self._logger.info("Creating Image for '%s' ...", service_name)
 
         # Create new volume
         create_response = connection.createVolume(
@@ -296,7 +304,7 @@ class VdsmBackend(StorageBackend):
             service_name
         )
 
-        logger.debug("createVolume: '%s'", create_response)
+        self._logger.debug("createVolume: '%s'", create_response)
         if create_response["status"]["code"] != 0:
             raise RuntimeError(create_response["status"]["message"])
 
@@ -304,7 +312,7 @@ class VdsmBackend(StorageBackend):
         task = create_response["uuid"]
         while True:
             task_status = connection.getTaskStatus(task)
-            logger.debug("getTaskStatus: '%s'" % str(task_status))
+            self._logger.debug("getTaskStatus: '%s'" % str(task_status))
             if task_status["status"]["code"] != 0:
                 raise RuntimeError(task_status["status"]["message"])
             elif task_status["taskStatus"]["taskState"] == "finished":
@@ -315,8 +323,8 @@ class VdsmBackend(StorageBackend):
                 time.sleep(self.TASK_WAIT)
 
         response = connection.clearTask(task)
-        logger.debug("clearTask: '%s'", response)
-        logger.info("Image for '%s' created successfully", service_name)
+        self._logger.debug("clearTask: '%s'", response)
+        self._logger.info("Image for '%s' created successfully", service_name)
 
         response = self._get_volume_path(
             connection, sdUUID=self._sd_uuid,
@@ -378,7 +386,7 @@ class VdsmBackend(StorageBackend):
                                           constants.SD_METADATA_DIR)
 
         # Connect to local VDSM
-        logger.debug("Connecting to VDSM")
+        self._logger.debug("Connecting to VDSM")
         connection = vdsm.vdscli.connect()
         for service, volume in self._services.iteritems():
             # Activate volumes and set the volume.path to proper path
@@ -483,19 +491,31 @@ class FilesystemBackend(StorageBackend):
         if lvc.returncode == 0:
             m = self.LVSCAN_RE.search(stdout.strip())
             if m is None:
-                logger.error("LV for service %s was found in VG %s"
-                             " but the size could not be determined"
-                             " from lvm's output:\n",
-                             lv_name, vg_uuid, stdout)
+                self._logger.error(
+                    "LV for service %s was found in VG %s"
+                    " but the size could not be determined"
+                    " from lvm's output:\n",
+                    lv_name,
+                    vg_uuid,
+                    stdout
+                )
                 return 0
 
             size = int(m.groups()[0])
-            logger.info("LV for service %s was found in VG %s"
-                        " and has size %d", lv_name, vg_uuid, size)
+            self._logger.info(
+                "LV for service %s was found in VG %s"
+                " and has size %d",
+                lv_name,
+                vg_uuid,
+                size
+            )
             return size
         else:
-            logger.error("LV for service %s was NOT found in VG %s",
-                         lv_name, vg_uuid)
+            self._logger.error(
+                "LV for service %s was NOT found in VG %s",
+                lv_name,
+                vg_uuid
+            )
             return None
 
     def lvcreate(self, vg_uuid, lv_name, size_bytes, popen=subprocess.Popen):
@@ -511,19 +531,26 @@ class FilesystemBackend(StorageBackend):
         stdout, stderr = lvc.communicate()
         lvc.wait()
         if lvc.returncode == 0:
-            logger.info("LV for service %s was created in VG %s",
-                        lv_name, vg_uuid)
+            self._logger.info(
+                "LV for service %s was created in VG %s",
+                lv_name,
+                vg_uuid
+            )
             return True
         else:
-            logger.error("LV for service %s was NOT created in VG %s\n%s",
-                         lv_name, vg_uuid, stderr)
+            self._logger.error(
+                "LV for service %s was NOT created in VG %s\n%s",
+                lv_name,
+                vg_uuid,
+                stderr
+            )
             return False
 
     def lvzero(self, vg_uuid, lv_name, size_bytes):
         """
         Zero the first size_bytes of an LV.
         """
-        logger.info("Zeroing out LV %s/%s", vg_uuid, lv_name)
+        self._logger.info("Zeroing out LV %s/%s", vg_uuid, lv_name)
         with open(os.path.join("/dev", self._sd_uuid, lv_name), "w") as dev:
             dev.write('\0' * size_bytes)
             dev.flush()
@@ -539,12 +566,15 @@ class FilesystemBackend(StorageBackend):
             err_msg = "LV for service %s already exists but" \
                       " has insufficient size %d" \
                       " (%d needed)" % (service, cur_size, size)
-            logger.info(err_msg)
+            self._logger.info(err_msg)
             raise BackendFailureException(err_msg)
         else:
-            logger.info("LV for service %s already exists and"
-                        " has sufficient size %d",
-                        service, cur_size)
+            self._logger.info(
+                "LV for service %s already exists and"
+                " has sufficient size %d",
+                service,
+                cur_size
+            )
             if force_new:
                 self.lvzero(self._sd_uuid, lvname, size)
             return force_new
@@ -559,19 +589,28 @@ class FilesystemBackend(StorageBackend):
             # create a file full of zeros
             if cur_size == 0:
                 f.write('\0' * size)
-                logger.info("Service file %s was initialized to"
-                            " size %d",
-                            service_path, size)
+                self._logger.info(
+                    "Service file %s was initialized to"
+                    " size %d",
+                    service_path,
+                    size
+                )
                 return True
             elif cur_size < size:
                 f.write('\0' * (size - cur_size))
-                logger.info("Service file %s was enlarged to size"
-                            " %d (was %d)",
-                            service_path, size, cur_size)
+                self._logger.info(
+                    "Service file %s was enlarged to size"
+                    " %d (was %d)",
+                    service_path,
+                    size,
+                    cur_size
+                )
                 return True
             else:
-                logger.info("Service file %s was already present",
-                            service_path)
+                self._logger.info(
+                    "Service file %s was already present",
+                    service_path
+                )
                 return False
 
     def create(self, service_map, force_new=False):
@@ -741,12 +780,12 @@ class BlockBackend(StorageBackend):
         dm = popen(stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                    stderr=subprocess.PIPE,
                    args=["dmsetup", "create", name])
-        logger.debug("Table for %s\n%s", name, table)
+        self._logger.debug("Table for %s\n%s", name, table)
         stdout, stderr = dm.communicate(table)
         dm.wait()
-        logger.debug("dmcreate %s stdout: %s", name, stdout)
-        logger.debug("dmcreate %s stderr: %s", name, stderr)
-        logger.info("dmcreate %s return code: %d", name, dm.returncode)
+        self._logger.debug("dmcreate %s stdout: %s", name, stdout)
+        self._logger.debug("dmcreate %s stderr: %s", name, stderr)
+        self._logger.info("dmcreate %s return code: %d", name, dm.returncode)
 
     def dmremove(self, name, popen=subprocess.Popen):
         """
@@ -759,9 +798,9 @@ class BlockBackend(StorageBackend):
         stdout, stderr = dm.communicate()
 
         dm.wait()
-        logger.debug("dmremove %s stdout: %s", name, stdout)
-        logger.debug("dmremove %s stderr: %s", name, stderr)
-        logger.info("dmremove %s return code: %d", name, dm.returncode)
+        self._logger.debug("dmremove %s stdout: %s", name, stdout)
+        self._logger.debug("dmremove %s stderr: %s", name, stderr)
+        self._logger.info("dmremove %s return code: %d", name, dm.returncode)
 
     def filename(self, service):
         if service not in self._services:
