@@ -734,8 +734,10 @@ class Upgrade(object):
         sdinfo = self._cli.getStorageDomainInfo(self._sdUUID)
         if sdinfo['status']['code'] != 0:
             raise RuntimeError(sdinfo['status']['message'])
-        attached = (len(sdinfo['info']['pool']) > 0)
-        return attached
+        return (
+            len(sdinfo['info']['pool']) != 0 and
+            sdinfo['info']['pool'][0] == self._spUUID
+        )
 
     def _wrote_updated_conf_file(self):
         content = self._get_conffile_content(
