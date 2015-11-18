@@ -22,6 +22,7 @@ Utility functions
 """
 
 import errno
+import glob
 import os
 import socket
 import time
@@ -161,3 +162,8 @@ def uninterruptible(method, *args, **kwargs):
         except OSError as e:
             if e.errno != errno.EINTR:
                 raise
+
+
+def isOvirtNode():
+    return (os.path.exists('/etc/rhev-hypervisor-release') or
+            bool(glob.glob('/etc/ovirt-node-*-release')))
