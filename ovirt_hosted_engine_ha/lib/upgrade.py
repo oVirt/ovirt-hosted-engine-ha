@@ -739,6 +739,44 @@ class Upgrade(object):
             sdinfo['info']['pool'][0] == self._spUUID
         )
 
+    def _is_in_engine_maintenance(self):
+        connectedSP = set([])
+        sdlist = self._cli.getStorageDomainsList()
+        if sdlist['status']['code'] == 0:
+            for entry in sdlist['domlist']:
+                sdinfo = self._cli.getStorageDomainInfo(entry)
+                if sdinfo['status']['code'] == 0:
+                    connectedSP.update(sdinfo['info']['pool'])
+                else:
+                    raise RuntimeError(
+                        'Unable to fetch storage domain info: %s' %
+                        str(sdinfo['status']['message'])
+                    )
+        else:
+            raise RuntimeError(
+                'Unable to fetch storage domains list: %s' %
+                str(sdlist['status']['message'])
+            )
+        otherSP = connectedSP - set([self._spUUID])
+        if len(otherSP) > 0:
+            self._log.info('This host is connected to other storage pools')
+            return False
+
+        vmlist = self._cli.list()
+        if vmlist['status']['code'] == 0:
+            runningVM = set(vmlist['vmList'])
+            otherVM = runningVM - set([self._HEVMID])
+            if len(otherVM) > 0:
+                self._log.info('Other VMs are running on this host')
+                return False
+        else:
+            raise RuntimeError(
+                'Unable to fetch VM list: %s' %
+                str(sdlist['status']['message'])
+            )
+
+        return True
+
     def _wrote_updated_conf_file(self):
         content = self._get_conffile_content(
             constants.HEConfFiles.HECONFD_HECONF
@@ -839,6 +877,13 @@ class Upgrade(object):
             return False
         else:
             self._log.info('Upgrading to current version')
+            if not self._is_in_engine_maintenance():
+                self._log.error(
+                    'Unable to upgrade while not in maintenance mode: '
+                    'please put this host into maintenance mode '
+                    'from the engine'
+                )
+                return False
             self._stopMonitoringDomain()
             if not self._is_conf_volume_there():
                 moved = self._move_to_shared_conf()
