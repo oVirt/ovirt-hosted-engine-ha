@@ -129,7 +129,7 @@ class StorageBroker(object):
                 f = os.open(path, direct_flag | os.O_RDONLY | os.O_SYNC)
                 os.lseek(f, offset, os.SEEK_SET)
 
-                fin = os.fdopen(f, 'r', 0) # 0 disables unneeded buffer
+                fin = os.fdopen(f, 'r', 0)  # 0 disables unneeded buffer
                 fin.readinto(direct_io_buffer)
                 data = direct_io_buffer.read(read_size)
 
