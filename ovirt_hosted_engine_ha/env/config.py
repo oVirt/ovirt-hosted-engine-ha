@@ -218,7 +218,7 @@ class Config(object):
                 )
                 if not content:
                     if self._logger:
-                        self._logger.debug(
+                        self._logger.error(
                             "unable to get a valid content"
                         )
                     return False
@@ -236,7 +236,7 @@ class Config(object):
                     )
                 return True
             if self._logger:
-                self._logger.debug(
+                self._logger.error(
                     "failed trying to write local conf file"
                 )
             return False
