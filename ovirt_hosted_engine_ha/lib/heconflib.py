@@ -106,7 +106,7 @@ def validateConfImage(logger, imagepath):
     for f in _CONF_FILES:
         if f not in stdout:
             if logger:
-                logger.debug(
+                logger.error(
                     "'{f}' is not stored in the HE configuration image".format(
                         f=f
                     )
