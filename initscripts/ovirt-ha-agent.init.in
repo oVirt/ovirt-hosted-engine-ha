@@ -54,7 +54,7 @@ start()
 
 stop() {
     echo -n $"Stopping $prog: "
-    killproc $AGENT
+    killproc -d 90 $AGENT
     RETVAL=$?
     [ $RETVAL -eq 0 ] && rm -f $lockfile
     echo

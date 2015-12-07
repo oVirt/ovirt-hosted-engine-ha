@@ -326,8 +326,10 @@ class HostedEngine(object):
         # storage domain connection
         # Broker then initializes the pieces needed for metadata and leases
         # which are then used by sanlock
+        # The domain monitor is not yet needed at this stage and we will
+        # initialize it once the FSM is started (we need maintenance data
+        # to decide)
         self._initialize_vdsm()
-        self._initialize_domain_monitor()
         self._initialize_broker()
         self._initialize_sanlock()
 
@@ -345,7 +347,15 @@ class HostedEngine(object):
             try:
                 # make sure everything is still initialized
                 self._initialize_vdsm()
-                self._initialize_domain_monitor()
+
+                # stop the VDSM domain monitor in local maintenance, but
+                # only when the VM is not running locally
+                st = state.data.stats
+                if st and not st.local.get("maintenance", False):
+                    self._initialize_domain_monitor()
+                else:
+                    self._stop_domain_monitor_if_possible(state)
+
                 self._initialize_broker()
                 self._initialize_sanlock()
 
@@ -389,6 +399,11 @@ class HostedEngine(object):
 
             self._log.log(log_level, "Sleeping %d seconds", delay)
             time.sleep(delay)
+
+        # Free lockspace
+        self._log.debug("Releasing sanlock")
+        self._release_sanlock()
+        self._stop_domain_monitor_if_possible(self.fsm.state)
 
         self._log.debug("Disconnecting from ha-broker")
         if self._broker and self._broker.is_connected():
@@ -567,6 +582,12 @@ class HostedEngine(object):
                     raise Exception("Could not start {0}: {1}"
                                     .format(service_name, res[1]))
 
+    def _release_sanlock(self):
+        lease_file = self._broker.get_service_path(
+            constants.SERVICE_TYPE + constants.LOCKSPACE_EXTENSION)
+        sanlock.rem_lockspace(constants.LOCKSPACE_NAME,
+                              self.host_id, lease_file)
+
     def _initialize_sanlock(self):
         self._cond_start_service('sanlock')
         lease_file = self._broker.get_service_path(
@@ -627,6 +648,37 @@ class HostedEngine(object):
 
         # we get here only if the the lock is acquired
         self._sanlock_initialized = True
+
+    def _stop_domain_monitor_if_possible(self, state):
+        # make sure the VM is not running locally, stopping the monitor
+        # would kill it (treat the VM as up when no data, better
+        # keep the monitor running if not sure)
+        lm = state.data.stats.local
+        if lm.get("engine-health", {}).get("vm", "up") == "up":
+            self._log.warn("The VM is running locally or we have no data,"
+                           " keeping the domain monitor.")
+        else:
+            self._stop_domain_monitor()
+
+    def _stop_domain_monitor(self):
+        use_ssl = util.to_bool(self._config.get(config.ENGINE,
+                                                config.VDSM_SSL))
+        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
+
+        status = self._get_domain_monitor_status()
+        if status != self.DomainMonitorStatus.NONE:
+            try:
+                vdsc.run_vds_client_cmd(
+                    '0',
+                    use_ssl,
+                    'stopMonitoringDomain',
+                    sd_uuid
+                )
+            except Exception as e:
+                self._log.info("Failed to stop monitoring domain"
+                               " (sd_uuid=%s): %s", sd_uuid, e)
+            else:
+                self._log.info("Stopped VDSM domain monitor for %s", sd_uuid)
 
     def _initialize_domain_monitor(self):
         use_ssl = util.to_bool(self._config.get(config.ENGINE,
