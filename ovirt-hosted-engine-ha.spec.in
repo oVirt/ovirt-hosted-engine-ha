@@ -39,7 +39,7 @@ Version:        @PACKAGE_RPM_VERSION@
 Release:        @PACKAGE_RPM_RELEASE@%{?release_suffix}%{?dist}
 License:        LGPLv2+
 URL:            http://www.ovirt.org
-Source:         http://resources.ovirt.org/pub/ovirt-3.6-snapshot/src/%{name}/%{name}-%{package_version}.tar.gz
+Source:         http://resources.ovirt.org/pub/ovirt-3.6/src/%{name}/%{name}-%{package_version}.tar.gz
 Group:          Applications/System
 
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}
@@ -50,9 +50,9 @@ Requires:       python-daemon
 Requires:       sanlock >= 2.8
 Requires:       sanlock-python >= 2.8
 Requires:       sudo
-Requires:       vdsm >= 4.17.12
-Requires:       vdsm-cli >= 4.17.12
-Requires:       vdsm-python >= 4.17.12
+Requires:       vdsm >= 4.17.13
+Requires:       vdsm-cli >= 4.17.13
+Requires:       vdsm-python >= 4.17.13
 
 # Otopi is needed for the cli client
 Requires:       otopi >= 1.4.0
@@ -200,6 +200,9 @@ exit 0
 
 
 %changelog
+* Wed Dec  9 2015 Sandro Bonazzola <sbonazzo@redhat.com> - 1.3.3.2-1
+- 1.3.3.2-1
+
 * Tue Dec  1 2015 Sandro Bonazzola <sbonazzo@redhat.com> - 1.3.3.2-0.0.master
 - 1.3.3.2-0.0.master
 
