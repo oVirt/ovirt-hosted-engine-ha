@@ -892,7 +892,8 @@ class Upgrade(object):
                 self._log.error(
                     'Unable to upgrade while not in maintenance mode: '
                     'please put this host into maintenance mode '
-                    'from the engine'
+                    'from the engine, and manually restart this service '
+                    'when ready'
                 )
                 return False
             self._stopMonitoringDomain()
