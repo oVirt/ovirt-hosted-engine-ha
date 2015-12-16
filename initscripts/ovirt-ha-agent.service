@@ -16,6 +16,7 @@ EnvironmentFile=-/etc/sysconfig/ovirt-ha-agent
 ExecStart=/usr/lib/systemd/systemd-ovirt-ha-agent start
 ExecStop=/usr/lib/systemd/systemd-ovirt-ha-agent stop
 Restart=on-failure
+PIDFile=/run/ovirt-hosted-engine-ha/agent.pid
 
 [Install]
 WantedBy=multi-user.target
