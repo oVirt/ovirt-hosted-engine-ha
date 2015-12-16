@@ -7,6 +7,7 @@ EnvironmentFile=-/etc/sysconfig/ovirt-ha-broker
 ExecStart=/usr/lib/systemd/systemd-ovirt-ha-broker start
 ExecStop=/usr/lib/systemd/systemd-ovirt-ha-broker stop
 Restart=on-failure
+PIDFile=/run/ovirt-hosted-engine-ha/broker.pid
 
 [Install]
 WantedBy=multi-user.target
