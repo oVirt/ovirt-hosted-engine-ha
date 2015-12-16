@@ -1,4 +1,4 @@
-from email.mime.text import MIMEText
+from email.parser import Parser
 from email.utils import formatdate
 import socket
 
@@ -24,7 +24,7 @@ def send_email(cfg, email_body):
         server = smtplib.SMTP(cfg["smtp-server"], port=cfg["smtp-port"])
         server.set_debuglevel(1)
         to_addresses = EMAIL_SPLIT_RE.split(cfg["destination-emails"].strip())
-        message = MIMEText(email_body)
+        message = Parser().parsestr(email_body)
         message["Date"] = formatdate(localtime=True)
         server.sendmail(cfg["source-email"],
                         to_addresses,
