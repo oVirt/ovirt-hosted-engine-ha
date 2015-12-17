@@ -661,7 +661,16 @@ class Upgrade(object):
             self._host_id
         )
         self._log.debug(status)
-        if status['status']['code'] != 0:
+        rcode = status['status']['code']
+        if rcode == 0:
+            self._log.debug('Successfully stopped monitoring the domain')
+        elif rcode == 900:
+            self._log.debug(
+                'Failed stopped monitoring the domain '
+                'because it\'s not owned by the agent but it''s '
+                'safe to continue'
+            )
+        else:
             raise RuntimeError(
                 'Failed stopping monitoring domain: ' +
                 str(status['status']['message'])
