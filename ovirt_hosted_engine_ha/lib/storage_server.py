@@ -139,8 +139,9 @@ class StorageServer(object):
                 conList
             )
             self._check_connection(status)
-            self._log.info("Refreshing the storage domain")
-            # calling getStorageDomainStats has the side effect of
-            # causing a Storage Domain refresh including
-            # all its tree under /rhev/data-center/...
-            cli.getStorageDomainStats(self._sdUUID)
+
+        self._log.info("Refreshing the storage domain")
+        # calling getStorageDomainStats has the side effect of
+        # causing a Storage Domain refresh including
+        # all its tree under /rhev/data-center/...
+        cli.getStorageDomainStats(self._sdUUID)
