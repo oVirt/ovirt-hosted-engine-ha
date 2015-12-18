@@ -26,23 +26,18 @@ DISTCLEANFILES = \
 	config.log \
 	$(NULL)
 CLEANFILES = \
-	ovirt-ha-agent.init \
-	ovirt-ha-broker.init \
-	$(NULL)
-
-dist_noinst_DATA = \
 	ovirt-ha-agent.service \
 	ovirt-ha-broker.service \
 	$(NULL)
 
 nodist_noinst_DATA = \
-	ovirt-ha-agent.init \
-	ovirt-ha-broker.init \
+	ovirt-ha-agent.service \
+	ovirt-ha-broker.service \
 	$(NULL)
 
 EXTRA_DIST = \
-	ovirt-ha-agent.init.in \
-	ovirt-ha-broker.init.in \
+	ovirt-ha-agent.service.in \
+	ovirt-ha-broker.service.in \
 	$(NULL)
 
 clean-local: \

@@ -1,13 +1,12 @@
 [Unit]
 Description=oVirt Hosted Engine High Availability Communications Broker
+# See https://bugzilla.redhat.com/1164226
+ConditionPathExists=/etc/ovirt-hosted-engine/hosted-engine.conf
 
 [Service]
-Type=forking
 EnvironmentFile=-/etc/sysconfig/ovirt-ha-broker
-ExecStart=/usr/lib/systemd/systemd-ovirt-ha-broker start
-ExecStop=/usr/lib/systemd/systemd-ovirt-ha-broker stop
+ExecStart=@ENGINE_HA_BINDIR@/ovirt-ha-broker --no-daemon
 Restart=on-failure
-PIDFile=/run/ovirt-hosted-engine-ha/broker.pid
 
 [Install]
 WantedBy=multi-user.target
