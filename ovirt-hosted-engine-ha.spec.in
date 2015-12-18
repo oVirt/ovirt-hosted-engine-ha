@@ -29,10 +29,6 @@
 %global         vdsm_user @VDSM_USER@
 %global         vdsm_group @VDSM_GROUP@
 
-%if 0%{?fedora} || 0%{?rhel} >= 7
-%global with_systemd 1
-%endif
-
 Summary:        oVirt Hosted Engine High Availability Manager
 Name:           @PACKAGE_NAME@
 Version:        @PACKAGE_RPM_VERSION@
@@ -61,11 +57,9 @@ BuildRequires:  python
 BuildRequires:  python2-devel
 BuildRequires:  python-nose
 BuildRequires:  python-mock
-
-%if 0%{?with_systemd}
 %{?systemd_requires}
 BuildRequires:  systemd
-%endif
+
 
 
 %description
@@ -93,18 +87,9 @@ make %{?_smp_mflags} install DESTDIR="%{buildroot}"
 install -dDm 0700 %{buildroot}%{engine_ha_logdir}
 install -dDm 0700 %{buildroot}%{engine_ha_rundir}
 install -dDm 0700 %{buildroot}%{engine_ha_statedir}
-
-%if 0%{?with_systemd}
 # Install the systemd scripts
-install -Dm 0755 initscripts/ovirt-ha-agent.init %{buildroot}/usr/lib/systemd/systemd-ovirt-ha-agent
-install -Dm 0755 initscripts/ovirt-ha-broker.init %{buildroot}/usr/lib/systemd/systemd-ovirt-ha-broker
 install -Dm 0644 initscripts/ovirt-ha-agent.service %{buildroot}%{_unitdir}/ovirt-ha-agent.service
 install -Dm 0644 initscripts/ovirt-ha-broker.service %{buildroot}%{_unitdir}/ovirt-ha-broker.service
-%else
-# Install the SysV init scripts
-install -Dm 0755 initscripts/ovirt-ha-agent.init %{buildroot}%{_initrddir}/ovirt-ha-agent
-install -Dm 0755 initscripts/ovirt-ha-broker.init %{buildroot}%{_initrddir}/ovirt-ha-broker
-%endif
 
 install -dDm 0750 %{buildroot}%{_sysconfdir}/sudoers.d
 install -Dm 0440 sudoers/sudoers %{buildroot}%{_sysconfdir}/sudoers.d/60_ovirt-ha
@@ -129,16 +114,8 @@ install -Dm 0440 sudoers/sudoers %{buildroot}%{_sysconfdir}/sudoers.d/60_ovirt-h
 
 %dir %{engine_ha_libdir}
 %{engine_ha_libdir}/*
-
-%if 0%{?with_systemd}
-/usr/lib/systemd/systemd-ovirt-ha-agent
-/usr/lib/systemd/systemd-ovirt-ha-broker
 %{_unitdir}/ovirt-ha-agent.service
 %{_unitdir}/ovirt-ha-broker.service
-%else
-%{_initrddir}/ovirt-ha-agent
-%{_initrddir}/ovirt-ha-broker
-%endif
 
 %config(noreplace) %{_sysconfdir}/sudoers.d/60_ovirt-ha
 
@@ -159,7 +136,6 @@ if [ $1 -gt 1 ] ; then
             chown %{vdsm_user}:%{vdsm_group}  "%{engine_ha_statedir}/broker.conf"
     fi
 fi
-%if 0%{?with_systemd}
 %systemd_post ovirt-ha-agent.service
 %systemd_post ovirt-ha-broker.service
 if [ "$1" -eq 1 ] ; then
@@ -168,35 +144,17 @@ if [ "$1" -eq 1 ] ; then
     /usr/bin/systemctl --no-reload disable ovirt-ha-agent.service
     /usr/bin/systemctl --no-reload disable ovirt-ha-broker.service
 fi
-%endif
 
 
 %preun
-%if 0%{?with_systemd}
 %systemd_preun ovirt-ha-agent.service
 %systemd_preun ovirt-ha-broker.service
-%else
-if [ "$1" -eq 0 ]
-then
-    /sbin/service ovirt-ha-agent stop > /dev/null 2>&1 || :
-    /sbin/service ovirt-ha-broker stop > /dev/null 2>&1 || :
-    /sbin/chkconfig --del ovirt-ha-agent
-    /sbin/chkconfig --del ovirt-ha-broker
-fi
-%endif
+
 
 
 %postun
-%if 0%{?with_systemd}
 %systemd_postun_with_restart ovirt-ha-agent.service
 %systemd_postun_with_restart ovirt-ha-broker.service
-%else
-if [ "$1" -ge 1 ]; then
-    /sbin/service ovirt-ha-agent condrestart > /dev/null 2>&1
-    /sbin/service ovirt-ha-broker condrestart > /dev/null 2>&1
-fi
-exit 0
-%endif
 
 
 %changelog
