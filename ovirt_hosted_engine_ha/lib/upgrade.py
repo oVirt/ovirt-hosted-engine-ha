@@ -225,6 +225,17 @@ class Upgrade(object):
         )
         #  TODO: add this volume to the engine to prevent misuse
 
+    def _isStoragePoolConnected(self):
+        status = self._cli.getConnectedStoragePoolsList()
+        if status['status']['code'] != 0:
+            raise RuntimeError(
+                'Unable to fetch the list of connected SP: {message}'.format(
+                    message=status['status']['message'],
+                )
+            )
+        splist = status['poollist']
+        return self._spUUID in splist
+
     def _connectStoragePool(self, master, dom_dict):
         self._log.info(
             "Connecting storage pool - "
@@ -707,6 +718,11 @@ class Upgrade(object):
             )
 
     def _remove_storage_pool(self):
+        if not self._isStoragePoolConnected():
+            self._connectStoragePool(
+                master=self._sdUUID,
+                dom_dict={self._sdUUID: 'active'},
+            )
         self._spmStart()
         if not self._is_storage_pool_attached():
             self._spmStop()
@@ -859,10 +875,11 @@ class Upgrade(object):
 
     def _move_to_shared_conf(self):
         self._log.info('_move_to_shared_conf')
-        self._connectStoragePool(
-            master=self._sdUUID,
-            dom_dict={self._sdUUID: 'active'},
-        )
+        if not self._isStoragePoolConnected():
+            self._connectStoragePool(
+                master=self._sdUUID,
+                dom_dict={self._sdUUID: 'active'},
+            )
         self._spmStart()
         if self._is_conf_volume_there():
             self._spmStop()
