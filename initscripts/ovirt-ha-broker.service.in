@@ -3,6 +3,10 @@ Description=oVirt Hosted Engine High Availability Communications Broker
 # See https://bugzilla.redhat.com/1164226
 ConditionPathExists=/etc/ovirt-hosted-engine/hosted-engine.conf
 
+# Make sure the ovirt-node persistence service restored
+# all config files before starting this on Node
+After=ovirt-early.service
+
 [Service]
 EnvironmentFile=-/etc/sysconfig/ovirt-ha-broker
 ExecStart=@ENGINE_HA_BINDIR@/ovirt-ha-broker --no-daemon

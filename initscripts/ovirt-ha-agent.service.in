@@ -7,6 +7,10 @@ After=ovirt-ha-broker.service
 After=vdsmd.service
 After=sanlock.service
 
+# Make sure the ovirt-node persistence service restored
+# all config files before starting this on Node
+After=ovirt-early.service
+
 # See https://bugzilla.redhat.com/1164226
 ConditionPathExists=/etc/ovirt-hosted-engine/hosted-engine.conf
 
