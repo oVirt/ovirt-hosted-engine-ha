@@ -26,8 +26,8 @@ import os
 import tempfile
 import logging
 from . import log_filter
+from . import util
 from vdsm import vdscli
-from vdsm.utils import persist, unpersist
 import uuid
 import selinux
 import subprocess
@@ -820,10 +820,16 @@ class Upgrade(object):
                 with open(tmp_conf_file, 'w') as f:
                     f.write(content)
                 self._log.debug('Moving conf file to its final location')
-
-                # Will conditionally unpersist on Node
-                unpersist(constants.ENGINE_SETUP_CONF_FILE)
-
+                if util.isOvirtNode():
+                    self._execute(
+                        args=(
+                            'sudo',
+                            '-n',
+                            'unpersist',
+                            constants.ENGINE_SETUP_CONF_FILE,
+                        ),
+                        raiseOnError=True
+                    )
                 self._execute(
                     args=(
                         'sudo',
@@ -858,10 +864,16 @@ class Upgrade(object):
                     ),
                     raiseOnError=True
                 )
-
-                # Will conditionally persist on Node
-                persist(constants.ENGINE_SETUP_CONF_FILE)
-
+                if util.isOvirtNode():
+                    self._execute(
+                        args=(
+                            'sudo',
+                            '-n',
+                            'persist',
+                            constants.ENGINE_SETUP_CONF_FILE,
+                        ),
+                        raiseOnError=True
+                    )
             except (OSError, IOError) as ex:
                 msg = "Unable to write updated HE conf file: {ex}".format(
                     ex=str(ex),
