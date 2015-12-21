@@ -825,7 +825,7 @@ class Upgrade(object):
                         args=(
                             'sudo',
                             '-n',
-                            'unpersist',
+                            '/usr/sbin/unpersist',
                             constants.ENGINE_SETUP_CONF_FILE,
                         ),
                         raiseOnError=True
@@ -869,7 +869,7 @@ class Upgrade(object):
                         args=(
                             'sudo',
                             '-n',
-                            'persist',
+                            '/usr/sbin/persist',
                             constants.ENGINE_SETUP_CONF_FILE,
                         ),
                         raiseOnError=True

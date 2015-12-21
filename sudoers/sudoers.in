@@ -6,8 +6,9 @@ Cmnd_Alias OVIRT_HA = \
     /sbin/mkfs -t * /dev/loop*, \
     /bin/mv -b -f -Z @ENGINE_HA_STATEDIR@/* /etc/ovirt-hosted-engine/hosted-engine.conf, \
     /usr/bin/chown -R vdsm @ENGINE_HA_STATEDIR@/*, \
-    /usr/bin/chown root /etc/ovirt-hosted-engine/hosted-engine.conf, \
-    /usr/bin/chgrp root /etc/ovirt-hosted-engine/hosted-engine.conf, \
-    /usr/bin/chmod 644 /etc/ovirt-hosted-engine/hosted-engine.conf
+    /usr/bin/chown root\:root /etc/ovirt-hosted-engine/hosted-engine.conf, \
+    /usr/bin/chmod 644 /etc/ovirt-hosted-engine/hosted-engine.conf, \
+    /usr/sbin/persist /etc/ovirt-hosted-engine/hosted-engine.conf, \
+    /usr/sbin/unpersist /etc/ovirt-hosted-engine/hosted-engine.conf
 
 @VDSM_USER@  ALL=(ALL) NOPASSWD: OVIRT_HA
