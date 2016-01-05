@@ -40,7 +40,8 @@ EXPECTED_VM_CONF_DICT = {
             'device': 'disk',
             'type': 'disk',
             'bootOrder': '2',
-            'propagateErrors': 'off'
+            'propagateErrors': 'off',
+            'shared': 'exclusive'
         },
         {
             'index': '2',
