@@ -71,6 +71,7 @@ def diskFromElements(device, diskElement, diskIndex):
     )
     disk['bootOrder'] = str(int(text(device, 'BootOrder')) + 1)
     disk['propagateErrors'] = 'off'
+    disk['shared'] = 'exclusive'
     return disk
 
 
