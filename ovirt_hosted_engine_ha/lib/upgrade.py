@@ -78,6 +78,22 @@ class Upgrade(object):
 
         self._conf_imgUUID = None
         self._conf_volUUID = None
+        self._metadata_imgUUID = self._config.get(
+            config.ENGINE,
+            config.METADATA_IMAGE_UUID,
+        )
+        self._metadata_volUUID = self._config.get(
+            config.ENGINE,
+            config.METADATA_VOLUME_UUID,
+        )
+        self._lockspace_imgUUID = self._config.get(
+            config.ENGINE,
+            config.LOCKSPACE_IMAGE_UUID,
+        )
+        self._lockspace_volUUID = self._config.get(
+            config.ENGINE,
+            config.LOCKSPACE_VOLUME_UUID,
+        )
         self._fake_SD_path = None
         self._fake_file = None
         self._fake_mastersd_uuid = str(uuid.uuid4())
@@ -131,11 +147,18 @@ class Upgrade(object):
         imageslist = heconflib.my_getImagesList(
             self._type,
             self._sdUUID,
-            self._vm_img_uuid,
-            self._vm_vol_uuid,
+            self._metadata_imgUUID,
+            self._metadata_volUUID,
         )
-        self._log.debug(imageslist)
-        for image in imageslist:
+        self._log.debug('found images: ' + str(imageslist))
+        # excluding engine, metadata and lockspace images
+        unknowimages = set(imageslist) - set([
+            self._vm_img_uuid,
+            self._metadata_imgUUID,
+            self._lockspace_imgUUID
+        ])
+        self._log.debug('candidate images: ' + str(unknowimages))
+        for image in unknowimages:
             volumeslist = self._cli.getVolumesList(
                 self._sdUUID,
                 self._spUUID,
@@ -143,29 +166,37 @@ class Upgrade(object):
             )
             self._log.debug(volumeslist)
             if volumeslist['status']['code'] != 0:
-                raise RuntimeError(volumeslist['status']['message'])
-            for volume in volumeslist['uuidlist']:
-                volumeinfo = self._cli.getVolumeInfo(
-                    self._sdUUID,
-                    self._spUUID,
-                    image,
-                    volume
-                )
-                self._log.debug(volumeinfo)
-                if volumeinfo['status']['code'] != 0:
-                    raise RuntimeError(volumeinfo['status']['message'])
-                description = volumeinfo['info']['description']
-                if description == constants.CONF_IMAGE_DESC:
-                    self._conf_imgUUID = image
-                    self._conf_volUUID = volume
-                    isconfvolume = True
-                    self._log.info(
-                        'Found conf volume: '
-                        'imgUUID:{img}, volUUID:{vol}'.format(
-                            img=self._conf_imgUUID,
-                            vol=self._conf_volUUID,
-                        )
+                # avoid raising here since after a reboot we
+                # didn't called prepareImage on all the possible images
+                self._log.debug(
+                    'Error fetching volumes for {image}: {message}'.format(
+                        image=image,
+                        message=volumeslist['status']['message'],
                     )
+                )
+            else:
+                for volume in volumeslist['uuidlist']:
+                    volumeinfo = self._cli.getVolumeInfo(
+                        self._sdUUID,
+                        self._spUUID,
+                        image,
+                        volume
+                    )
+                    self._log.debug(volumeinfo)
+                    if volumeinfo['status']['code'] != 0:
+                        raise RuntimeError(volumeinfo['status']['message'])
+                    description = volumeinfo['info']['description']
+                    if description == constants.CONF_IMAGE_DESC:
+                        self._conf_imgUUID = image
+                        self._conf_volUUID = volume
+                        isconfvolume = True
+                        self._log.info(
+                            'Found conf volume: '
+                            'imgUUID:{img}, volUUID:{vol}'.format(
+                                img=self._conf_imgUUID,
+                                vol=self._conf_volUUID,
+                            )
+                        )
         if self._conf_imgUUID is None or self._conf_volUUID is None:
             self._log.error('Unable to find HE conf volume')
         return isconfvolume
