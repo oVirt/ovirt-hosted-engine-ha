@@ -139,6 +139,16 @@ class Upgrade(object):
         return uptodate
 
     def _is_conf_volume_there(self):
+        """
+        It tries to detect the configuration volume since another host could
+        create it before us. The detection is based on the configuration volume
+        description which is hardcoded.
+        Engine, lockspace and metadata images are excluded from the scan since
+        we already know their content. In order to check a volume we
+        should prepare its image before but it seams to work as a side effect
+        of getVolumesList
+        """
+        # TODO: investigate how it's working without preparing each image
         self._log.info('Looking for conf volume')
         isconfvolume = False
         self._conf_imgUUID = None
