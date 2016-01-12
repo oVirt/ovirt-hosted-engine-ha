@@ -1,6 +1,6 @@
 dnl
 dnl ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-dnl Copyright (C) 2013-2015 Red Hat, Inc.
+dnl Copyright (C) 2013-2016 Red Hat, Inc.
 dnl
 dnl This library is free software; you can redistribute it and/or
 dnl modify it under the terms of the GNU Lesser General Public
@@ -20,7 +20,7 @@ AC_PREREQ(2.60)
 
 define([VERSION_MAJOR], [1])
 define([VERSION_MINOR], [3])
-define([VERSION_FIX], [3.6])
+define([VERSION_FIX], [3.7])
 define([VERSION_NUMBER], VERSION_MAJOR[.]VERSION_MINOR[.]VERSION_FIX)
 define([VERSION_RELEASE], [1])
 define([VERSION_SUFFIX], [])
