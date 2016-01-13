@@ -12,7 +12,7 @@ After=sanlock.service
 After=ovirt-early.service
 
 # See https://bugzilla.redhat.com/1164226
-ConditionPathExists=/etc/ovirt-hosted-engine/hosted-engine.conf
+ConditionFileNotEmpty=/etc/ovirt-hosted-engine/hosted-engine.conf
 
 [Service]
 EnvironmentFile=-/etc/sysconfig/ovirt-ha-agent
