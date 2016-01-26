@@ -1,6 +1,6 @@
 #
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-# Copyright (C) 2013-2015 Red Hat, Inc.
+# Copyright (C) 2013-2016 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -50,15 +50,15 @@ Requires:       python
 Requires:       python-daemon
 Requires:       sanlock >= 2.8
 Requires:       sanlock-python >= 2.8
-Requires:       vdsm >= 4.16.14
-Requires:       vdsm-cli >= 4.16.14
-Requires:       vdsm-python >= 4.16.14
+Requires:       vdsm >= 4.16.33
+Requires:       vdsm-cli >= 4.16.33
+Requires:       vdsm-python >= 4.16.33
 
 BuildRequires:  python
 BuildRequires:  python2-devel
 BuildRequires:  python-nose
 BuildRequires:  python-mock
-BuildRequires:  vdsm-cli >= 4.16.14
+BuildRequires:  vdsm-cli >= 4.16.33
 
 %if 0%{?with_systemd}
 %{?systemd_requires}
@@ -193,6 +193,9 @@ exit 0
 
 
 %changelog
+* Tue Jan 26 2016 Sandro Bonazzola <sbonazzo@redhat.com> - 1.2.9-1
+- 1.2.9-1
+
 * Tue Oct 27 2015 Sandro Bonazzola <sbonazzo@redhat.com> - 1.2.8-1
 - 1.2.8-1
 
