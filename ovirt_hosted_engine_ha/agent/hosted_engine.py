@@ -659,8 +659,18 @@ class HostedEngine(object):
     def _initialize_storage_images(self):
         self._log.info("Connecting the storage")
         sserver = storage_server.StorageServer()
-        sserver.connect_storage_server()
+        try:
+            sserver.connect_storage_server()
+        except ex.DuplicateStorageConnectionException:
+            # Try to cleanup if needed/possible
+            self._release_sanlock()
+            self._stop_domain_monitor()
 
+            # Disconnect storage server
+            self._log.warning("Disconnecting the storage")
+            sserver.disconnect_storage_server()
+            # Reconnect to be ready for the next attempt
+            sserver.connect_storage_server()
         self._log.info("Preparing images")
         img = image.Image()
         img.prepare_images()
@@ -692,10 +702,11 @@ class HostedEngine(object):
                 raise ServiceNotUpException(service_name)
 
     def _release_sanlock(self):
-        lease_file = self._broker.get_service_path(
-            constants.SERVICE_TYPE + constants.LOCKSPACE_EXTENSION)
-        sanlock.rem_lockspace(constants.LOCKSPACE_NAME,
-                              self.host_id, lease_file)
+        if self._broker:
+            lease_file = self._broker.get_service_path(
+                constants.SERVICE_TYPE + constants.LOCKSPACE_EXTENSION)
+            sanlock.rem_lockspace(constants.LOCKSPACE_NAME,
+                                  self.host_id, lease_file)
 
     def _initialize_sanlock(self):
         self._check_service('sanlock')
