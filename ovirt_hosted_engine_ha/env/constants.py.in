@@ -46,7 +46,6 @@ OVIRT_HOSTED_ENGINE_LB_DIR = '@ENGINE_HA_STATEDIR@'
 
 SD_MOUNT_PARENT = '/rhev/data-center/mnt'
 SD_METADATA_DIR = 'ha_agent'
-SD_SYMLINKS_PARENT = '/var/run/vdsm/storage'
 
 VDS_CLIENT_DIR = '/usr/share/vdsm'
 VDS_CLIENT_SSL = True
