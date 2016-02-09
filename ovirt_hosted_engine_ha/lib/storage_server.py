@@ -19,11 +19,7 @@
 
 from ..env import config
 from ..env import constants
-from ..env import path as env_path
-from ovirt_hosted_engine_ha.lib import exceptions as ex
 import logging
-import os
-import shutil
 from . import log_filter
 from vdsm import vdscli
 
@@ -76,20 +72,6 @@ class StorageServer(object):
         conList = [conDict]
         return conList, storageType
 
-    def _fix_filebased_connection_path(self):
-        path = os.path.normpath(self._storage)
-        if path != self._storage:
-            self._log.warning(
-                (
-                    "Fixing path syntax: "
-                    "replacing '{original}' with '{fixed}'"
-                ).format(
-                    original=self._storage,
-                    fixed=path,
-                )
-            )
-        return path
-
     def _get_conlist_iscsi(self):
         storageType = constants.STORAGE_TYPE_ISCSI
         conDict = {
@@ -124,49 +106,11 @@ class StorageServer(object):
                     'Connection to storage server failed'
                 )
 
-    def _validate_pre_connected_path(self, cli, path):
-        """
-        On 3.5 we allow the user to deploy on 'server:/path/' allowing a
-        trailing '/' and in that case VDSM simply mounts on a different path
-        with a trailing '_'. Now, since the engine is going to re-mount it
-        without the trailing '/', we have also to canonize that path but,
-        in this way, we are going to mount twice if that NFS storage server
-        has been already mounted on the wrong path by a previous run of
-        old code. This method, if the hosted-engine storage domain is already
-        available, checks what we expect against the actual mount path and,
-        if they differ, raises
-        hosted_engine.DuplicateStorageConnectionException
-        See rhbz#1300749
-        :param cli:  a vdscli instance
-        :param path: the path (without the trailing '/') to be validated
-                     against already connected storage server
-        :raise       hosted_engine.DuplicateStorageConnectionException on error
-                     to prevent connecting twice the hosted-engine storage
-                     server
-        """
-        response = cli.getStorageDomainInfo(self._sdUUID)
-        if response['status']['code'] == 0:
-            # verifying only if the storage domain is already connected
-            canonical_path = os.path.join(
-                constants.SD_MOUNT_PARENT,
-                path.replace('/', '_'),
-                self._sdUUID,
-            )
-            effective_path = env_path.get_domain_path(self._config)
-            if effective_path != canonical_path:
-                raise ex.DuplicateStorageConnectionException(
-                    (
-                        "The hosted-engine storage domain is already "
-                        "mounted on '{effective_path}' with a path that is "
-                        "not supported anymore: the right path should be "
-                        "'{canonical_path}'."
-                    ).format(
-                        canonical_path=canonical_path,
-                        effective_path=effective_path,
-                    )
-                )
+    def connect_storage_server(self):
+        self._log.info("Connecting storage server")
 
-    def _getConList(self, cli, connecting):
+        cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
+
         conList = None
         storageType = None
         if self._domain_type in (
@@ -175,10 +119,6 @@ class StorageServer(object):
                 constants.DOMAIN_TYPE_GLUSTERFS,
         ):
             conList, storageType = self._get_conlist_nfs_gluster()
-            if connecting:
-                path = self._fix_filebased_connection_path()
-                conList[0]['connection'] = path
-                self._validate_pre_connected_path(cli, path)
         elif self._domain_type == constants.DOMAIN_TYPE_ISCSI:
             conList, storageType = self._get_conlist_iscsi()
         elif self._domain_type == constants.DOMAIN_TYPE_FC:
@@ -190,13 +130,6 @@ class StorageServer(object):
             raise RuntimeError(
                 "Storage type not supported: '%s'" % self._domain_type
             )
-        return conList, storageType
-
-    def connect_storage_server(self):
-        self._log.info("Connecting storage server")
-
-        cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
-        conList, storageType = self._getConList(cli, connecting=True)
 
         if conList:
             self._log.info("Connecting storage server")
@@ -212,59 +145,3 @@ class StorageServer(object):
         # causing a Storage Domain refresh including
         # all its tree under /rhev/data-center/...
         cli.getStorageDomainStats(self._sdUUID)
-
-    def disconnect_storage_server(self):
-        self._log.info("Disconnecting storage server")
-
-        cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
-        conList, storageType = self._getConList(cli, connecting=False)
-
-        if conList:
-            status = cli.disconnectStorageServer(
-                storageType,
-                self._spUUID,
-                conList
-            )
-            self._log.debug(status)
-            if status['status']['code'] != 0:
-                raise RuntimeError(
-                    (
-                        'Disconnection to storage server failed, unable '
-                        'to recover: {message} - Please try rebooting the '
-                        'host to reach a consistent status'
-                    ).format(
-                        message=status['status']['message']
-                    )
-                )
-            # explicitly cleaning up symlinks under
-            # /var/run/vdsm/storage/{SD_UUID}, this is just a weird
-            # workaround to fix a VDSM issue with those symlinks:
-            # VDSM doesn't cleanup disconnecting the storage server and,
-            # on the other side, prepareImage doesn't recreate the link
-            # if they are already there without checking where they points.
-            # This can result in broken links if something has changed
-            # within the storage server connection.
-            # see: https://bugzilla.redhat.com/show_bug.cgi?id=1300749#c31
-            # TODO: remove as soon as it get fixed on VDSM side!
-            sd_links_path = os.path.join(
-                constants.SD_SYMLINKS_PARENT,
-                self._sdUUID,
-            )
-            if os.path.exists(sd_links_path):
-                def log_err(func, path, exc_info):
-                    raise RuntimeError(
-                        (
-                            "Error removing directory '{path}': "
-                            "{fname} - {err}"
-                        ).format(
-                            path=path,
-                            fname=func.__name__,
-                            err=exc_info[1]
-                        )
-                    )
-                self._log.debug(
-                    'Removing directory: {path}'.format(
-                        path=sd_links_path,
-                    )
-                )
-                shutil.rmtree(sd_links_path, onerror=log_err)

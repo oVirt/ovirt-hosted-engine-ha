@@ -57,13 +57,3 @@ class SanlockInitializationError(Exception):
 
 class BrokerInitializationError(Exception):
     pass
-
-
-class DuplicateStorageConnectionException(Exception):
-    """
-    This exception is raised when a potentially duplicate storage connection
-    has been detected on a wrong path: see rhbz#1300749
-
-    The agent should exits disconnecting the storage server.
-    Systemd will restart the agent if needed.
-    """
