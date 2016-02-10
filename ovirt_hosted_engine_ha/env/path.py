@@ -24,6 +24,14 @@ from . import constants
 from vdsm import vdscli
 
 
+def canonize_path(path, sduuid):
+    return os.path.join(
+        constants.SD_MOUNT_PARENT,
+        path.replace("_", "__").replace("/", "_"),
+        sduuid,
+    )
+
+
 def get_domain_path(config_):
     """
     Return path of storage domain holding engine vm
@@ -39,8 +47,10 @@ def get_domain_path(config_):
         response = vdsm.getStorageDomainInfo(sd_uuid)
         if response['status']['code'] == 0:
             try:
-                local_path = response['info']['remotePath'].replace('/', '_')
-                path = os.path.join(parent, local_path, sd_uuid)
+                path = canonize_path(
+                    response['info']['remotePath'],
+                    sd_uuid
+                )
                 if os.access(path, os.F_OK):
                     return path
             # don't have remotePath? so fallback to old logic

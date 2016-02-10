@@ -19,7 +19,10 @@
 
 from ..env import config
 from ..env import constants
+from ..env import path as env_path
+from ovirt_hosted_engine_ha.lib import exceptions as ex
 import logging
+import os
 from . import log_filter
 from vdsm import vdscli
 
@@ -72,6 +75,65 @@ class StorageServer(object):
         conList = [conDict]
         return conList, storageType
 
+    def _fix_filebased_connection_path(self):
+        path = os.path.normpath(self._storage)
+        if path != self._storage:
+            self._log.warning(
+                (
+                    "Fixing path syntax: "
+                    "replacing '{original}' with '{fixed}'"
+                ).format(
+                    original=self._storage,
+                    fixed=path,
+                )
+            )
+        return path
+
+    def _validate_pre_connected_path(self, cli, path):
+        """
+        On 3.5 we allow the user to deploy on 'server:/path/' allowing a
+        trailing '/' and in that case VDSM simply mounts on a different path
+        with a trailing '_'. Now, since the engine is going to re-mount it
+        without the trailing '/', we have also to canonize that path but,
+        in this way, we are going to mount twice if that NFS storage server
+        has been already mounted on the wrong path by a previous run of
+        old code. This method, if the hosted-engine storage domain is already
+        available, checks what we expect against the actual mount path and,
+        if they differ, raises
+        hosted_engine.DuplicateStorageConnectionException
+        See rhbz#1300749
+        :param cli:  a vdscli instance
+        :param path: the path (without the trailing '/') to be validated
+                     against already connected storage server
+        :raise       hosted_engine.DuplicateStorageConnectionException on error
+                     to prevent connecting twice the hosted-engine storage
+                     server
+        """
+        response = cli.getStorageDomainInfo(self._sdUUID)
+        if response['status']['code'] != 0:
+            self._log.debug(
+                'Storage domain {sd} is not available'.format(sd=self._sdUUID)
+            )
+        else:
+            # verifying only if the storage domain is already connected
+            canonical_path = env_path.canonize_path(
+                path,
+                self._sdUUID,
+            )
+            effective_path = env_path.get_domain_path(self._config)
+            if effective_path != canonical_path:
+                raise ex.DuplicateStorageConnectionException(
+                    (
+                        "The hosted-engine storage domain is already "
+                        "mounted on '{effective_path}' with a path that is "
+                        "not supported anymore: the right path should be "
+                        "'{canonical_path}'."
+                    ).format(
+                        canonical_path=canonical_path,
+                        effective_path=effective_path,
+                    )
+                )
+
     def _get_conlist_iscsi(self):
         storageType = constants.STORAGE_TYPE_ISCSI
         conDict = {
@@ -106,7 +168,13 @@ class StorageServer(object):
                     'Connection to storage server failed'
                 )
 
-    def _get_conlist(self):
+    def _get_conlist(self, cli, normalize_path):
+        """
+        helper method to get conList parameter for connectStorageServer and
+        disconnectStorageServer
+        :param cli a vscli instance
+        :param normalize_path True to force path normalization
+        """
         conList = None
         storageType = None
         if self._domain_type in (
@@ -115,6 +183,10 @@ class StorageServer(object):
                 constants.DOMAIN_TYPE_GLUSTERFS,
         ):
             conList, storageType = self._get_conlist_nfs_gluster()
+            if normalize_path:
+                path = self._fix_filebased_connection_path()
+                conList[0]['connection'] = path
+                self._validate_pre_connected_path(cli, path)
         elif self._domain_type == constants.DOMAIN_TYPE_ISCSI:
             conList, storageType = self._get_conlist_iscsi()
         elif self._domain_type == constants.DOMAIN_TYPE_FC:
@@ -134,7 +206,7 @@ class StorageServer(object):
         """
         self._log.info("Connecting storage server")
         cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
-        conList, storageType = self._get_conlist()
+        conList, storageType = self._get_conlist(cli, normalize_path=True)
         if conList:
             self._log.info("Connecting storage server")
             status = cli.connectStorageServer(
@@ -156,7 +228,9 @@ class StorageServer(object):
         """
         self._log.info("Disconnecting storage server")
         cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
-        conList, storageType = self._get_conlist()
+        # normalize_path=False since we want to be sure we really disconnect
+        # from where we were connected also if its path was wrong
+        conList, storageType = self._get_conlist(cli, normalize_path=False)
         if conList:
             status = cli.disconnectStorageServer(
                 storageType,
