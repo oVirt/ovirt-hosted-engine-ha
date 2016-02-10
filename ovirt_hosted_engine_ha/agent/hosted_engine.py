@@ -412,9 +412,9 @@ class HostedEngine(object):
         self._initialize_broker()
         self._initialize_sanlock()
 
-        # check if configuration is up to date, otherwise upgrade
+        # check if configuration is up to date, otherwise upgrade (3.5 -> 3.6)
         upg = upgrade.Upgrade()
-        upgraded = upg.upgrade()
+        upgraded = upg.upgrade_35_36()
         if upgraded:
             self._log.info("Reloading hosted-engine.conf after upgrade")
             self._config = config.Config(logger=self._log)
@@ -657,10 +657,28 @@ class HostedEngine(object):
     def _initialize_storage_images(self):
         self._log.info("Connecting the storage")
         sserver = storage_server.StorageServer()
-        sserver.connect_storage_server()
+        img = image.Image()
+        try:
+            sserver.connect_storage_server()
+        except ex.DuplicateStorageConnectionException:
+            # Try to cleanup if needed/possible
+            self._release_sanlock()
+            self._stop_domain_monitor()
+
+            # Tearing down images
+            img.teardown_images()
+            # Disconnect storage server
+            self._log.warning("Disconnecting the storage")
+            sserver.disconnect_storage_server()
+            # Fix config file
+            upg = upgrade.Upgrade()
+            upg.fix_storage_path()
+            # Get a new instance to refresh the configuration
+            sserver = storage_server.StorageServer()
+            # Reconnect to be ready for the next attempt
+            sserver.connect_storage_server()
 
         self._log.info("Preparing images")
-        img = image.Image()
         img.prepare_images()
 
         self._log.info("Reloading vm.conf from the shared storage domain")
@@ -686,10 +704,11 @@ class HostedEngine(object):
                 raise ServiceNotUpException(service_name)
 
     def _release_sanlock(self):
-        lease_file = self._broker.get_service_path(
-            constants.SERVICE_TYPE + constants.LOCKSPACE_EXTENSION)
-        sanlock.rem_lockspace(constants.LOCKSPACE_NAME,
-                              self.host_id, lease_file)
+        if self._broker:
+            lease_file = self._broker.get_service_path(
+                constants.SERVICE_TYPE + constants.LOCKSPACE_EXTENSION)
+            sanlock.rem_lockspace(constants.LOCKSPACE_NAME,
+                                  self.host_id, lease_file)
 
     def _initialize_sanlock(self):
         self._check_service('sanlock')

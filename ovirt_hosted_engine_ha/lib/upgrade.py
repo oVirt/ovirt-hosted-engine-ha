@@ -52,6 +52,7 @@ class Upgrade(object):
         self._type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
         self._spUUID = self._config.get(config.ENGINE, config.SP_UUID)
         self._sdUUID = self._config.get(config.ENGINE, config.SD_UUID)
+        self._storage = self._config.get(config.ENGINE, config.STORAGE)
         self._HEVMID = self._config.get(config.ENGINE, config.HEVMID)
         self._host_id = int(self._config.get(config.ENGINE, config.HOST_ID))
         self._fake_sd_size = '2G'
@@ -206,7 +207,7 @@ class Upgrade(object):
             self._log.error('Unable to find HE conf volume')
         return isconfvolume
 
-    def _update_conf_file(self, orig):
+    def _update_conf_file_35_36(self, orig):
         self._log.debug('orig content:\n%s\n' % orig)
         origlines = orig.split('\n')
         modifiedlines = []
@@ -233,6 +234,23 @@ class Upgrade(object):
                     value=value,
                 )
             )
+        modified = '\n'.join(modifiedlines)
+        self._log.debug('modified content:\n%s\n' % modified)
+        return modified
+
+    def _fix_path_in_conf_file(self, orig):
+        self._log.debug('orig content:\n%s\n' % orig)
+        origlines = orig.splitlines()
+        modifiedlines = []
+        for line in origlines:
+            if line.startswith(config.STORAGE):
+                fixed = "{key}={value}".format(
+                    key=config.STORAGE,
+                    value=os.path.normpath(self._storage),
+                )
+                modifiedlines.append(fixed)
+            else:
+                modifiedlines.append(line)
         modified = '\n'.join(modifiedlines)
         self._log.debug('modified content:\n%s\n' % modified)
         return modified
@@ -332,18 +350,15 @@ class Upgrade(object):
                 )
             )
 
-    def _get_conffile_content(self, type):
+    def _get_conffile_content(self, type, update_func=None):
         self._log.info('Reading conf file: %s' % str(type))
-
         content = None
         path = None
-        update_func = None
 
         if type == constants.HEConfFiles.HECONFD_ANSWERFILE:
             path = constants.ANSWER_FILE_35
         elif type == constants.HEConfFiles.HECONFD_HECONF:
             path = constants.ENGINE_SETUP_CONF_FILE
-            update_func = self._update_conf_file
         elif type == constants.HEConfFiles.HECONFD_BROKER_CONF:
             path = constants.NOTIFY_CONF_FILE
         elif type == constants.HEConfFiles.HECONFD_VM_CONF:
@@ -840,10 +855,7 @@ class Upgrade(object):
 
         return True
 
-    def _wrote_updated_conf_file(self):
-        content = self._get_conffile_content(
-            constants.HEConfFiles.HECONFD_HECONF
-        )
+    def _wrote_updated_conf_file(self, content):
         if content:
             try:
                 tmp_conf_file = tempfile.mkstemp(
@@ -944,7 +956,19 @@ class Upgrade(object):
         )
         return True
 
-    def upgrade(self):
+    def fix_storage_path(self):
+        """
+        Fix storage path in hosted-engine config file
+        """
+        self._log.info('Fixing storage path in conf file')
+        content = self._get_conffile_content(
+            constants.HEConfFiles.HECONFD_HECONF,
+            self._fix_path_in_conf_file,
+        )
+        self._wrote_updated_conf_file(content)
+        self._log.info('Successfully fixed path in conf file')
+
+    def upgrade_35_36(self):
         uptodate = self.is_conf_file_uptodate()
         if uptodate:
             self._log.info('Host configuration is already up-to-date')
@@ -979,6 +1003,10 @@ class Upgrade(object):
                         'conditions.'
                     )
             self._startMonitoringDomain()
-            self._wrote_updated_conf_file()
+            content = self._get_conffile_content(
+                constants.HEConfFiles.HECONFD_HECONF,
+                self._update_conf_file_35_36,
+            )
+            self._wrote_updated_conf_file(content)
             self._log.info('Successfully upgraded')
             return True
