@@ -329,30 +329,6 @@ def domain_wait(sdUUID, cli, logger):
             raise RuntimeError('Error acquiring VDS status')
 
 
-def my_getImagesList(type, sdUUID, img_uuid, vol_uuid):
-    # VDSM getImagesList doesn't work when the SD is not connect to
-    # a storage pool so we have to reimplement it
-    # see: https://bugzilla.redhat.com/1274622
-    images = set()
-    try:
-        imageroot = os.path.dirname(os.path.dirname(
-            get_volume_path(
-                type,
-                sdUUID,
-                img_uuid,
-                vol_uuid
-            )
-        ))
-    except RuntimeError:
-        return images
-    pattern = os.path.join(imageroot, '*-*-*-*-*')
-    files = glob.glob(pattern)
-    for i in files:
-        if os.path.isdir(i):
-            images.add(os.path.basename(i))
-    return images
-
-
 def create_and_prepare_image(
         logger,
         cli,

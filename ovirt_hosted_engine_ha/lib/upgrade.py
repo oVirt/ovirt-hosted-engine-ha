@@ -21,6 +21,7 @@
 from ovirt_hosted_engine_ha.env import config
 from ovirt_hosted_engine_ha.env import constants
 from ovirt_hosted_engine_ha.lib import heconflib
+from ovirt_hosted_engine_ha.lib import image
 
 import os
 import tempfile
@@ -144,22 +145,16 @@ class Upgrade(object):
         create it before us. The detection is based on the configuration volume
         description which is hardcoded.
         Engine, lockspace and metadata images are excluded from the scan since
-        we already know their content. In order to check a volume we
-        should prepare its image before but it seams to work as a side effect
-        of getVolumesList
+        we already know their content.
         """
-        # TODO: investigate how it's working without preparing each image
         self._log.info('Looking for conf volume')
         isconfvolume = False
         self._conf_imgUUID = None
         self._conf_volUUID = None
 
-        imageslist = heconflib.my_getImagesList(
-            self._type,
-            self._sdUUID,
-            self._metadata_imgUUID,
-            self._metadata_volUUID,
-        )
+        img = image.Image()
+        imageslist = img.get_images_list(self._cli)
+
         self._log.debug('found images: ' + str(imageslist))
         # excluding engine, metadata and lockspace images
         unknowimages = set(imageslist) - set([
@@ -168,11 +163,11 @@ class Upgrade(object):
             self._lockspace_imgUUID
         ])
         self._log.debug('candidate images: ' + str(unknowimages))
-        for image in unknowimages:
+        for img_uuid in unknowimages:
             volumeslist = self._cli.getVolumesList(
                 self._sdUUID,
                 self._spUUID,
-                image
+                img_uuid
             )
             self._log.debug(volumeslist)
             if volumeslist['status']['code'] != 0:
@@ -185,20 +180,20 @@ class Upgrade(object):
                     )
                 )
             else:
-                for volume in volumeslist['uuidlist']:
+                for vol_uuid in volumeslist['uuidlist']:
                     volumeinfo = self._cli.getVolumeInfo(
                         self._sdUUID,
                         self._spUUID,
-                        image,
-                        volume
+                        img_uuid,
+                        vol_uuid
                     )
                     self._log.debug(volumeinfo)
                     if volumeinfo['status']['code'] != 0:
                         raise RuntimeError(volumeinfo['status']['message'])
                     description = volumeinfo['info']['description']
                     if description == constants.CONF_IMAGE_DESC:
-                        self._conf_imgUUID = image
-                        self._conf_volUUID = volume
+                        self._conf_imgUUID = img_uuid
+                        self._conf_volUUID = vol_uuid
                         isconfvolume = True
                         self._log.info(
                             'Found conf volume: '

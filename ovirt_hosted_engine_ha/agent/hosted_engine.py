@@ -34,7 +34,6 @@ import sanlock
 from . import constants
 from ..env import constants as envconstants
 from ..env import config
-from ..env import path as env_path
 from ..lib import brokerlink
 from ..lib import exceptions as ex
 from ..lib import image
@@ -175,7 +174,6 @@ class HostedEngine(object):
             "STOP_VM": self._stop_engine_vm
         })
 
-        self._sd_path = None
         self._sanlock_initialized = False
 
     @property
@@ -664,10 +662,6 @@ class HostedEngine(object):
         self._log.info("Preparing images")
         img = image.Image()
         img.prepare_images()
-
-        # Update to the current mount path for the domain
-        self._sd_path = env_path.get_domain_path(self._config)
-        self._log.debug("Path to storage domain is %s", self._sd_path)
 
         self._log.info("Reloading vm.conf from the shared storage domain")
         local_vm_conf_path = self._config.get(
