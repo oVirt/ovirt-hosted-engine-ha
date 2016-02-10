@@ -19,6 +19,7 @@
 
 from ovirt_hosted_engine_ha.env import constants
 from ovirt_hosted_engine_ha.lib import heconflib
+from ovirt_hosted_engine_ha.lib import image
 from ovirt_hosted_engine_ha.lib import log_filter
 
 from vdsm import vdscli
@@ -59,26 +60,24 @@ class OVFStore(object):
         self._ovf_store_volUUID = None
         _cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
 
-        for image in heconflib.my_getImagesList(
-            self._type,
-            self._sdUUID,
-            self._conf_img_uuid,
-            self._conf_vol_uuid
-        ):
+        imgs = image.Image()
+        imageslist = imgs.get_images_list(_cli)
+
+        for img_uuid in imageslist:
             volumeslist = _cli.getVolumesList(
                 self._sdUUID,
                 self._spUUID,
-                image
+                img_uuid
             )
             self._log .debug(volumeslist)
             if volumeslist['status']['code'] != 0:
                 raise RuntimeError(volumeslist['status']['message'])
-            for volume in volumeslist['uuidlist']:
+            for vol_uuid in volumeslist['uuidlist']:
                 volumeinfo = _cli.getVolumeInfo(
                     self._sdUUID,
                     self._spUUID,
-                    image,
-                    volume
+                    img_uuid,
+                    vol_uuid
                 )
                 self._log.debug(volumeinfo)
                 if volumeinfo['status']['code'] != 0:
@@ -92,8 +91,8 @@ class OVFStore(object):
                     description_dict = json.loads(description)
                     self._log.debug(description_dict)
                     if description_dict['Disk Description'] == 'OVF_STORE':
-                        self._ovf_store_imgUUID = image
-                        self._ovf_store_volUUID = volume
+                        self._ovf_store_imgUUID = img_uuid
+                        self._ovf_store_volUUID = vol_uuid
                         self._log.info(
                             'Found OVF_STORE: '
                             'imgUUID:{img}, volUUID:{vol}'.format(

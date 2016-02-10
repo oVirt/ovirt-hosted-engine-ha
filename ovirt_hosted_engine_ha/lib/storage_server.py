@@ -106,11 +106,7 @@ class StorageServer(object):
                     'Connection to storage server failed'
                 )
 
-    def connect_storage_server(self):
-        self._log.info("Connecting storage server")
-
-        cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
-
+    def _get_conlist(self):
         conList = None
         storageType = None
         if self._domain_type in (
@@ -130,7 +126,15 @@ class StorageServer(object):
             raise RuntimeError(
                 "Storage type not supported: '%s'" % self._domain_type
             )
+        return conList, storageType
 
+    def connect_storage_server(self):
+        """
+        Connect the hosted-engine domain storage server
+        """
+        self._log.info("Connecting storage server")
+        cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
+        conList, storageType = self._get_conlist()
         if conList:
             self._log.info("Connecting storage server")
             status = cli.connectStorageServer(
@@ -145,3 +149,28 @@ class StorageServer(object):
         # causing a Storage Domain refresh including
         # all its tree under /rhev/data-center/...
         cli.getStorageDomainStats(self._sdUUID)
+
+    def disconnect_storage_server(self):
+        """
+        Disconnect the hosted-engine domain storage server
+        """
+        self._log.info("Disconnecting storage server")
+        cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
+        conList, storageType = self._get_conlist()
+        if conList:
+            status = cli.disconnectStorageServer(
+                storageType,
+                self._spUUID,
+                conList
+            )
+            self._log.debug(status)
+            if status['status']['code'] != 0:
+                raise RuntimeError(
+                    (
+                        'Disconnection to storage server failed, unable '
+                        'to recover: {message} - Please try rebooting the '
+                        'host to reach a consistent status'
+                    ).format(
+                        message=status['status']['message']
+                    )
+                )
