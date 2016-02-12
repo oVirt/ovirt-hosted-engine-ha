@@ -45,12 +45,12 @@ Requires:       python-daemon
 Requires:       sanlock >= 2.8
 Requires:       sanlock-python >= 2.8
 Requires:       sudo
-Requires:       vdsm >= 4.17.0
-Requires:       vdsm-cli >= 4.17.0
-Requires:       vdsm-python >= 4.17.0
+Requires:       vdsm >= 4.17.999
+Requires:       vdsm-cli >= 4.17.999
+Requires:       vdsm-python >= 4.17.999
 
 # Otopi is needed for the cli client
-Requires:       otopi >= 1.3.0
+Requires:       otopi >= 1.4.0
 
 BuildRequires:  python
 BuildRequires:  python2-devel
