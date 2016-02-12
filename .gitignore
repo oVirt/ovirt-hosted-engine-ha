@@ -11,6 +11,8 @@
 /ovirt_hosted_engine_ha/lib/constants.py
 /sudoers/sudoers
 /tmp.repos/
+/initscripts/ovirt-ha-agent.service
+/initscripts/ovirt-ha-broker.service
 
 # Autotools
 /Makefile
