@@ -802,31 +802,32 @@ class Upgrade(object):
         )
 
     def _is_in_engine_maintenance(self):
-        connectedSP = set([])
-        sdlist = self._cli.getStorageDomainsList()
-        if sdlist['status']['code'] == 0:
-            for entry in sdlist['domlist']:
-                sdinfo = self._cli.getStorageDomainInfo(entry)
-                if sdinfo['status']['code'] == 0:
-                    connectedSP.update(sdinfo['info']['pool'])
-                else:
-                    raise RuntimeError(
-                        'Unable to fetch storage domain info: %s' %
-                        str(sdinfo['status']['message'])
+        splist = self._cli.getConnectedStoragePoolsList()
+        self._log.debug(splist)
+        if splist['status']['code'] == 0:
+            poollist = splist['poollist']
+            for pool in poollist:
+                if pool != self._spUUID:
+                    self._log.info(
+                        (
+                            'This host is connected to other storage '
+                            'pools: {poollist}'
+                        ).format(
+                            poollist=poollist,
+                        )
                     )
+                    return False
         else:
             raise RuntimeError(
-                'Unable to fetch storage domains list: %s' %
-                str(sdlist['status']['message'])
+                'Unable to fetch connected storage pool list: %s' %
+                str(splist['status']['message'])
             )
-        otherSP = connectedSP - set([self._spUUID])
-        if len(otherSP) > 0:
-            self._log.info('This host is connected to other storage pools')
-            return False
 
         vmlist = self._cli.list()
+        self._log.debug(vmlist)
         if vmlist['status']['code'] == 0:
-            runningVM = set(vmlist['vmList'])
+            vms = vmlist['vmList']
+            runningVM = set([vm['vmId'] for vm in vms])
             otherVM = runningVM - set([self._HEVMID])
             if len(otherVM) > 0:
                 self._log.info('Other VMs are running on this host')
@@ -834,7 +835,7 @@ class Upgrade(object):
         else:
             raise RuntimeError(
                 'Unable to fetch VM list: %s' %
-                str(sdlist['status']['message'])
+                str(vmlist['status']['message'])
             )
 
         return True
