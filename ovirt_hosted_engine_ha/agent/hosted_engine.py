@@ -555,6 +555,9 @@ class HostedEngine(object):
             self._log.error("Failed trying to connect storage: %s", output[1])
             raise Exception("Failed trying to connect storage")
 
+        # The symlinks under /rhev/data-center/ are not persisted on RHEV-H
+        # and so they have to be recreated after each reboot
+        self._refresh_rhev_symlinks()
         # Update to the current mount path for the domain
         self._sd_path = env_path.get_domain_path(self._config)
         self._log.debug("Path to storage domain is %s", self._sd_path)
@@ -679,6 +682,24 @@ class HostedEngine(object):
                                " (sd_uuid=%s): %s", sd_uuid, e)
             else:
                 self._log.info("Stopped VDSM domain monitor for %s", sd_uuid)
+
+    def _refresh_rhev_symlinks(self):
+        # calling getStorageDomainStats has the side effect of
+        # causing a Storage Domain refresh including
+        # all its tree under /rhev/data-center/...
+        use_ssl = util.to_bool(self._config.get(config.ENGINE,
+                                                config.VDSM_SSL))
+        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
+        try:
+            vdsc.run_vds_client_cmd(
+                '0',
+                use_ssl,
+                'getStorageDomainStats',
+                sd_uuid
+            )
+        except Exception as e:
+            self._log.info("Failed to get domain stats"
+                           " (sd_uuid=%s): %s", sd_uuid, e)
 
     def _initialize_domain_monitor(self):
         use_ssl = util.to_bool(self._config.get(config.ENGINE,
