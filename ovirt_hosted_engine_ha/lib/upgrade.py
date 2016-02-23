@@ -952,7 +952,7 @@ class Upgrade(object):
         )
         self._create_conf_tar()
         self._log.info(
-            'Successfully moved the configuration th the shared storage'
+            'Successfully moved the configuration to the shared storage'
         )
         return True
 
