@@ -87,7 +87,8 @@ class Image(object):
         :param cli a vdscli instance
         :return the list of available images
         """
-        result = cli.getImagesList(cli.getImagesList(self._sdUUID))
+        result = cli.getImagesList(self._sdUUID)
+        self._log.debug('getImagesList: {r}'.format(r=result))
         if result['status']['code'] != 0:
             # VDSM getImagesList doesn't work when the SD is not connect to
             # a storage pool so we have to reimplement it
