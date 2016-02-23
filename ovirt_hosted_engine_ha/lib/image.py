@@ -41,7 +41,8 @@ class Image(object):
         self._log = logging.getLogger("%s.Image" % __name__)
         self._log.addFilter(log_filter.IntermittentFilter())
         self._config = config.Config(logger=self._log)
-        self._spUUID = self._config.get(config.ENGINE, config.SP_UUID)
+        # We are not connected to any SP so we must pass a blank UUID
+        self._spUUID = constants.BLANK_UUID
         self._sdUUID = self._config.get(config.ENGINE, config.SD_UUID)
         self._type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
         self._lockspace_img_id = self._config.get(
