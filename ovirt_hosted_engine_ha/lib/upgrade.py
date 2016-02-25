@@ -1,6 +1,6 @@
 #
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-# Copyright (C) 2015 Red Hat, Inc.
+# Copyright (C) 2015-2016 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -290,6 +290,26 @@ class Upgrade(object):
         splist = status['poollist']
         return self._spUUID in splist
 
+    def _safeConnectStoragePool(self, master, dom_dict):
+        try:
+            self._connectStoragePool(master, dom_dict)
+        except RuntimeError, err:
+            if err.args > 1 and err.args[1] == 324:
+                # 324 means that the master storage domain is not what we
+                # expect, since the hosted-engine bootstrap storage pools
+                # should contain only the hosted-engine storage domain (plus
+                # the fake storage domain just in the middle of the upgrade)
+                # we can try to reconstruct to revert the initial 3.5 status
+                self._log.error(
+                    'The storagePool looks dirty probably as the result of a '
+                    'previous upgrade attempt, trying to revert to 3.5 '
+                    'status before the upgrade'
+                )
+                self._reconstructMaster(master, dom_dict)
+                self._connectStoragePool(master, dom_dict)
+            else:
+                raise
+
     def _connectStoragePool(self, master, dom_dict):
         self._log.info(
             "Connecting storage pool - "
@@ -312,7 +332,8 @@ class Upgrade(object):
             raise RuntimeError(
                 'Unable to connect SP: {message}'.format(
                     message=status['status']['message'],
-                )
+                ),
+                status['status']['code'],
             )
 
     def _disconnectStoragePool(self):
@@ -752,14 +773,14 @@ class Upgrade(object):
             )
         heconflib.domain_wait(self._sdUUID, self._cli, self._log)
 
-    def _reconstructMaster(self):
+    def _reconstructMaster(self, master, dom_dict):
         self._log.info('_reconstructMaster')
         master_ver = 1
         status = self._cli.reconstructMaster(
             self._spUUID,
             'hosted_engine',
-            self._fake_mastersd_uuid,
-            {self._fake_mastersd_uuid: 'active', self._sdUUID: 'active'},
+            master,
+            dom_dict,
             master_ver,
         )
         if status['status']['code'] != 0:
@@ -770,7 +791,7 @@ class Upgrade(object):
 
     def _remove_storage_pool(self):
         if not self._isStoragePoolConnected():
-            self._connectStoragePool(
+            self._safeConnectStoragePool(
                 master=self._sdUUID,
                 dom_dict={self._sdUUID: 'active'},
             )
@@ -785,14 +806,13 @@ class Upgrade(object):
         self._activateFakeStorageDomain()
         self._spmStop()
         self._disconnectStoragePool()
-        self._reconstructMaster()
-        self._connectStoragePool(
-            master=self._fake_mastersd_uuid,
-            dom_dict={
-                self._fake_mastersd_uuid: 'active',
-                self._sdUUID: 'active',
-            }
-        )
+        master = self._fake_mastersd_uuid,
+        dom_dict = {
+            self._fake_mastersd_uuid: 'active',
+            self._sdUUID: 'active',
+        }
+        self._reconstructMaster(master, dom_dict)
+        self._connectStoragePool(master, dom_dict)
         self._spmStart()
         if not self._is_storage_pool_attached():
             self._spmStop()
@@ -937,7 +957,7 @@ class Upgrade(object):
     def _move_to_shared_conf(self):
         self._log.info('_move_to_shared_conf')
         if not self._isStoragePoolConnected():
-            self._connectStoragePool(
+            self._safeConnectStoragePool(
                 master=self._sdUUID,
                 dom_dict={self._sdUUID: 'active'},
             )
