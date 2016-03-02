@@ -198,8 +198,8 @@ def parse_metadata_to_dict(host_str, data):
     if len(tokens) >= 10:
         ret['crc32'] = tokens[9]
         tokens[9] = EMPTY_CRC32
-        data = "|".join(tokens)
-        crc32 = CRC32_FORMAT % (binascii.crc32(data) & 0xffffffff)
+        crc_data = "|".join(tokens)
+        crc32 = CRC32_FORMAT % (binascii.crc32(crc_data) & 0xffffffff)
         if ret['crc32'] != crc32:
             raise MetadataError("Malformed metadata for host {0}:"
                                 " provided checksum {1} does not match"
