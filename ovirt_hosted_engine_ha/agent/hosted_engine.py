@@ -657,7 +657,11 @@ class HostedEngine(object):
     def _initialize_storage_images(self):
         self._log.info("Connecting the storage")
         sserver = storage_server.StorageServer()
-        img = image.Image()
+        img = image.Image(
+            self._config.get(config.ENGINE, config.DOMAIN_TYPE),
+            self._config.get(config.ENGINE, config.SD_UUID)
+        )
+
         try:
             sserver.connect_storage_server()
         except ex.DuplicateStorageConnectionException:

@@ -60,7 +60,7 @@ class OVFStore(object):
         self._ovf_store_volUUID = None
         _cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
 
-        imgs = image.Image()
+        imgs = image.Image(self._type, self._sdUUID)
         imageslist = imgs.get_images_list(_cli)
 
         for img_uuid in imageslist:
