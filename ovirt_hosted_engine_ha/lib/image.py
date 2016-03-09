@@ -23,7 +23,6 @@ import os
 import glob
 from . import log_filter
 from vdsm import vdscli
-from ovirt_hosted_engine_ha.lib import heconflib
 
 
 logger = logging.getLogger(__name__)
@@ -31,26 +30,41 @@ logger = logging.getLogger(__name__)
 
 class Image(object):
 
-    def __init__(self):
-        # TODO: this is just to avoid an import loop:
-        # fix it making all the value from config as
-        # constructor parameters and avoid importing config at all
-        # This will break the compatibility with ovirt-hosted-engine-setup
-        # and it should be addressed also there.
-        from ovirt_hosted_engine_ha.env import config
+    def __init__(self, stype, sdUUID):
         self._log = logging.getLogger("%s.Image" % __name__)
         self._log.addFilter(log_filter.IntermittentFilter())
-        self._config = config.Config(logger=self._log)
         # We are not connected to any SP so we must pass a blank UUID
         self._spUUID = constants.BLANK_UUID
-        self._sdUUID = self._config.get(config.ENGINE, config.SD_UUID)
-        self._type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
-        self._lockspace_img_id = self._config.get(
-            config.ENGINE, config.LOCKSPACE_IMAGE_UUID
+        self._sdUUID = sdUUID
+        self._storage_type = stype
+
+    def _get_image_path(self):
+        """
+        Return the base path for images inside the domain
+        :param type: storage type
+        :param sd_uuid: StorageDomain UUID
+        :returns: The local base path for images
+        """
+        path = constants.SD_MOUNT_PARENT
+        if self._storage_type == 'glusterfs':
+            path = os.path.join(
+                path,
+                'glusterSD',
+            )
+        path = os.path.join(
+            path,
+            '*',
+            self._sdUUID,
+            'images',
         )
-        self._lockspace_vol_id = self._config.get(
-            config.ENGINE, config.LOCKSPACE_VOLUME_UUID
-        )
+        volumes = glob.glob(path)
+        if not volumes:
+            raise RuntimeError(
+                'Base path for images not found under {root}'.format(
+                    root=constants.SD_MOUNT_PARENT,
+                )
+            )
+        return volumes[0]
 
     def _my_get_images_list(self):
         """
@@ -63,14 +77,7 @@ class Image(object):
         """
         images = set()
         try:
-            imageroot = os.path.dirname(os.path.dirname(
-                heconflib.get_volume_path(
-                    self._type,
-                    self._sdUUID,
-                    self._lockspace_img_id,
-                    self._lockspace_vol_id,
-                )
-            ))
+            imageroot = self._get_image_path()
         except RuntimeError:
             return images
         pattern = os.path.join(imageroot, '*-*-*-*-*')

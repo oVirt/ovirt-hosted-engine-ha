@@ -153,7 +153,7 @@ class Upgrade(object):
         self._conf_imgUUID = None
         self._conf_volUUID = None
 
-        img = image.Image()
+        img = image.Image(self._type, self._sdUUID)
         imageslist = img.get_images_list(self._cli)
 
         self._log.debug('found images: ' + str(imageslist))
