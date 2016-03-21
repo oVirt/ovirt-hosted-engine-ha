@@ -74,7 +74,21 @@ EXPECTED_VM_CONF_DICT = {
                 'function:0x0}'
             ),
             'device': 'bridge',
-            'type': 'interface'
+            'type': 'interface',
+            'linkActive': 'true'
+        },
+        {
+            'nicModel': 'pv',
+            'macAddr': '00:16:3e:43:ed:b6',
+            'network': 'dummynet',
+            'deviceId': '7442c4a6-c63d-4734-8a7e-3b2878efd7ef',
+            'address': (
+                '{slot:0x04, bus:0x00, domain:0x0000, type:pci, '
+                'function:0x0}'
+            ),
+            'device': 'bridge',
+            'type': 'interface',
+            'linkActive': 'false'
         },
         {
             'address': (

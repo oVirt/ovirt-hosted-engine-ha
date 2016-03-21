@@ -120,6 +120,7 @@ def buildNic(device):
         nic['nicModel'] = NETWORK_INTERFACE_TYPE[int(nicModel)]
     nic['macAddr'] = text(device, RASD_NS + "MACAddress")
     nic['network'] = text(device, RASD_NS + "Connection")
+    nic['linkActive'] = text(device, RASD_NS + "Linked")
     if nic['macAddr'] is None or nic['macAddr'] == 'None':
         return None
     return nic

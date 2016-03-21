@@ -154,6 +154,26 @@
         <IsReadOnly>false</IsReadOnly>
         <Alias/>
       </Item>
+      <Item>
+        <rasd:Caption>Ethernet adapter on dummynet</rasd:Caption>
+        <rasd:InstanceId>7442c4a6-c63d-4734-8a7e-3b2878efd7ef</rasd:InstanceId>
+        <rasd:ResourceType>10</rasd:ResourceType>
+        <rasd:OtherResourceType>dummynet</rasd:OtherResourceType>
+        <rasd:ResourceSubType>3</rasd:ResourceSubType>
+        <rasd:Connection>dummynet</rasd:Connection>
+        <rasd:Linked>false</rasd:Linked>
+        <rasd:Name>nic1</rasd:Name>
+        <rasd:MACAddress>00:16:3e:43:ed:b6</rasd:MACAddress>
+        <rasd:Address>{slot=0x04, bus=0x00, domain=0x0000, type=pci, function=0x0}</rasd:Address>
+        <rasd:speed>1000</rasd:speed>
+        <Type>interface</Type>
+        <Device>bridge</Device>
+        <rasd:Address/>
+        <BootOrder>0</BootOrder>
+        <IsPlugged>true</IsPlugged>
+        <IsReadOnly>false</IsReadOnly>
+        <Alias/>
+      </Item>
 
       <Item>
         <rasd:ResourceType>0</rasd:ResourceType>
