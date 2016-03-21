@@ -30,9 +30,12 @@ logger = logging.getLogger(__name__)
 
 class Image(object):
 
-    def __init__(self, stype, sdUUID):
-        self._log = logging.getLogger("%s.Image" % __name__)
-        self._log.addFilter(log_filter.IntermittentFilter())
+    def __init__(self, stype, sdUUID, extLogger=None):
+        if extLogger:
+            self._log = extLogger
+        else:
+            self._log = logging.getLogger("%s.Image" % __name__)
+            self._log.addFilter(log_filter.IntermittentFilter())
         # We are not connected to any SP so we must pass a blank UUID
         self._spUUID = constants.BLANK_UUID
         self._sdUUID = sdUUID
@@ -96,7 +99,7 @@ class Image(object):
         """
         result = cli.getImagesList(self._sdUUID)
         self._log.debug('getImagesList: {r}'.format(r=result))
-        if result['status']['code'] != 0:
+        if result['status']['code'] != 0 or not result['imageslist']:
             # VDSM getImagesList doesn't work when the SD is not connect to
             # a storage pool so we have to reimplement it
             # see: https://bugzilla.redhat.com/1274622
