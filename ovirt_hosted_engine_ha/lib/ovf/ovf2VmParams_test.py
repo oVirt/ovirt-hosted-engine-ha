@@ -1,3 +1,4 @@
+import copy
 import os
 from unittest import TestCase
 import ovf2VmParams
@@ -9,6 +10,12 @@ OVF = open(
     )
 ).read()
 
+OVF_w_max_vcpu = open(
+    os.path.join(
+        os.path.dirname(__file__),
+        'ovf_test_max_vcpu.xml'
+    )
+).read()
 
 EXPECTED_VM_CONF_DICT = {
     'vmId': '50e59bbd-f829-4761-ba1b-6db1a6acc3b8',
@@ -120,6 +127,9 @@ EXPECTED_VM_CONF_DICT = {
     ]
 }
 
+EXPECTED_VM_CONF_DICT_W_MAX_VCPU = copy.deepcopy(EXPECTED_VM_CONF_DICT)
+EXPECTED_VM_CONF_DICT_W_MAX_VCPU['maxVCpus'] = '16'
+
 
 class Ovf2vmConfTest(TestCase):
     def test_convert_to_dict(self):
@@ -127,6 +137,12 @@ class Ovf2vmConfTest(TestCase):
         self.assertDictEqual(
             EXPECTED_VM_CONF_DICT,
             ovf2VmParams.toDict(OVF))
+
+    def test_convert_to_dict_with_max_vcpu(self):
+        self.maxDiff = None
+        self.assertDictEqual(
+            EXPECTED_VM_CONF_DICT_W_MAX_VCPU,
+            ovf2VmParams.toDict(OVF_w_max_vcpu))
 
 
 # vim: expandtab tabstop=4 shiftwidth=4

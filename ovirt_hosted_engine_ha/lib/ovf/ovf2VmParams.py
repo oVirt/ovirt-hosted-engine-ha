@@ -173,6 +173,10 @@ def toDict(ovf):
     num_of_sockets = int(text(tree, RES_ALLOCATION_NS + 'num_of_sockets'))
     cpu_per_socket = int(text(tree, RES_ALLOCATION_NS + 'cpu_per_socket'))
     vmParams['smp'] = str(num_of_sockets * cpu_per_socket)
+    if tree.find(RES_ALLOCATION_NS + 'max_num_of_vcpus') is not None:
+        vmParams['maxVCpus'] = \
+            text(tree, RES_ALLOCATION_NS + 'max_num_of_vcpus')
+
     # mem
     # TODO use it to convert memSize
     # unit = text(tree, RES_ALLOCATION_NS + 'AllocationUnits')
