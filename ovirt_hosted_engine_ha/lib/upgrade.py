@@ -131,8 +131,8 @@ class Upgrade(object):
         try:
             volume = self._config.get(config.ENGINE, config.CONF_VOLUME_UUID)
             self._log.debug('Conf volume: %s ' % volume)
-            image = self._config.get(config.ENGINE, config.CONF_IMAGE_UUID)
-            self._log.debug('Conf image: %s ' % image)
+            _image = self._config.get(config.ENGINE, config.CONF_IMAGE_UUID)
+            self._log.debug('Conf image: %s ' % _image)
             spuuid = self._config.get(config.ENGINE, config.SP_UUID)
             if spuuid == constants.BLANK_UUID:
                 uptodate = True
