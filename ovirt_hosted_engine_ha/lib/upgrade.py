@@ -806,7 +806,7 @@ class Upgrade(object):
         self._activateFakeStorageDomain()
         self._spmStop()
         self._disconnectStoragePool()
-        master = self._fake_mastersd_uuid,
+        master = self._fake_mastersd_uuid
         dom_dict = {
             self._fake_mastersd_uuid: 'active',
             self._sdUUID: 'active',
