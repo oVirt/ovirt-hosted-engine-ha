@@ -21,8 +21,7 @@ from ovirt_hosted_engine_ha.env import constants
 from ovirt_hosted_engine_ha.lib import heconflib
 from ovirt_hosted_engine_ha.lib import image
 from ovirt_hosted_engine_ha.lib import log_filter
-
-from vdsm import vdscli
+from ovirt_hosted_engine_ha.lib import util
 
 import json
 import logging
@@ -58,26 +57,29 @@ class OVFStore(object):
     def scan(self):
         self._ovf_store_imgUUID = None
         self._ovf_store_volUUID = None
-        _cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
+        _cli = util.connect_vdsm_json_rpc(
+            logger=self._log,
+            timeout=constants.VDSCLI_SSL_TIMEOUT
+        )
 
         imgs = image.Image(self._type, self._sdUUID)
         imageslist = imgs.get_images_list(_cli)
 
         for img_uuid in imageslist:
             volumeslist = _cli.getVolumesList(
-                self._sdUUID,
-                self._spUUID,
-                img_uuid
+                imageID=img_uuid,
+                storagepoolID=self._spUUID,
+                storagedomainID=self._sdUUID,
             )
             self._log .debug(volumeslist)
             if volumeslist['status']['code'] != 0:
                 raise RuntimeError(volumeslist['status']['message'])
             for vol_uuid in volumeslist['uuidlist']:
                 volumeinfo = _cli.getVolumeInfo(
-                    self._sdUUID,
-                    self._spUUID,
-                    img_uuid,
-                    vol_uuid
+                    volumeID=vol_uuid,
+                    imageID=img_uuid,
+                    storagepoolID=self._spUUID,
+                    storagedomainID=self._sdUUID,
                 )
                 self._log.debug(volumeinfo)
                 if volumeinfo['status']['code'] != 0:

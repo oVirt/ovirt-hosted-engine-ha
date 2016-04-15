@@ -22,7 +22,7 @@ import logging
 import os
 import glob
 from . import log_filter
-from vdsm import vdscli
+from ovirt_hosted_engine_ha.lib import util
 
 
 logger = logging.getLogger(__name__)
@@ -94,12 +94,12 @@ class Image(object):
         """
         It scans for all the available images and volumes on the hosted-engine
         storage domain.
-        :param cli a vdscli instance
+        :param cli a jsonrpcvdscli instance
         :return the list of available images
         """
         result = cli.getImagesList(self._sdUUID)
         self._log.debug('getImagesList: {r}'.format(r=result))
-        if result['status']['code'] != 0 or not result['imageslist']:
+        if result['status']['code'] != 0 or not result['items']:
             # VDSM getImagesList doesn't work when the SD is not connect to
             # a storage pool so we have to reimplement it
             # see: https://bugzilla.redhat.com/1274622
@@ -113,7 +113,7 @@ class Image(object):
             )
             images = self._my_get_images_list()
         else:
-            images = result['imageslist']
+            images = result['items']
         return images
 
     def prepare_images(self):
@@ -124,41 +124,44 @@ class Image(object):
         the LV if on block devices.
         """
         self._log.info("Preparing images")
-        cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
+        cli = util.connect_vdsm_json_rpc(
+            logger=self._log,
+            timeout=constants.VDSCLI_SSL_TIMEOUT
+        )
         images = self.get_images_list(cli)
 
         for imgUUID in images:
             vm_vol_uuid_list = cli.getVolumesList(
-                self._sdUUID,
-                self._spUUID,
-                imgUUID,
+                imageID=imgUUID,
+                storagepoolID=self._spUUID,
+                storagedomainID=self._sdUUID,
             )
             self._log.debug(vm_vol_uuid_list)
             if vm_vol_uuid_list['status']['code'] == 0:
-                for volUUID in vm_vol_uuid_list['uuidlist']:
+                for volUUID in vm_vol_uuid_list['items']:
                     self._log.debug(
-                        "Prepare image {spuuid} {sduuid} "
-                        "{imguuid} {voluuid}".format(
-                            spuuid=self._spUUID,
-                            sduuid=self._sdUUID,
-                            imguuid=imgUUID,
-                            voluuid=volUUID,
+                        "Prepare image {storagepoolID} {storagedomainID} "
+                        "{imageID} {volumeID}".format(
+                            storagepoolID=self._spUUID,
+                            storagedomainID=self._sdUUID,
+                            imageID=imgUUID,
+                            volumeID=volUUID,
                         )
                     )
                     status = cli.prepareImage(
-                        self._spUUID,
-                        self._sdUUID,
-                        imgUUID,
-                        volUUID,
+                        storagepoolID=self._spUUID,
+                        storagedomainID=self._sdUUID,
+                        imageID=imgUUID,
+                        volumeID=volUUID,
                     )
                     self._log.debug('Status: {status}'.format(status=status))
                     if status['status']['code'] != 0:
                         self._log.error(
                             (
-                                'Error preparing image - sp_uuid: {spuuid} - '
-                                'sd_uuid: {sduuid} - '
-                                'img_uuid: {imguuid} - '
-                                'vol_uuid: {voluuid}: {message}'
+                                'Error preparing image - storagepoolID: '
+                                '{spuuid} - storagedomainID: {sduuid} - '
+                                'imageID: {imguuid} - '
+                                'volumeID: {voluuid}: {message}'
                             ).format(
                                 spuuid=self._spUUID,
                                 sduuid=self._sdUUID,
@@ -182,32 +185,35 @@ class Image(object):
         the LV if on block devices.
         """
         self._log.info("Teardown images")
-        cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
+        cli = util.connect_vdsm_json_rpc(
+            logger=self._log,
+            timeout=constants.VDSCLI_SSL_TIMEOUT
+        )
         images = self.get_images_list(cli)
 
         for imgUUID in images:
             vm_vol_uuid_list = cli.getVolumesList(
-                self._sdUUID,
-                self._spUUID,
-                imgUUID,
+                imageID=imgUUID,
+                storagepoolID=self._spUUID,
+                storagedomainID=self._sdUUID,
             )
             self._log.debug(vm_vol_uuid_list)
             if vm_vol_uuid_list['status']['code'] == 0:
-                for volUUID in vm_vol_uuid_list['uuidlist']:
+                for volUUID in vm_vol_uuid_list['items']:
                     self._log.debug(
-                        "Teardown image {spuuid} {sduuid} "
-                        "{imguuid} {voluuid}".format(
-                            spuuid=self._spUUID,
-                            sduuid=self._sdUUID,
-                            imguuid=imgUUID,
-                            voluuid=volUUID,
+                        "Teardown image {storagepoolID} {storagedomainID} "
+                        "{imageID} {volumeID}".format(
+                            storagepoolID=self._spUUID,
+                            storagedomainID=self._sdUUID,
+                            imageID=imgUUID,
+                            volumeID=volUUID,
                         )
                     )
                     status = cli.teardownImage(
-                        self._spUUID,
-                        self._sdUUID,
-                        imgUUID,
-                        volUUID,
+                        storagepoolID=self._spUUID,
+                        storagedomainID=self._sdUUID,
+                        imageID=imgUUID,
+                        volumeID=volUUID,
                     )
                     self._log.debug('Status: {status}'.format(status=status))
                     if status['status']['code'] != 0:

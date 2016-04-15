@@ -28,7 +28,6 @@ import tempfile
 import logging
 from . import log_filter
 from . import util
-from vdsm import vdscli
 import uuid
 import selinux
 import subprocess
@@ -47,7 +46,10 @@ class Upgrade(object):
         self._log = logging.getLogger("%s.StorageServer" % __name__)
         self._log.addFilter(log_filter.IntermittentFilter())
         self._config = config.Config(logger=self._log)
-        self._cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
+        self._cli = util.connect_vdsm_json_rpc(
+            logger=self._log,
+            timeout=constants.VDSCLI_SSL_TIMEOUT
+        )
 
         self._type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
         self._spUUID = self._config.get(config.ENGINE, config.SP_UUID)
@@ -70,12 +72,12 @@ class Upgrade(object):
             )
         except (KeyError, ValueError):
             vm_vol_uuid_list = self._cli.getVolumesList(
-                self._sdUUID,
-                self._spUUID,
-                self._vm_img_uuid,
+                imageID=self._vm_img_uuid,
+                storagepoolID=self._spUUID,
+                storagedomainID=self._sdUUID,
             )
             if vm_vol_uuid_list['status']['code'] == 0:
-                vm_vol_uuid = vm_vol_uuid_list['uuidlist'][0]
+                vm_vol_uuid = vm_vol_uuid_list['items'][0]
         self._vm_vol_uuid = vm_vol_uuid
 
         self._conf_imgUUID = None
@@ -166,9 +168,9 @@ class Upgrade(object):
         self._log.debug('candidate images: ' + str(unknowimages))
         for img_uuid in unknowimages:
             volumeslist = self._cli.getVolumesList(
-                self._sdUUID,
-                self._spUUID,
-                img_uuid
+                imageID=img_uuid,
+                storagepoolID=self._spUUID,
+                storagedomainID=self._sdUUID,
             )
             self._log.debug(volumeslist)
             if volumeslist['status']['code'] != 0:
@@ -181,12 +183,12 @@ class Upgrade(object):
                     )
                 )
             else:
-                for vol_uuid in volumeslist['uuidlist']:
+                for vol_uuid in volumeslist['items']:
                     volumeinfo = self._cli.getVolumeInfo(
-                        self._sdUUID,
-                        self._spUUID,
-                        img_uuid,
-                        vol_uuid
+                        volumeID=vol_uuid,
+                        imageID=img_uuid,
+                        storagepoolID=self._spUUID,
+                        storagedomainID=self._sdUUID,
                     )
                     self._log.debug(volumeinfo)
                     if volumeinfo['status']['code'] != 0:
@@ -281,13 +283,14 @@ class Upgrade(object):
 
     def _isStoragePoolConnected(self):
         status = self._cli.getConnectedStoragePoolsList()
+        self._log.debug(status)
         if status['status']['code'] != 0:
             raise RuntimeError(
                 'Unable to fetch the list of connected SP: {message}'.format(
                     message=status['status']['message'],
                 )
             )
-        splist = status['poollist']
+        splist = status['items']
         return self._spUUID in splist
 
     def _safeConnectStoragePool(self, master, dom_dict):
@@ -320,13 +323,14 @@ class Upgrade(object):
         )
         scsi_key = self._spUUID
         master_ver = 1
+
         status = self._cli.connectStoragePool(
-            self._spUUID,
-            self._host_id,
-            scsi_key,
-            master,
-            master_ver,
-            dom_dict,
+            storagepoolID=self._spUUID,
+            hostID=self._host_id,
+            scsiKey=scsi_key,
+            masterSdUUID=master,
+            masterVersion=master_ver,
+            domainDict=dom_dict,
         )
         if status['status']['code'] != 0:
             raise RuntimeError(
@@ -340,9 +344,9 @@ class Upgrade(object):
         self._log.info('Disconnecting storage pool')
         scsi_key = self._spUUID
         status = self._cli.disconnectStoragePool(
-            self._spUUID,
-            self._host_id,
-            scsi_key,
+            storagepoolID=self._spUUID,
+            hostID=self._host_id,
+            scsiKey=scsi_key,
         )
         if status['status']['code'] != 0:
             raise RuntimeError(
@@ -360,9 +364,9 @@ class Upgrade(object):
         )
         master_ver = 1
         status = self._cli.refreshStoragePool(
-            self._spUUID,
-            master,
-            master_ver,
+            storagepoolID=self._spUUID,
+            masterSdUUID=master,
+            masterVersion=master_ver,
         )
         if status['status']['code'] != 0:
             raise RuntimeError(
@@ -555,12 +559,12 @@ class Upgrade(object):
         domainType = constants.VDSMConstants.DATA_DOMAIN
         version = 3
         status = self._cli.createStorageDomain(
-            storageType,
-            sdUUID,
-            domainName,
-            typeSpecificArgs,
-            domainType,
-            version
+            storagedomainID=sdUUID,
+            domainType=storageType,
+            name=domainName,
+            typeArgs=typeSpecificArgs,
+            domainClass=domainType,
+            version=version
         )
         self._log.debug(status)
         if status['status']['code'] != 0:
@@ -579,9 +583,9 @@ class Upgrade(object):
             'id': self._fake_master_connection_uuid,
         }]
         status = self._cli.connectStorageServer(
-            constants.VDSMConstants.POSIXFS_DOMAIN,
-            self._spUUID,
-            fakeSDconList
+            storagepoolID=self._spUUID,
+            domainType=constants.VDSMConstants.POSIXFS_DOMAIN,
+            connectionParams=fakeSDconList,
         )
         self._log.debug(status)
         if status['status']['code'] != 0:
@@ -599,9 +603,9 @@ class Upgrade(object):
             'id': self._fake_master_connection_uuid,
         }]
         status = self._cli.disconnectStorageServer(
-            constants.VDSMConstants.POSIXFS_DOMAIN,
-            self._spUUID,
-            fakeSDconList
+            storagepoolID=self._spUUID,
+            domainType=constants.VDSMConstants.POSIXFS_DOMAIN,
+            connectionParams=fakeSDconList,
         )
         self._log.debug(status)
         if status['status']['code'] != 0:
@@ -613,8 +617,8 @@ class Upgrade(object):
     def _attachFakeStorageDomain(self):
         self._log.info('_attachFakeStorageDomain')
         status = self._cli.attachStorageDomain(
-            self._fake_mastersd_uuid,
-            self._spUUID
+            storagedomainID=self._fake_mastersd_uuid,
+            storagepoolID=self._spUUID
         )
         if status['status']['code'] != 0:
             raise RuntimeError(
@@ -625,8 +629,8 @@ class Upgrade(object):
     def _activateFakeStorageDomain(self):
         self._log.info('_activateFakeStorageDomain')
         status = self._cli.activateStorageDomain(
-            self._fake_mastersd_uuid,
-            self._spUUID
+            storagedomainID=self._fake_mastersd_uuid,
+            storagepoolID=self._spUUID
         )
         if status['status']['code'] != 0:
             raise RuntimeError(
@@ -646,10 +650,10 @@ class Upgrade(object):
         spUUID = self._spUUID
         master_ver = 1
         status = self._cli.detachStorageDomain(
-            sdUUID,
-            spUUID,
-            newMasterSdUUID,
-            master_ver
+            storagedomainID=sdUUID,
+            storagepoolID=spUUID,
+            masterSdUUID=newMasterSdUUID,
+            masterVersion=master_ver
         )
         if status['status']['code'] != 0:
             raise RuntimeError(status['status']['message'])
@@ -665,9 +669,9 @@ class Upgrade(object):
         ID = self._host_id
         scsi_key = spUUID
         status = self._cli.destroyStoragePool(
-            spUUID,
-            ID,
-            scsi_key
+            storagepoolID=spUUID,
+            hostID=ID,
+            scsiKey=scsi_key,
         )
         self._log.debug(status)
         if status['status']['code'] != 0:
@@ -692,18 +696,17 @@ class Upgrade(object):
         else:
             prevID = -1
             prevLVER = -1
-            recoveryMode = -1
             scsiFencing = 'false'
             maxHostID = 250
             version = 3
             status = self._cli.spmStart(
-                self._spUUID,
-                prevID,
-                prevLVER,
-                recoveryMode,
-                scsiFencing,
-                maxHostID,
-                version
+                storagepoolID=self._spUUID,
+                prevID=prevID,
+                prevLver=prevLVER,
+
+                enableScsiFencing=scsiFencing,
+                maxHostID=maxHostID,
+                domVersion=version,
             )
             self._log.debug(status)
             if status['status']['code'] != 0:
@@ -740,8 +743,7 @@ class Upgrade(object):
     def _stopMonitoringDomain(self):
         self._log.info('Stop monitoring domain')
         status = self._cli.stopMonitoringDomain(
-            self._sdUUID,
-            self._host_id
+            storagepoolID=self._sdUUID,
         )
         self._log.debug(status)
         rcode = status['status']['code']
@@ -762,8 +764,8 @@ class Upgrade(object):
     def _startMonitoringDomain(self):
         self._log.info('Start monitoring domain')
         status = self._cli.startMonitoringDomain(
-            self._sdUUID,
-            self._host_id
+            storagepoolID=self._sdUUID,
+            hostID=self._host_id,
         )
         self._log.debug(status)
         if status['status']['code'] != 0:
@@ -777,11 +779,16 @@ class Upgrade(object):
         self._log.info('_reconstructMaster')
         master_ver = 1
         status = self._cli.reconstructMaster(
-            self._spUUID,
-            'hosted_engine',
-            master,
-            dom_dict,
-            master_ver,
+            storagepoolID=self._spUUID,
+            hostId=self._host_id,
+            name='hosted_engine',
+            masterSdUUID=master,
+            masterVersion=master_ver,
+            domainDict=dom_dict,
+            lockRenewalIntervalSec=0,
+            leaseTimeSec=0,
+            ioOpTimeoutSec=0,
+            leaseRetries=0,
         )
         if status['status']['code'] != 0:
             raise RuntimeError(
@@ -840,7 +847,7 @@ class Upgrade(object):
         splist = self._cli.getConnectedStoragePoolsList()
         self._log.debug(splist)
         if splist['status']['code'] == 0:
-            poollist = splist['poollist']
+            poollist = splist['items']
             for pool in poollist:
                 if pool != self._spUUID:
                     self._log.info(
@@ -861,7 +868,7 @@ class Upgrade(object):
         vmlist = self._cli.list()
         self._log.debug(vmlist)
         if vmlist['status']['code'] == 0:
-            vms = vmlist['vmList']
+            vms = vmlist['items']
             runningVM = set([vm['vmId'] for vm in vms])
             otherVM = runningVM - set([self._HEVMID])
             if len(otherVM) > 0:

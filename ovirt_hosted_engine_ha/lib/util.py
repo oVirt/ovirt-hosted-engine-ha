@@ -32,6 +32,9 @@ from contextlib import contextmanager, closing
 from ovirt_hosted_engine_ha.env import constants as envconst
 from .exceptions import DisconnectionError
 
+from vdsm import jsonrpcvdscli
+from vdsm.config import config as vdsmconfig
+
 
 def has_elapsed(start, count, end=None):
     """
@@ -167,3 +170,57 @@ def uninterruptible(method, *args, **kwargs):
 def isOvirtNode():
     return (os.path.exists('/etc/rhev-hypervisor-release') or
             bool(glob.glob('/etc/ovirt-node-*-release')))
+
+
+def connect_vdsm_json_rpc(logger=None, timeout=None):
+    MAX_RETRY = 120
+    DELAY = 2
+    retry = 0
+    vdsmReady = False
+    requestQueues = vdsmconfig.get('addresses', 'request_queues')
+    requestQueue = requestQueues.split(",")[0]
+    while not vdsmReady and retry < MAX_RETRY:
+        time.sleep(DELAY)
+        retry += 1
+        try:
+            cli = jsonrpcvdscli.connect(
+                requestQueue=requestQueue,
+            )
+            if timeout:
+                cli.set_default_timeout(timeout)
+            vdsmReady = True
+        except socket.error:
+            if logger:
+                logger.info('Waiting for VDSM to reply')
+    if not vdsmReady:
+        raise RuntimeError(
+            'Couldn''t  connect to VDSM within {timeout} seconds'.format(
+                timeout=MAX_RETRY * DELAY
+            )
+        )
+
+    vdsmReady = False
+    retry = 0
+    while not vdsmReady and retry < MAX_RETRY:
+        retry += 1
+        try:
+            hwinfo = cli.getVdsHardwareInfo()
+            if logger:
+                logger.debug(str(hwinfo))
+            if hwinfo['status']['code'] == 0:
+                vdsmReady = True
+            else:
+                if logger:
+                    logger.info('Waiting for VDSM hardware info')
+                time.sleep(DELAY)
+        except socket.error:
+            if logger:
+                logger.info('Waiting for VDSM hardware info')
+            time.sleep(DELAY)
+    if not vdsmReady:
+        raise RuntimeError(
+            'Couldn''t  connect to VDSM within {timeout} seconds'.format(
+                timeout=MAX_RETRY * DELAY
+            )
+        )
+    return cli

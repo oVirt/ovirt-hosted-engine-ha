@@ -28,6 +28,7 @@
 
 %global         vdsm_user @VDSM_USER@
 %global         vdsm_group @VDSM_GROUP@
+%global         vdsm_version 4.17.999
 
 Summary:        oVirt Hosted Engine High Availability Manager
 Name:           @PACKAGE_NAME@
@@ -45,9 +46,9 @@ Requires:       python-daemon
 Requires:       sanlock >= 2.8
 Requires:       sanlock-python >= 2.8
 Requires:       sudo
-Requires:       vdsm >= 4.17.999
-Requires:       vdsm-cli >= 4.17.999
-Requires:       vdsm-python >= 4.17.999
+Requires:       vdsm >= %{vdsm_version}
+Requires:       vdsm-cli >= %{vdsm_version}
+Requires:       vdsm-python >= %{vdsm_version}
 
 # Otopi is needed for the cli client
 Requires:       otopi >= 1.4.0
@@ -56,6 +57,9 @@ BuildRequires:  python
 BuildRequires:  python2-devel
 BuildRequires:  python-nose
 BuildRequires:  python-mock
+BuildRequires:  vdsm >= %{vdsm_version}
+BuildRequires:  vdsm-cli >= %{vdsm_version}
+BuildRequires:  vdsm-python >= %{vdsm_version}
 %{?systemd_requires}
 BuildRequires:  systemd
 

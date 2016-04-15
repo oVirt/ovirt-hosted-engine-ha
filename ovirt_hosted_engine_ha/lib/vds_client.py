@@ -28,6 +28,7 @@ from exceptions import DetailedError
 from ..env import constants
 
 
+# TODO: move to jsonrpc everywhere and get rid of this
 def run_vds_client_cmd(address, use_ssl, command, *args, **kwargs):
     """
     Run the passed in command name from the vdsClient library and either

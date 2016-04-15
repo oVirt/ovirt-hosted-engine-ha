@@ -28,7 +28,6 @@ import subprocess
 import time
 import binascii
 
-from vdsm import vdscli
 import sanlock
 
 from . import constants
@@ -631,28 +630,10 @@ class HostedEngine(object):
                                .format(constants.MAX_VDSM_WAIT_SECS))
                 time.sleep(constants.MAX_VDSM_WAIT_SECS)
 
-        cli = vdscli.connect(timeout=envconstants.VDSCLI_SSL_TIMEOUT)
-        vdsmReady = False
-        retry = 0
-        while not vdsmReady:
-            retry += 1
-            if retry > constants.MAX_VDSM_START_RETRIES:
-                self._log.error(
-                    "Failed trying to connect vdsm after %s retries",
-                    retry
-                )
-                raise Exception("Failed trying to connect vdsm")
-            try:
-                hwinfo = cli.getVdsHardwareInfo()
-                self._log.debug(str(hwinfo))
-                if hwinfo['status']['code'] == 0:
-                    vdsmReady = True
-                else:
-                    self._log.debug('Waiting for VDSM hardware info')
-                    time.sleep(1)
-            except socket.error:
-                self._log.debug('Waiting for VDSM hardware info')
-                time.sleep(1)
+        util.connect_vdsm_json_rpc(
+            logger=self._log,
+            timeout=envconstants.VDSCLI_SSL_TIMEOUT
+        )
 
     def _initialize_storage_images(self):
         self._log.info("Connecting the storage")

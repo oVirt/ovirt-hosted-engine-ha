@@ -282,6 +282,8 @@ def task_wait(cli, logger):
         if logger:
             logger.debug('Waiting for existing tasks to complete')
         statuses = cli.getAllTasksStatuses()
+        if logger:
+            logger.debug(statuses)
         code = statuses['status']['code']
         message = statuses['status']['message']
         if code != 0:
@@ -290,10 +292,13 @@ def task_wait(cli, logger):
                     error=message
                 )
             )
-        tasksStatuses = statuses['allTasksStatus']
         all_completed = True
-        for taskID in tasksStatuses:
-            if tasksStatuses[taskID]['taskState'] != 'finished':
+        taskIDs = set(statuses.keys()) - set(['status'])
+        for taskID in taskIDs:
+            if (
+                'taskState' in statuses[taskID] and
+                statuses[taskID]['taskState'] != 'finished'
+            ):
                 all_completed = False
             else:
                 cli.clearTask(taskID)
@@ -344,19 +349,20 @@ def create_and_prepare_image(
 ):
     # creates a volume on the storage (SPM verb)
     status = cli.createVolume(
-        sdUUID,
-        spUUID,
-        imgUUID,
-        str(int(sizeGB) * pow(2, 30)),
-        volFormat,
-        preallocate,
-        diskType,
-        volUUID,
-        desc,
+        volumeID=volUUID,
+        storagepoolID=spUUID,
+        storagedomainID=sdUUID,
+        imageID=imgUUID,
+        size=str(int(sizeGB) * pow(2, 30)),
+        volFormat=volFormat,
+        preallocate=preallocate,
+        diskType=diskType,
+        desc=desc,
+        srcImgUUID=envconst.BLANK_UUID,
+        srcVolUUID=envconst.BLANK_UUID,
     )
     if logger:
         logger.debug(status)
-
     if status['status']['code'] != 0:
         raise RuntimeError(status['status']['message'])
     else:
@@ -378,10 +384,10 @@ def create_and_prepare_image(
     if logger:
         logger.debug('configuration volume: prepareImage')
     response = cli.prepareImage(
-        spUUID,
-        sdUUID,
-        imgUUID,
-        volUUID
+        storagepoolID=spUUID,
+        storagedomainID=sdUUID,
+        imageID=imgUUID,
+        volumeID=volUUID
     )
     if logger:
         logger.debug(response)

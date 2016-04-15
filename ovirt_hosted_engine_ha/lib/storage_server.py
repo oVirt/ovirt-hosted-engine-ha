@@ -21,10 +21,10 @@ from ..env import config
 from ..env import constants
 from ..env import path as env_path
 from ovirt_hosted_engine_ha.lib import exceptions as ex
+from ovirt_hosted_engine_ha.lib import util
 import logging
 import os
 from . import log_filter
-from vdsm import vdscli
 
 
 logger = logging.getLogger(__name__)
@@ -102,7 +102,7 @@ class StorageServer(object):
         if they differ, raises
         hosted_engine.DuplicateStorageConnectionException
         See rhbz#1300749
-        :param cli:  a vdscli instance
+        :param cli:  a jsonrpcvdscli instance
         :param path: the path (without the trailing '/') to be validated
                      against already connected storage server
         :raise       hosted_engine.DuplicateStorageConnectionException on error
@@ -162,7 +162,7 @@ class StorageServer(object):
                 'Connection to storage server failed: %s' %
                 status['status']['message']
             )
-        for con in status['statuslist']:
+        for con in status['items']:
             if con['status'] != 0:
                 raise RuntimeError(
                     'Connection to storage server failed'
@@ -205,17 +205,19 @@ class StorageServer(object):
         Connect the hosted-engine domain storage server
         """
         self._log.info("Connecting storage server")
-        cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
+        cli = util.connect_vdsm_json_rpc(
+            logger=self._log,
+            timeout=constants.VDSCLI_SSL_TIMEOUT
+        )
         conList, storageType = self._get_conlist(cli, normalize_path=True)
         if conList:
             self._log.info("Connecting storage server")
             status = cli.connectStorageServer(
-                storageType,
-                self._spUUID,
-                conList
+                storagepoolID=self._spUUID,
+                domainType=storageType,
+                connectionParams=conList,
             )
             self._check_connection(status)
-
         self._log.info("Refreshing the storage domain")
         # calling getStorageDomainStats has the side effect of
         # causing a Storage Domain refresh including
@@ -227,15 +229,18 @@ class StorageServer(object):
         Disconnect the hosted-engine domain storage server
         """
         self._log.info("Disconnecting storage server")
-        cli = vdscli.connect(timeout=constants.VDSCLI_SSL_TIMEOUT)
+        cli = util.connect_vdsm_json_rpc(
+            logger=self._log,
+            timeout=constants.VDSCLI_SSL_TIMEOUT
+        )
         # normalize_path=False since we want to be sure we really disconnect
         # from where we were connected also if its path was wrong
         conList, storageType = self._get_conlist(cli, normalize_path=False)
         if conList:
             status = cli.disconnectStorageServer(
-                storageType,
-                self._spUUID,
-                conList
+                storagepoolID=self._spUUID,
+                domainType=storageType,
+                connectionParams=conList,
             )
             self._log.debug(status)
             if status['status']['code'] != 0:
