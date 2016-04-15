@@ -25,10 +25,20 @@ from . import constants
 from ovirt_hosted_engine_ha.lib import util
 
 
-def canonize_path(path, sduuid):
+MOUNT_DIR = {"nfs": "", "glusterfs": "glusterSD"}
+
+
+def escape_remote_path(path):
+    return path.replace("_", "__").replace("/", "_")
+
+
+def canonize_file_path(storage_type, remote_path, sduuid):
+    mount_dir = MOUNT_DIR[storage_type]
+    escaped_path = escape_remote_path(remote_path)
     return os.path.join(
         constants.SD_MOUNT_PARENT,
-        path.replace("_", "__").replace("/", "_"),
+        mount_dir,
+        escaped_path,
         sduuid,
     )
 
@@ -44,15 +54,18 @@ def get_domain_path(config_):
     sd_uuid = config_.get(config.ENGINE, config.SD_UUID)
     dom_type = config_.get(config.ENGINE, config.DOMAIN_TYPE)
     parent = constants.SD_MOUNT_PARENT
-    if dom_type == 'glusterfs':
-        parent = os.path.join(parent, 'glusterSD')
 
-    if dom_type.startswith("nfs"):
+    if dom_type in (
+        constants.DOMAIN_TYPE_NFS3,
+        constants.DOMAIN_TYPE_NFS4,
+        constants.DOMAIN_TYPE_GLUSTERFS,
+    ):
         response = vdsm.getStorageDomainInfo(sd_uuid)
         if response['status']['code'] == 0:
             try:
-                path = canonize_path(
-                    response['info']['remotePath'],
+                path = canonize_file_path(
+                    dom_type,
+                    response['remotePath'],
                     sd_uuid
                 )
                 if os.access(path, os.F_OK):
@@ -64,6 +77,8 @@ def get_domain_path(config_):
     # fallback in case of getStorageDomainInfo call fails
     # please note that this code will get stuck if some of
     # the storage domains is not accessible rhbz#1140824
+    if dom_type == constants.DOMAIN_TYPE_GLUSTERFS:
+        parent = os.path.join(parent, constants.SD_GLUSTER_PREFIX)
     for dname in os.listdir(parent):
         path = os.path.join(parent, dname, sd_uuid)
         if os.access(path, os.F_OK):
