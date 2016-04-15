@@ -116,23 +116,24 @@ class StorageServer(object):
             )
         else:
             # verifying only if the storage domain is already connected
-            canonical_path = env_path.canonize_path(
+            canonical_path = env_path.canonize_file_path(
+                self._domain_type,
                 path,
                 self._sdUUID,
             )
             effective_path = env_path.get_domain_path(self._config)
             if effective_path != canonical_path:
-                raise ex.DuplicateStorageConnectionException(
-                    (
-                        "The hosted-engine storage domain is already "
-                        "mounted on '{effective_path}' with a path that is "
-                        "not supported anymore: the right path should be "
-                        "'{canonical_path}'."
-                    ).format(
-                        canonical_path=canonical_path,
-                        effective_path=effective_path,
-                    )
+                msg = (
+                    "The hosted-engine storage domain is already "
+                    "mounted on '{effective_path}' with a path that is "
+                    "not supported anymore: the right path should be "
+                    "'{canonical_path}'."
+                ).format(
+                    canonical_path=canonical_path,
+                    effective_path=effective_path,
                 )
+                self._log.error(msg)
+                raise ex.DuplicateStorageConnectionException(msg)
 
     def _get_conlist_iscsi(self):
         storageType = constants.STORAGE_TYPE_ISCSI
