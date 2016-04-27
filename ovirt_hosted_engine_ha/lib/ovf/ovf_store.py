@@ -74,7 +74,7 @@ class OVFStore(object):
             self._log .debug(volumeslist)
             if volumeslist['status']['code'] != 0:
                 raise RuntimeError(volumeslist['status']['message'])
-            for vol_uuid in volumeslist['uuidlist']:
+            for vol_uuid in volumeslist['items']:
                 volumeinfo = _cli.getVolumeInfo(
                     volumeID=vol_uuid,
                     imageID=img_uuid,
@@ -84,7 +84,7 @@ class OVFStore(object):
                 self._log.debug(volumeinfo)
                 if volumeinfo['status']['code'] != 0:
                     raise RuntimeError(volumeinfo['status']['message'])
-                description = volumeinfo['info']['description']
+                description = volumeinfo['description']
                 if (
                     'Disk Description' in description and
                     description[0] == '{' and
