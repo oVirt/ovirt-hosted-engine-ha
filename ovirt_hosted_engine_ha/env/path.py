@@ -25,7 +25,11 @@ from . import constants
 from ovirt_hosted_engine_ha.lib import util
 
 
-MOUNT_DIR = {"nfs": "", "glusterfs": "glusterSD"}
+MOUNT_DIR = {
+    "nfs3": "",
+    "nfs4": "",
+    "glusterfs": "glusterSD"
+}
 
 
 def escape_remote_path(path):
