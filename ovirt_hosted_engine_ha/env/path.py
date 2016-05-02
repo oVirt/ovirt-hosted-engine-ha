@@ -24,7 +24,11 @@ from . import constants
 from vdsm import vdscli
 
 
-MOUNT_DIR = {"nfs": "", "glusterfs": "glusterSD"}
+MOUNT_DIR = {
+    "nfs3": "",
+    "nfs4": "",
+    "glusterfs": "glusterSD"
+}
 
 
 def escape_remote_path(path):
