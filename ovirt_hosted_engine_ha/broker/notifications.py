@@ -31,7 +31,7 @@ def send_email(cfg, email_body):
                         message.as_string())
         server.quit()
         return True
-    except (smtplib.SMTPException, socket.error) as e:
+    except (smtplib.SMTPException, socket.error, EnvironmentError) as e:
         logging.getLogger("%s.Notifications" % __name__).exception(e)
         return False
 
