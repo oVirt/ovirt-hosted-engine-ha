@@ -2,4 +2,4 @@ From: {source-email}
 To: {destination-emails}
 Subject: ovirt-hosted-engine state transition {detail}
 
-The state machine changed state.
+Hosted engine host: {hostname} changed state: {detail}.
