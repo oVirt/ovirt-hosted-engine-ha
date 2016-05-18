@@ -166,6 +166,9 @@ fi
 
 
 %changelog
+* Wed May 18 2016 Simone Tiraboschi <stirabos@redhat.com> - 2.0.0-0.2.master
+- 2.0.0-0.2.master
+
 * Wed May 18 2016 Simone Tiraboschi <stirabos@redhat.com> - 2.0.0-0.1.beta1
 - 2.0.0-0.1.beta1
 
