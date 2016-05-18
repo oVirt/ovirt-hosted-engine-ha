@@ -51,7 +51,7 @@ Requires:       vdsm-cli >= %{vdsm_version}
 Requires:       vdsm-python >= %{vdsm_version}
 
 # Otopi is needed for the cli client
-Requires:       otopi >= 1.4.0
+Requires:       otopi >= 1.5.0
 
 BuildRequires:  python
 BuildRequires:  python2-devel
@@ -166,5 +166,8 @@ fi
 
 
 %changelog
+* Wed May 18 2016 Simone Tiraboschi <stirabos@redhat.com> - 2.0.0-0.1.beta1
+- 2.0.0-0.1.beta1
+
 * Thu Sep 24 2015 Sandro Bonazzola <sbonazzo@redhat.com> - 2.0.0-0.0.master
 - 2.0.0-0.0.master
