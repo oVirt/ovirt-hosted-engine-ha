@@ -49,6 +49,7 @@ CONF_IMAGE_UUID = 'conf_image_UUID'
 CONF_FILE = 'conf'
 HEVMID = 'vmid'
 STORAGE = 'storage'
+MNT_OPTIONS = 'mnt_options'
 CONNECTIONUUID = 'connectionUUID'
 # The following are used only for iSCSI storage
 ISCSI_IQN = 'iqn'
