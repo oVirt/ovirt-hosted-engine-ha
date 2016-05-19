@@ -56,6 +56,14 @@ class StorageServer(object):
             self._tpgt = int(str_tpgt)
         except (KeyError, ValueError):
             pass
+        self._mnt_options = None
+        try:
+            self._mnt_options = self._config.get(
+                config.ENGINE,
+                config.MNT_OPTIONS
+            )
+        except (KeyError, ValueError):
+            pass
 
     def _get_conlist_nfs_gluster(self):
         conDict = {
@@ -199,6 +207,8 @@ class StorageServer(object):
             raise RuntimeError(
                 "Storage type not supported: '%s'" % self._domain_type
             )
+        if self._mnt_options and conList:
+            conList[0]['mnt_options'] = self._mnt_options
         return conList, storageType
 
     def connect_storage_server(self):
