@@ -138,6 +138,11 @@ def buildConsole(device):
     return console
 
 
+def buildVideo(device):
+    video = buildDevice(device)
+    video['alias'] = 'video0'
+    return video
+
 def addStubs(vmParams):
     """
     Add sections which are mandatory and can't be converted from the OVF
@@ -198,6 +203,8 @@ def toDict(ovf):
             elif t == 'console':
                 # TODO console device still not supported yet
                 pass
+            elif t == 'video':
+                devices.append(buildVideo(device))
     # filter out invalid devices (marked by None)
     vmParams['devices'] = [dev for dev in devices
                            if dev is not None and dev != 'None']
