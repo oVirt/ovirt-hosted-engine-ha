@@ -124,6 +124,16 @@ EXPECTED_VM_CONF_DICT = {
             'type': 'controller',
             'deviceId': 'e354e922-b612-49ca-9474-adacc2dc388e'
         },
+        {
+            'address': (
+                '{slot:0x02, bus:0x00, domain:0x0000, type:pci, '
+                'function:0x0}'
+            ),
+            'device': 'cirrus',
+            'type': 'video',
+            'alias': 'video0',
+            'deviceId': 'd3c45090-2863-4faa-a9c4-58fdd1d06f19',
+        },
     ]
 }
 
@@ -132,6 +142,7 @@ EXPECTED_VM_CONF_DICT_W_MAX_VCPU['maxVCpus'] = '16'
 
 
 class Ovf2vmConfTest(TestCase):
+
     def test_convert_to_dict(self):
         self.maxDiff = None
         self.assertDictEqual(

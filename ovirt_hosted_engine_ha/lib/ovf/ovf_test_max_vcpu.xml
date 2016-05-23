@@ -242,6 +242,17 @@
         <IsReadOnly>true</IsReadOnly>
         <Alias/>
       </Item>
+      <Item>
+        <rasd:ResourceType>0</rasd:ResourceType>
+        <rasd:InstanceId>d3c45090-2863-4faa-a9c4-58fdd1d06f19</rasd:InstanceId>
+        <Type>video</Type>
+        <Device>cirrus</Device>
+        <rasd:Address>{slot=0x02, bus=0x00, domain=0x0000, type=pci, function=0x0}</rasd:Address>
+        <BootOrder>0</BootOrder>
+        <IsPlugged>true</IsPlugged>
+        <IsReadOnly>false</IsReadOnly>
+        <Alias>video0</Alias>
+      </Item>
     </Section>
     <Section xsi:type="ovf:SnapshotsSection_Type">
       <Snapshot ovf:id="47093b30-ef1b-4b7f-be3e-d2421fe7c6ef">
