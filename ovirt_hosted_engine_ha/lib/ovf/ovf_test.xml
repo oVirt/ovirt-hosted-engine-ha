@@ -40,7 +40,7 @@
     <IsInitilized>false</IsInitilized>
     <Origin>6</Origin>
     <app_list>rhevm-guest-agent-common-1.0.10-2.el6ev,kernel-2.6.32-504.16.2.el6</app_list>
-    <DefaultDisplayType>1</DefaultDisplayType>
+    <DefaultDisplayType>0</DefaultDisplayType>
     <TrustedService>false</TrustedService>
     <UseHostCpu>false</UseHostCpu>
     <UseLatestVersion>false</UseLatestVersion>

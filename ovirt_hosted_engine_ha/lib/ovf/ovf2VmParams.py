@@ -22,9 +22,9 @@ RASD_NS = \
 # its enums in the OVF so we're always updated
 # or import java classes or do code generation for python
 DISPLAY_TYPES = {
-    1: 'vnc',
-    2: 'cirrus',
-    3: 'qxl'
+    0: 'vnc',  # cirrus
+    1: 'qxl',  # qxl
+    2: 'vnc'   # vga
 }
 
 # ovf device types mapping
@@ -142,6 +142,7 @@ def buildVideo(device):
     video = buildDevice(device)
     video['alias'] = 'video0'
     return video
+
 
 def addStubs(vmParams):
     """
