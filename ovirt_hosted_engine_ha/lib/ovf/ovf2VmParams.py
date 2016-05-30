@@ -143,6 +143,7 @@ def buildVideo(device):
     video['alias'] = 'video0'
     return video
 
+
 def addStubs(vmParams):
     """
     Add sections which are mandatory and can't be converted from the OVF
@@ -151,6 +152,29 @@ def addStubs(vmParams):
     """
     vmParams['spiceSecureChannels'] = \
         'smain,sdisplay,sinputs,scursor,splayback,srecord,ssmartcard,susbredir'
+    fixConf(vmParams)
+
+
+def fixConf(vmConf):
+    """
+    We can not always trust the imported HE VM configuration ovirt-engine 3.6.
+    Make sure we have all mandatory devices on the VM.
+    """
+    devices = vmConf['devices']
+    for device in devices:
+        if device.get('type') == 'video':
+            return
+
+    if vmConf['display'] == 'vnc':
+        video_device = 'cirrus'
+    else:
+        video_device = 'qxl'
+
+    devices.append({
+        'device': video_device,
+        'alias': 'video0',
+        'type': 'video'
+    })
 
 
 def toDict(ovf):
