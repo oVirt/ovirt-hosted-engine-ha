@@ -338,8 +338,13 @@ class VdsmBackend(StorageBackend):
         # Clear the volume (VDSM does not do that automatically for iSCSI)
         # use 10KiB blocks to do the writing
         BLOCK_SIZE = 10240
-        stat = os.stat(response.path)
-        remaining_size = stat.st_size
+        # Find out file size by opening it and seeking till the end.
+        # Works on regular files, block devices, symlinks to them etc.
+        fd = os.open(response.path, os.O_RDONLY)
+        try:
+            remaining_size = os.lseek(fd, 0, os.SEEK_END)
+        finally:
+            os.close(fd)
         with open(response.path, 'r+') as of:
             while remaining_size > 0:
                 of.write('\0' * (BLOCK_SIZE if remaining_size > BLOCK_SIZE
