@@ -28,7 +28,7 @@
 
 %global         vdsm_user @VDSM_USER@
 %global         vdsm_group @VDSM_GROUP@
-%global         vdsm_version 4.18.1
+%global         vdsm_version 4.18.6
 
 Summary:        oVirt Hosted Engine High Availability Manager
 Name:           @PACKAGE_NAME@
@@ -51,7 +51,7 @@ Requires:       vdsm-cli >= %{vdsm_version}
 Requires:       vdsm-python >= %{vdsm_version}
 
 # Otopi is needed for the cli client
-Requires:       otopi >= 1.5.0
+Requires:       otopi >= 1.5.1
 
 BuildRequires:  python
 BuildRequires:  python2-devel
@@ -166,6 +166,9 @@ fi
 
 
 %changelog
+* Tue Jul 12 2016 Sandro Bonazzola <sbonazzo@redhat.com> - 2.0.1-1
+- 2.0.1-1
+
 * Tue May 31 2016 Sandro Bonazzola <sbonazzo@redhat.com> - 2.0.0-1
 - 2.0.0-1
 
