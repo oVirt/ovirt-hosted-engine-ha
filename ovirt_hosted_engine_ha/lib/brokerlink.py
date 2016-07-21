@@ -114,7 +114,7 @@ class BrokerLink(object):
             response = self._checked_communicate(request)
         except Exception as e:
             raise RequestError("Failed to start monitor {0}, options {1}: {2}"
-                               .format(type, options, e))
+                               .format(event_type, options, e))
 
         self._log.info("Success, was notification of "
                        "%s (%s) sent? %s", event_type, detail, response)
