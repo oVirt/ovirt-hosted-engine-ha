@@ -21,7 +21,10 @@ def send_email(cfg, email_body):
     """Send email."""
 
     try:
-        server = smtplib.SMTP(cfg["smtp-server"], port=cfg["smtp-port"])
+        server = smtplib.SMTP(cfg["smtp-server"],
+                              port=cfg["smtp-port"],
+                              timeout=float(cfg["smtp-timeout"]))
+
         server.set_debuglevel(1)
         to_addresses = EMAIL_SPLIT_RE.split(cfg["destination-emails"].strip())
         message = Parser().parsestr(email_body)
@@ -31,7 +34,8 @@ def send_email(cfg, email_body):
                         message.as_string())
         server.quit()
         return True
-    except (smtplib.SMTPException, socket.error, EnvironmentError) as e:
+    except (smtplib.SMTPException, socket.error,
+            EnvironmentError, socket.timeout, ValueError) as e:
         logging.getLogger("%s.Notifications" % __name__).exception(e)
         return False
 
@@ -78,7 +82,8 @@ def notify(**kwargs):
         "destination-emails": "root@localhost",
         "source-email": "root@localhost",
         "smtp-server": "localhost",
-        "smtp-port": 25
+        "smtp-port": 25,
+        "smtp-timeout": 10
     }
 
     # read SMTP configuration from the notification config file
