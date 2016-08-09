@@ -76,7 +76,10 @@ class Upgrade(object):
                 storagepoolID=self._spUUID,
                 storagedomainID=self._sdUUID,
             )
-            if vm_vol_uuid_list['status']['code'] == 0:
+            if (
+                vm_vol_uuid_list['status']['code'] == 0 and
+                'items' in vm_vol_uuid_list
+            ):
                 vm_vol_uuid = vm_vol_uuid_list['items'][0]
         self._vm_vol_uuid = vm_vol_uuid
 
@@ -183,7 +186,8 @@ class Upgrade(object):
                     )
                 )
             else:
-                for vol_uuid in volumeslist['items']:
+                vl = volumeslist['items'] if 'items' in volumeslist else []
+                for vol_uuid in vl:
                     volumeinfo = self._cli.getVolumeInfo(
                         volumeID=vol_uuid,
                         imageID=img_uuid,
@@ -290,7 +294,7 @@ class Upgrade(object):
                     message=status['status']['message'],
                 )
             )
-        splist = status['items']
+        splist = status['items'] if 'items' in status else []
         return self._spUUID in splist
 
     def _safeConnectStoragePool(self, master, dom_dict):
@@ -842,7 +846,7 @@ class Upgrade(object):
         splist = self._cli.getConnectedStoragePoolsList()
         self._log.debug(splist)
         if splist['status']['code'] == 0:
-            poollist = splist['items']
+            poollist = splist['items'] if 'items' in splist else []
             for pool in poollist:
                 if pool != self._spUUID:
                     self._log.info(
@@ -863,7 +867,7 @@ class Upgrade(object):
         vmlist = self._cli.list()
         self._log.debug(vmlist)
         if vmlist['status']['code'] == 0:
-            vms = vmlist['items']
+            vms = vmlist['items'] if 'items' in vmlist else []
             runningVM = set([vm['vmId'] for vm in vms])
             otherVM = runningVM - set([self._HEVMID])
             if len(otherVM) > 0:

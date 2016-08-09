@@ -74,7 +74,8 @@ class OVFStore(object):
             self._log .debug(volumeslist)
             if volumeslist['status']['code'] != 0:
                 raise RuntimeError(volumeslist['status']['message'])
-            for vol_uuid in volumeslist['items']:
+            vl = volumeslist['items'] if 'items' in volumeslist else []
+            for vol_uuid in vl:
                 volumeinfo = _cli.getVolumeInfo(
                     volumeID=vol_uuid,
                     imageID=img_uuid,
