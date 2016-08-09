@@ -171,7 +171,8 @@ class StorageServer(object):
                 'Connection to storage server failed: %s' %
                 status['status']['message']
             )
-        for con in status['items']:
+        cl = status['items'] if 'items' in status else []
+        for con in cl:
             if con['status'] != 0:
                 raise RuntimeError(
                     'Connection to storage server failed'

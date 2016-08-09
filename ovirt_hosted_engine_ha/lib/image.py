@@ -99,7 +99,7 @@ class Image(object):
         """
         result = cli.getImagesList(self._sdUUID)
         self._log.debug('getImagesList: {r}'.format(r=result))
-        if result['status']['code'] != 0 or not result['items']:
+        if result['status']['code'] != 0 or 'items' not in result:
             # VDSM getImagesList doesn't work when the SD is not connect to
             # a storage pool so we have to reimplement it
             # see: https://bugzilla.redhat.com/1274622
@@ -131,14 +131,15 @@ class Image(object):
         images = self.get_images_list(cli)
 
         for imgUUID in images:
-            vm_vol_uuid_list = cli.getVolumesList(
+            vm_vol_uuid_l = cli.getVolumesList(
                 imageID=imgUUID,
                 storagepoolID=self._spUUID,
                 storagedomainID=self._sdUUID,
             )
-            self._log.debug(vm_vol_uuid_list)
-            if vm_vol_uuid_list['status']['code'] == 0:
-                for volUUID in vm_vol_uuid_list['items']:
+            self._log.debug(vm_vol_uuid_l)
+            if vm_vol_uuid_l['status']['code'] == 0:
+                vl = vm_vol_uuid_l['items'] if 'items' in vm_vol_uuid_l else []
+                for volUUID in vl:
                     self._log.debug(
                         "Prepare image {storagepoolID} {storagedomainID} "
                         "{imageID} {volumeID}".format(
@@ -173,7 +174,7 @@ class Image(object):
             else:
                 self._log.error(
                     'Error fetching volumes list: {msg}'.format(
-                        msg=vm_vol_uuid_list['status']['message'],
+                        msg=vm_vol_uuid_l['status']['message'],
                     )
                 )
 
@@ -192,14 +193,15 @@ class Image(object):
         images = self.get_images_list(cli)
 
         for imgUUID in images:
-            vm_vol_uuid_list = cli.getVolumesList(
+            vm_vol_uuid_l = cli.getVolumesList(
                 imageID=imgUUID,
                 storagepoolID=self._spUUID,
                 storagedomainID=self._sdUUID,
             )
-            self._log.debug(vm_vol_uuid_list)
-            if vm_vol_uuid_list['status']['code'] == 0:
-                for volUUID in vm_vol_uuid_list['items']:
+            self._log.debug(vm_vol_uuid_l)
+            if vm_vol_uuid_l['status']['code'] == 0:
+                vl = vm_vol_uuid_l['items'] if 'items' in vm_vol_uuid_l else []
+                for volUUID in vl:
                     self._log.debug(
                         "Teardown image {storagepoolID} {storagedomainID} "
                         "{imageID} {volumeID}".format(
@@ -234,6 +236,6 @@ class Image(object):
             else:
                 self._log.error(
                     'Error fetching volumes list: {msg}'.format(
-                        msg=vm_vol_uuid_list['status']['message'],
+                        msg=vm_vol_uuid_l['status']['message'],
                     )
                 )
