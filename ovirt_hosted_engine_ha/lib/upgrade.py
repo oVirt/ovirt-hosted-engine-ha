@@ -390,20 +390,24 @@ class Upgrade(object):
                 with open(path, 'r') as f:
                     content = f.read()
             except (OSError, IOError) as ex:
-                self._log.error(
-                    "Configuration file '{path}' not available: {ex}".format(
-                        path=path,
-                        ex=str(ex),
-                    )
+                err = (
+                    "Failed to read configuration file '{path}': {ex}"
+                ).format(
+                    path=path,
+                    ex=str(ex),
                 )
+                self._log.error(err)
+                raise RuntimeError(err)
         self._log.debug('--content--\n%s\n' % str(content))
         if not content:
-            self._log.error("unable to read '%s'" % path)
+            err = "'{path}' is empty".format(path=path)
+            self._log.error(err)
+            raise RuntimeError(err)
         if update_func:
             content = update_func(content)
         return content
 
-    def _create_conf_tar(self):
+    def _create_conf_tar(self, answer_c, heconf_c, brokerconf_c, vmconf_c):
         self._log.info(
             'Saving hosted-engine configuration '
             'on the shared storage domain'
@@ -414,21 +418,12 @@ class Upgrade(object):
             self._conf_imgUUID,
             self._conf_volUUID
         )
-
         heconflib.create_heconfimage(
             self._log,
-            self._get_conffile_content(
-                constants.HEConfFiles.HECONFD_ANSWERFILE
-            ),
-            self._get_conffile_content(
-                constants.HEConfFiles.HECONFD_HECONF
-            ),
-            self._get_conffile_content(
-                constants.HEConfFiles.HECONFD_BROKER_CONF
-            ),
-            self._get_conffile_content(
-                constants.HEConfFiles.HECONFD_VM_CONF
-            ),
+            answer_c,
+            heconf_c,
+            brokerconf_c,
+            vmconf_c,
             dest
         )
 
@@ -956,6 +951,19 @@ class Upgrade(object):
 
     def _move_to_shared_conf(self):
         self._log.info('_move_to_shared_conf')
+
+        answer_c = self._get_conffile_content(
+            constants.HEConfFiles.HECONFD_ANSWERFILE
+        )
+        heconf_c = self._get_conffile_content(
+            constants.HEConfFiles.HECONFD_HECONF
+        )
+        brokerconf_c = self._get_conffile_content(
+            constants.HEConfFiles.HECONFD_BROKER_CONF
+        )
+        vmconf_c = self._get_conffile_content(
+            constants.HEConfFiles.HECONFD_VM_CONF
+        )
         if not self._isStoragePoolConnected():
             self._safeConnectStoragePool(
                 master=self._sdUUID,
@@ -970,7 +978,12 @@ class Upgrade(object):
             str(uuid.uuid4()),
             constants.DEFAULT_CONF_IMAGE_SIZE_GB,
         )
-        self._create_conf_tar()
+        self._create_conf_tar(
+            answer_c,
+            heconf_c,
+            brokerconf_c,
+            vmconf_c,
+        )
         self._log.info(
             'Successfully moved the configuration to the shared storage'
         )
