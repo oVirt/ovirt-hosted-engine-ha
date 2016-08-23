@@ -22,7 +22,6 @@ import logging
 from ovirt_hosted_engine_ha.broker import submonitor_base
 from ovirt_hosted_engine_ha.lib import log_filter
 from ovirt_hosted_engine_ha.lib import util as util
-from ovirt_hosted_engine_ha.lib import vds_client as vdsc
 
 
 def register():
@@ -33,28 +32,25 @@ class Submonitor(submonitor_base.SubmonitorBase):
     def setup(self, options):
         self._log = logging.getLogger("%s.MgmtBridge" % __name__)
         self._log.addFilter(log_filter.IntermittentFilter())
-        self._address = options.get('address')
-        self._use_ssl = util.to_bool(options.get('use_ssl'))
         self._bridge = options.get('bridge_name')
-        if (self._address is None or self._use_ssl is None
-                or self._bridge is None):
-            raise Exception("mgmt-bridge requires address, use_ssl flag,"
-                            " and bridge name")
-        self._log.debug("address=%s, use_ssl=%r, bridge=%s",
-                        self._address, self._use_ssl, self._bridge)
+        if self._bridge is None:
+            raise Exception("mgmt-bridge requires bridge name")
+        self._log.debug("bridge=%s", self._bridge)
 
     def action(self, options):
-        try:
-            response = vdsc.run_vds_client_cmd(self._address, self._use_ssl,
-                                               'getVdsCapabilities')
-        except Exception as e:
-            self._log.error("Failed to getVdsCapabilities: %s", str(e))
+        cli = util.connect_vdsm_json_rpc(
+            logger=self._log
+        )
+        caps = cli.getVdsCapabilities()
+        if caps['status']['code'] != 0 or 'bridges' not in caps:
+            self._log.error(
+                "Failed to getVdsCapabilities: %s", caps['status']['message']
+            )
             self.update_result(None)
             return
 
-        if ('bridges' in response['info']
-                and self._bridge in response['info']['bridges']):
-            if response['info']['bridges'][self._bridge]['ports']:
+        if 'bridges' in caps and self._bridge in caps['bridges']:
+            if 'ports' in caps['bridges'][self._bridge]:
                 self._log.info("Found bridge %s with ports", self._bridge,
                                extra=log_filter.lf_args('status', 60))
                 self.update_result(True)

@@ -22,10 +22,8 @@ import time
 from collections import namedtuple
 
 from ovirt_hosted_engine_ha.broker import submonitor_base
-from ovirt_hosted_engine_ha.lib import exceptions as exceptions
 from ovirt_hosted_engine_ha.lib import log_filter
 from ovirt_hosted_engine_ha.lib import util as util
-from ovirt_hosted_engine_ha.lib import vds_client as vdsc
 
 Ticks = namedtuple('Ticks', 'total, busy')
 
@@ -39,16 +37,10 @@ class Submonitor(submonitor_base.SubmonitorBase):
         self._log = logging.getLogger("%s.EngineHealth" % __name__)
         self._log.addFilter(log_filter.IntermittentFilter())
 
-        self._address = options.get('address')
-        self._use_ssl = util.to_bool(options.get('use_ssl'))
         self._vm_uuid = options.get('vm_uuid')
-        if (self._address is None
-                or self._use_ssl is None
-                or self._vm_uuid is None):
-            raise Exception("cpu-load-no-engine requires"
-                            " address, use_ssl, and vm_uuid")
-        self._log.debug("address=%s, use_ssl=%r, vm_uuid=%s",
-                        self._address, self._use_ssl, self._vm_uuid)
+        if self._vm_uuid is None:
+            raise Exception("cpu-load-no-engine requires vm_uuid")
+        self._log.debug("vm_uuid=%s", self._vm_uuid)
 
         self.engine_pid = None
         self.engine_pid_start_time = None
@@ -142,19 +134,29 @@ class Submonitor(submonitor_base.SubmonitorBase):
             # Look for the engine vm pid and try to get the stats
             self.engine_pid = None
             self.engine_pid_start_time = None
-            try:
-                stats = vdsc.run_vds_client_cmd(self._address, self._use_ssl,
-                                                'getVmStats', self._vm_uuid)
-                pid = int(stats['statsList'][0]['pid'])
-            except Exception as e:
-                if isinstance(e, exceptions.DetailedError) \
-                        and e.detail == "Virtual machine does not exist":
+            cli = util.connect_vdsm_json_rpc(
+                logger=self._log
+            )
+            stats = cli.getVmStats(self._vm_uuid)
+            if (
+                stats['status']['code'] != 0 or
+                'items' not in stats or
+                len(stats['items']) == 0 or
+                'pid' not in stats['items'][0]
+            ):
+                if stats['status']['message'] == (
+                    "Virtual machine does not exist"
+                ):
                     self._log.info("VM not on this host",
                                    extra=log_filter.lf_args('vm', 60))
                 else:
-                    self._log.error("Failed to getVmStats: %s", str(e),
-                                    extra=log_filter.lf_args('vm', 60))
+                    self._log.error(
+                        "Failed to getVmStats: %s",
+                        stats['status']['message'],
+                        extra=log_filter.lf_args('vm', 60)
+                    )
             else:
+                pid = int(stats['items'][0]['pid'])
                 fname = '/proc/{0}/stat'.format(pid)
                 try:
                     with open(fname, 'r') as f:

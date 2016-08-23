@@ -22,7 +22,6 @@ import logging
 from ovirt_hosted_engine_ha.broker import submonitor_base
 from ovirt_hosted_engine_ha.lib import log_filter
 from ovirt_hosted_engine_ha.lib import util as util
-from ovirt_hosted_engine_ha.lib import vds_client as vdsc
 
 
 def register():
@@ -33,25 +32,28 @@ class Submonitor(submonitor_base.SubmonitorBase):
     def setup(self, options):
         self._log = logging.getLogger("%s.MemLoad" % __name__)
         self._log.addFilter(log_filter.IntermittentFilter())
-        self._address = options.get('address')
-        self._use_ssl = util.to_bool(options.get('use_ssl'))
-        if self._address is None or self._use_ssl is None:
-            raise Exception("mem-load requires address and use_ssl flag")
-        self._log.debug("address=%s, use_ssl=%r", self._address, self._use_ssl)
 
     def action(self, options):
-        try:
-            caps = vdsc.run_vds_client_cmd(self._address, self._use_ssl,
-                                           'getVdsCapabilities')
-            stats = vdsc.run_vds_client_cmd(self._address, self._use_ssl,
-                                            'getVdsStats')
-        except Exception as e:
-            self._log.error("Failed to getVdsStats/Caps: %s", str(e))
+        cli = util.connect_vdsm_json_rpc(
+            logger=self._log
+        )
+        stats = cli.getVdsStats()
+        if stats['status']['code'] != 0 or 'memUsed' not in stats:
+            self._log.error(
+                "Failed to getVdsStats: %s", stats['status']['message']
+            )
+            self.update_result(None)
+            return
+        caps = cli.getVdsCapabilities()
+        if caps['status']['code'] != 0 or 'memSize' not in caps:
+            self._log.error(
+                "Failed to getVdsCapabilities: %s", caps['status']['message']
+            )
             self.update_result(None)
             return
 
-        mem_size = int(caps['info']['memSize'])
-        mem_used = int(stats['info']['memUsed'])
+        mem_size = int(caps['memSize'])
+        mem_used = int(stats['memUsed'])
         mem_load = float(mem_used) / mem_size
         self._log.info("memSize: %d, memUsed: %d, Load: %f",
                        mem_size, mem_used, mem_load,

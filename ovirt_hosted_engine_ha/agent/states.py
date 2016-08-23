@@ -782,13 +782,22 @@ class EngineMigratingAway(EngineState):
         :type new_data: HostedEngineData
         :type logger: logging.Logger
         """
-        if (new_data.migration_result and
-                new_data.migration_result.startswith('Migration in progress')):
+        if (
+            new_data.migration_result and
+            'progress' in new_data.migration_result and
+            'downtime' not in new_data.migration_result and
+            new_data.migration_result['progress'] < 100
+        ):
             logger.info("Continuing to monitor migration")
             return EngineMigratingAway(new_data), fsm.WAIT
 
-        elif (new_data.migration_result and
-              new_data.migration_result.startswith('Migration done')):
+        # TODO: this is bugged since VDSM is not returning MigratedStats on
+        # the source host
+        elif (
+            new_data.migration_result and
+            'progress' in new_data.migration_result and
+            'downtime' in new_data.migration_result
+        ):
             logger.info("Migration to %s complete,"
                         " no longer monitoring vm",
                         new_data.migration_host_id)

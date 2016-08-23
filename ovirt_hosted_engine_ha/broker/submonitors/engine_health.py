@@ -23,10 +23,8 @@ import subprocess
 
 from ovirt_hosted_engine_ha.broker import constants
 from ovirt_hosted_engine_ha.broker import submonitor_base
-from ovirt_hosted_engine_ha.lib import exceptions as exceptions
 from ovirt_hosted_engine_ha.lib import log_filter
 from ovirt_hosted_engine_ha.lib import util as util
-from ovirt_hosted_engine_ha.lib import vds_client as vdsc
 from ovirt_hosted_engine_ha.lib import engine
 
 
@@ -40,26 +38,21 @@ class Submonitor(submonitor_base.SubmonitorBase):
         self._log = logging.getLogger("%s.CpuLoadNoEngine" % __name__)
         self._log.addFilter(log_filter.IntermittentFilter())
 
-        self._address = options.get('address')
-        self._use_ssl = util.to_bool(options.get('use_ssl'))
         self._vm_uuid = options.get('vm_uuid')
-        if (self._address is None
-                or self._use_ssl is None
-                or self._vm_uuid is None):
-            raise Exception("engine-health requires"
-                            " address, use_ssl, and vm_uuid")
-        self._log.debug("address=%s, use_ssl=%r, vm_uuid=%s",
-                        self._address, self._use_ssl, self._vm_uuid)
+        if self._vm_uuid is None:
+            raise Exception("engine-health requires vm_uuid")
+        self._log.debug("vm_uuid=%s", self._vm_uuid)
 
     def action(self, options):
         # First, see if vdsm tells us it's up
-        try:
-            stats = vdsc.run_vds_client_cmd(self._address, self._use_ssl,
-                                            'getVmStats', self._vm_uuid)
-        except Exception as e:
-            if isinstance(e, exceptions.DetailedError) \
-                    and e.detail == "Virtual machine does not exist":
-                # Not on this host
+        cli = util.connect_vdsm_json_rpc(
+            logger=self._log
+        )
+        stats = cli.getVmStats(self._vm_uuid)
+        if stats['status']['code'] != 0 or 'items' not in stats:
+            if stats['status']['message'] == (
+                "Virtual machine does not exist"
+            ):
                 self._log.info("VM not on this host",
                                extra=log_filter.lf_args('status', 60))
                 d = {'vm': 'down', 'health': 'bad', 'detail': 'unknown',
@@ -67,12 +60,15 @@ class Submonitor(submonitor_base.SubmonitorBase):
                 self.update_result(json.dumps(d))
                 return
             else:
-                self._log.error("Failed to getVmStats: %s", str(e))
+                self._log.error(
+                    "Failed to getVmStats: %s",
+                    str(stats['status']['message'])
+                )
                 d = {'vm': 'unknown', 'health': 'unknown', 'detail': 'unknown',
                      'reason': 'failed to getVmStats'}
                 self.update_result(json.dumps(d))
                 return
-        vm_status = stats['statsList'][0]['status'].lower()
+        vm_status = stats['items'][0]['status'].lower()
 
         # Report states that are not really Up, but should be
         # reported as such
@@ -90,7 +86,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
             return
 
         # Check if another host was faster in acquiring the storage lock
-        exit_message = stats['statsList'][0].get('exitMessage', "")
+        exit_message = stats['items'][0].get('exitMessage', "")
         if vm_status == 'down' \
                 and exit_message.endswith(
                     'Failed to acquire lock: error -243'):

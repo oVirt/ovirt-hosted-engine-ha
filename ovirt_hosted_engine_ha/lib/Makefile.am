@@ -38,7 +38,6 @@ dist_halib_PYTHON = \
 	storage_backends_test.py \
 	storage_server.py \
 	util.py \
-	vds_client.py \
 	monotonic.py \
 	engine.py \
 	upgrade.py \

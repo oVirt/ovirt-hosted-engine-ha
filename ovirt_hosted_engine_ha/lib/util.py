@@ -172,7 +172,7 @@ def isOvirtNode():
             bool(glob.glob('/etc/ovirt-node-*-release')))
 
 
-def connect_vdsm_json_rpc(logger=None, timeout=None):
+def connect_vdsm_json_rpc(logger=None, timeout=envconst.VDSCLI_SSL_TIMEOUT):
     MAX_RETRY = 120
     DELAY = 2
     retry = 0
