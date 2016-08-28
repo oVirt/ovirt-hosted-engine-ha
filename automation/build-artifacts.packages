@@ -1,0 +1,6 @@
+autoconf
+automake
+gettext-devel
+git
+python2-devel
+yum-utils
