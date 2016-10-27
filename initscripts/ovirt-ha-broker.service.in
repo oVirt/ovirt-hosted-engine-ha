@@ -11,6 +11,7 @@ After=ovirt-early.service
 EnvironmentFile=-/etc/sysconfig/ovirt-ha-broker
 ExecStart=@ENGINE_HA_BINDIR@/ovirt-ha-broker --no-daemon
 Restart=on-failure
+StandardOutput=null
 
 [Install]
 WantedBy=multi-user.target
