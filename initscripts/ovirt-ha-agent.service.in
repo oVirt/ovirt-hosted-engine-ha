@@ -18,6 +18,7 @@ ConditionFileNotEmpty=/etc/ovirt-hosted-engine/hosted-engine.conf
 EnvironmentFile=-/etc/sysconfig/ovirt-ha-agent
 ExecStart=@ENGINE_HA_BINDIR@/ovirt-ha-agent --no-daemon
 Restart=on-failure
+StandardOutput=null
 
 [Install]
 WantedBy=multi-user.target
