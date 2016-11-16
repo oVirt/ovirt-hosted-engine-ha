@@ -168,10 +168,13 @@ fi
 
 
 %changelog
-* Wed Sep 07 2016 2016 Simone Tiraboschi <stirabos@redhat.com> - 2.0.5-0.0.master
+* Wed Nov 16 2016 Simone Tiraboschi <stirabos@redhat.com> - 2.0.5-1
+- 2.0.5-1
+
+* Wed Sep 07 2016 Simone Tiraboschi <stirabos@redhat.com> - 2.0.5-0.0.master
 - 2.0.5-0.0.master
 
-* Wed Sep 07 2016 2016 Simone Tiraboschi <stirabos@redhat.com> - 2.0.4-1
+* Wed Sep 07 2016 Simone Tiraboschi <stirabos@redhat.com> - 2.0.4-1
 - 2.0.4-1
 
 * Wed Aug 24 2016 Sandro Bonazzola <sbonazzo@redhat.com> - 2.0.4-0.0.master
