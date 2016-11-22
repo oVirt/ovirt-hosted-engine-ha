@@ -323,7 +323,7 @@ def domain_wait(sdUUID, cli, logger):
                 logger.debug(response['status']['message'])
             raise RuntimeError('Error acquiring VDS status')
         try:
-            domains = response['info']['storageDomains']
+            domains = response['storageDomains']
             acquired = domains[sdUUID]['acquired']
         except KeyError:
             if logger:
