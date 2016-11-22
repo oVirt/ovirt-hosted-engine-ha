@@ -197,7 +197,7 @@ class Upgrade(object):
                     self._log.debug(volumeinfo)
                     if volumeinfo['status']['code'] != 0:
                         raise RuntimeError(volumeinfo['status']['message'])
-                    description = volumeinfo['info']['description']
+                    description = volumeinfo['description']
                     if description == constants.CONF_IMAGE_DESC:
                         self._conf_imgUUID = img_uuid
                         self._conf_volUUID = vol_uuid
@@ -742,7 +742,7 @@ class Upgrade(object):
     def _stopMonitoringDomain(self):
         self._log.info('Stop monitoring domain')
         status = self._cli.stopMonitoringDomain(
-            storagepoolID=self._sdUUID,
+            sdUUID=self._sdUUID,
         )
         self._log.debug(status)
         rcode = status['status']['code']
@@ -763,7 +763,7 @@ class Upgrade(object):
     def _startMonitoringDomain(self):
         self._log.info('Start monitoring domain')
         status = self._cli.startMonitoringDomain(
-            storagepoolID=self._sdUUID,
+            sdUUID=self._sdUUID,
             hostID=self._host_id,
         )
         self._log.debug(status)
@@ -835,11 +835,12 @@ class Upgrade(object):
 
     def _is_storage_pool_attached(self):
         sdinfo = self._cli.getStorageDomainInfo(self._sdUUID)
+        self._log.debug(sdinfo)
         if sdinfo['status']['code'] != 0:
             raise RuntimeError(sdinfo['status']['message'])
         return (
-            len(sdinfo['info']['pool']) != 0 and
-            sdinfo['info']['pool'][0] == self._spUUID
+            len(sdinfo['pool']) != 0 and
+            sdinfo['pool'][0] == self._spUUID
         )
 
     def _is_in_engine_maintenance(self):
