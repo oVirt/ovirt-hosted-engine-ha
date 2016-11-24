@@ -148,7 +148,10 @@ class EngineStateMachine(BaseFSM):
         # Save the best score remote values
         # we can't compare them because we first need to fully initialize
         # the current state
-        new_data["best_score_host"] = best_score if alive_hosts else None
+        new_data["best_score_host"] = (best_score
+                                       if alive_hosts
+                                       and best_score["score"] > 0
+                                       else None)
 
         # Re-initialize retry status variables if the retry window
         # has expired.

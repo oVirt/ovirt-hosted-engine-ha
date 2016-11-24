@@ -341,6 +341,7 @@ class LocalMaintenanceMigrateVm(LocalMaintenance):
 
     :transition GlobalMaintenance:
     :transition UnknownLocalVmState:
+    :transition ReinitializeFSM
     :transition EngineStop:
     :transition EngineMigratingAway:
     """
@@ -355,7 +356,7 @@ class LocalMaintenanceMigrateVm(LocalMaintenance):
         if new_data.best_score_host:
             destination = new_data.best_score_host["host-id"]
         else:
-            return EngineStop(new_data)
+            return ReinitializeFSM(new_data)
 
         if fsm.actions.MIGRATE(destination,
                                new_data.best_score_host["hostname"]):
