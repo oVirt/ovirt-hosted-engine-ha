@@ -21,6 +21,7 @@
 """ HEConf lib"""
 
 
+import getpass
 import glob
 import grp
 import os
@@ -54,15 +55,18 @@ def _add_to_tar(tar, fname, content):
     tar.addfile(tarinfo=info, fileobj=value)
 
 
+def _enforce_vdsm_user(cmd_list):
+    if not getpass.getuser() == agentconst.VDSM_USER:
+        cmd_list = ['sudo', '-u', agentconst.VDSM_USER, ] + cmd_list
+    return cmd_list
+
+
 def _dd_pipe_tar(logger, path, tar_parameters):
-    cmd_dd_list = [
-        'sudo',
-        '-u',
-        agentconst.VDSM_USER,
+    cmd_dd_list = _enforce_vdsm_user([
         'dd',
         'if={source}'.format(source=path),
         'bs=4k',
-    ]
+    ])
     cmd_tar_list = ['tar', ]
     cmd_tar_list.extend(tar_parameters)
     if logger:
@@ -215,15 +219,12 @@ def create_heconfimage(
     if logger:
         logger.debug('saving on: ' + dest)
 
-    cmd_list = [
-        'sudo',
-        '-u',
-        agentconst.VDSM_USER,
+    cmd_list = _enforce_vdsm_user([
         'dd',
         'if={source}'.format(source=_tmp_tar),
         'of={dest}'.format(dest=dest),
         'bs=4k',
-    ]
+    ])
     if logger:
         logger.debug("executing: '{cmd}'".format(cmd=' '.join(cmd_list)))
     pipe = subprocess.Popen(
