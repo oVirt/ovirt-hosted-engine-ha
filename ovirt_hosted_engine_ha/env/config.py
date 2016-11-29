@@ -227,16 +227,29 @@ class Config(object):
                         "trying to convert"
                     )
                     conf = ovf2VmParams.confFromOvf(heovf)
-            if conf is not None:
-                self._logger.info('Got vm.conf from OVF_STORE')
-                content = conf
+                    if conf is not None:
+                        self._logger.info('Got vm.conf from OVF_STORE')
+                        content = conf
+                    else:
+                        self._logger.error(
+                            'Failed converting vm.conf from the VM OVF, '
+                            'falling back to initial vm.conf'
+                        )
+                else:
+                    self._logger.error(
+                        'Failed extracting VM OVF from the OVF_STORE '
+                        'volume, falling back to initial vm.conf'
+                    )
             else:
                 self._logger.error(
-                    'Unable to get vm.conf from OVF_STORE, '
-                    'falling back to initial vm.conf'
+                    'Unable to identify the OVF_STORE volume, '
+                    'falling back to initial vm.conf. Please '
+                    'ensure you already added your first data '
+                    'domain for regular VMs'
                 )
 
         if not content:
+            self._logger.error('Reading initial vm.conf')
             source = heconflib.get_volume_path(
                 domain_type,
                 sd_uuid,
