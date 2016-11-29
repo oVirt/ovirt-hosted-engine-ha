@@ -807,4 +807,5 @@ class EngineMigratingAway(EngineState):
             return EngineDown(new_data)
         else:
             # Migration failed
+            logger.error("Migration failed: %s", new_data.migration_result)
             return ReinitializeFSM(new_data)
