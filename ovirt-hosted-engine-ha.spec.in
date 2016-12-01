@@ -168,6 +168,9 @@ fi
 
 
 %changelog
+* Thu Dec  1 2016 Sandro Bonazzola <sbonazzo@redhat.com> - 2.0.7-0.0.master
+- 2.0.7-0.0.master
+
 * Thu Dec  1 2016 Sandro Bonazzola <sbonazzo@redhat.com> - 2.0.6-1
 - 2.0.6-1
 
