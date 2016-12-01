@@ -19,6 +19,7 @@
 
 import fcntl
 import logging
+import os.path
 
 from . import constants
 
@@ -296,3 +297,14 @@ class Config(object):
                 "Unable to get conf file"
             )
             return False
+
+    @classmethod
+    def static_files_exist(cls):
+        """
+        Check for the existence of static files and return False if any
+        of them are not found or are empty.
+        """
+        for fname in cls.static_files.values():
+            if not os.path.isfile(fname) or os.path.getsize(fname) == 0:
+                return False
+        return True
