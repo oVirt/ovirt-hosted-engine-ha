@@ -175,6 +175,7 @@ class HostedEngine(object):
         })
 
         self._sanlock_initialized = False
+        self._shared_configuration_supported = False
 
     @property
     def score_config(self):
@@ -418,16 +419,9 @@ class HostedEngine(object):
         if upgraded:
             self._log.info("Reloading hosted-engine.conf after upgrade")
             self._config = config.Config(logger=self._log)
+        self._shared_configuration_supported = upg.is_conf_file_uptodate()
 
-        self._log.info("Reloading vm.conf from the shared storage domain")
-        local_vm_conf_path = self._config.get(
-            config.ENGINE,
-            config.CONF_FILE
-        )
-        self._config.refresh_local_conf_file(
-            localcopy_filename=local_vm_conf_path,
-            archive_fname=constants.VM_CONF_FILE_ARCHIVE_FNAME,
-        )
+        self._config.refresh_vm_conf()
 
         for old_state, state, delay in self.fsm:
             if self._shutdown_requested_callback():
@@ -685,15 +679,7 @@ class HostedEngine(object):
         self._log.info("Preparing images")
         img.prepare_images()
 
-        self._log.info("Reloading vm.conf from the shared storage domain")
-        local_vm_conf_path = self._config.get(
-            config.ENGINE,
-            config.CONF_FILE
-        )
-        self._config.refresh_local_conf_file(
-            localcopy_filename=local_vm_conf_path,
-            archive_fname=constants.VM_CONF_FILE_ARCHIVE_FNAME,
-        )
+        self._config.refresh_vm_conf()
 
     def _check_service(self, service_name):
         self._log.debug("Checking %s status", service_name)
@@ -917,6 +903,11 @@ class HostedEngine(object):
         # CRC32 in hex (use 0 for computing the crc)
         tokens.append(metadata.EMPTY_CRC32)
 
+        # Configuration on the shared storage (>=3.6) is supported
+        tokens.append(1 if self._shared_configuration_supported else 0)
+        # Timestamp of the latest vm.conf correct refresh
+        tokens.append(self._config.vm_conf_refresh_time)
+
         data = "|".join(str(t) for t in tokens)
         crc32 = metadata.CRC32_FORMAT % (binascii.crc32(data) & 0xffffffff)
         tokens[9] = crc32
@@ -931,13 +922,23 @@ class HostedEngine(object):
                 "timestamp={ts_int} ({ts_str})\n"
                 "host-id={host_id}\n"
                 "score={score}\n"
+                "vm_conf_refresh_time={vm_ts_int} ({vm_ts_str})\n"
+                "conf_on_shared_storage={conf_on_shared_storage}\n"
                 .format(md_parse_vers=constants.METADATA_PARSE_VERSION,
                         md_feature_vers=constants.METADATA_FEATURE_VERSION,
                         ts_int=state.data.stats.collect_start,
                         ts_str=time.ctime(state.data.stats.collect_start +
                                           state.data.stats.time_epoch),
                         host_id=state.data.host_id,
-                        score=score))
+                        score=score,
+                        vm_ts_int=self._config.vm_conf_refresh_time,
+                        vm_ts_str=time.ctime(
+                            self._config.vm_conf_refresh_time +
+                            self._config.vm_conf_refresh_time_epoch
+                        ),
+                        conf_on_shared_storage='True'
+                        if self._shared_configuration_supported else 'False'
+                        ))
         # state | metadata
         for (k, v) in sorted(md.iteritems()):
             info += "{0}={1}\n".format(k, str(v))
@@ -1111,15 +1112,7 @@ class HostedEngine(object):
 
     def _start_engine_vm(self):
         try:
-            self._log.info("Reloading vm.conf from the shared storage domain")
-            local_vm_conf_path = self._config.get(
-                config.ENGINE,
-                config.CONF_FILE
-            )
-            self._config.refresh_local_conf_file(
-                localcopy_filename=local_vm_conf_path,
-                archive_fname=constants.VM_CONF_FILE_ARCHIVE_FNAME,
-            )
+            self._config.refresh_vm_conf()
 
             # Ensure there isn't any stale VDSM state from a prior VM lifecycle
             self._clean_vdsm_state()
