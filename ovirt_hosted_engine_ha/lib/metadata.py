@@ -113,6 +113,11 @@ def parse_metadata_to_dict(host_str, data):
          crc32 - eight hex characters representing the crc32 of the
             whole 512B block (crc32 is computed with the field set
             to '00000000').
+         conf_on_shared_storage - 0 or 1 representing if the agent is running
+            with the configuration from the shared storage or if it needs to be
+            set to engine maintenance mode to let the update complete
+         local_conf_timestamp - integer - timestamp, when the local
+            configuration has been successfully updated from the shared storage
 
      - Next 3584 bytes (for a total of 4096): human-readable description of
        data to aid in debugging, including factors considered in the host score
@@ -205,6 +210,12 @@ def parse_metadata_to_dict(host_str, data):
                                 " provided checksum {1} does not match"
                                 " the data {2}."
                                 .format(host_id, ret[9], crc32))
+
+    # support conf_on_shared_storage and local_conf_timestamp fields if
+    # present, but ignore if the aren't
+    if len(tokens) >= 12:
+        ret['conf_on_shared_storage'] = int(tokens[10]) > 0
+        ret['local_conf_timestamp'] = int(tokens[11])
 
     # Add human-readable summary from bytes 512+
     extra = data[512:].rstrip('\0')

@@ -20,10 +20,12 @@
 import fcntl
 import logging
 import os.path
+import time
 
 from . import constants
 
 from ovirt_hosted_engine_ha.lib import heconflib
+from ovirt_hosted_engine_ha.lib import monotonic
 from ovirt_hosted_engine_ha.lib.ovf import ovf_store
 from ovirt_hosted_engine_ha.lib.ovf import ovf2VmParams
 
@@ -76,6 +78,9 @@ class Config(object):
     }
 
     def __init__(self, logger=None):
+        self.vm_conf_refresh_time = 0
+        self.vm_conf_refresh_time_epoch = 0
+
         if logger is None:
             self._logger = logging.getLogger(__name__)
         else:
@@ -186,6 +191,7 @@ class Config(object):
         conf_img_id = None
         conf_vol_id = None
         content = None
+        fallback = False
         try:
             conf_img_id = self.get(ENGINE, CONF_IMAGE_UUID)
             conf_vol_id = self.get(ENGINE, CONF_VOLUME_UUID)
@@ -250,6 +256,7 @@ class Config(object):
                 )
 
         if not content:
+            fallback = True
             self._logger.error('Reading initial vm.conf')
             source = heconflib.get_volume_path(
                 domain_type,
@@ -291,12 +298,28 @@ class Config(object):
                 self._logger.debug(
                     "local conf file was correctly written"
                 )
+            if fallback:
+                return False
             return True
         if self._logger:
             self._logger.error(
                 "Unable to get conf file"
             )
             return False
+
+    def refresh_vm_conf(self):
+        if self._logger:
+            self._logger.info(
+                "Reloading vm.conf from the shared storage domain"
+            )
+        local_vm_conf_path = self.get(ENGINE, CONF_FILE)
+        if self.refresh_local_conf_file(
+            localcopy_filename=local_vm_conf_path,
+            archive_fname=constants.HEConfFiles.HECONFD_VM_CONF,
+        ):
+            mtime = monotonic.time()
+            self.vm_conf_refresh_time = int(mtime)
+            self.vm_conf_refresh_time_epoch = int(time.time() - mtime)
 
     @classmethod
     def static_files_exist(cls):
