@@ -158,6 +158,9 @@ fi
 
 
 %changelog
+* Fri Dec 09 2016 Simone Tiraboschi <stirabos@redhat.com> - 1.3.5.10-0.0.master
+- 1.3.5.10-0.0.master
+
 * Fri Dec 09 2016 Simone Tiraboschi <stirabos@redhat.com> - 1.3.5.9-1
 - 1.3.5.9-1
 
