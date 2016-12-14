@@ -148,6 +148,44 @@ def extractConfFile(logger, imagepath, file):
     return stdout
 
 
+def get_conf_archive_MD5(imagepath):
+    cmd_list = ['sudo', '-u', agentconst.VDSM_USER, 'md5sum', imagepath]
+    md5_pipe = subprocess.Popen(
+        cmd_list,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    stdout, stderr = md5_pipe.communicate()
+    md5_pipe.wait()
+    md5_pipe.stdout.close()
+    return stdout.split()[0]
+
+
+def add_file_to_conf_archive(logger, file_name, file_content, volumepath):
+    content_by_name = {}
+    for f in _CONF_FILES:
+        if f == file_name:
+            content_by_name[f] = file_content
+        else:
+            content_by_name[f] = extractConfFile(logger, volumepath, f)
+    hash = get_conf_archive_MD5(volumepath)
+    temp_archive = _create_temp_archive(
+        logger,
+        content_by_name[envconst.HEConfFiles.HECONFD_ANSWERFILE],
+        content_by_name[envconst.HEConfFiles.HECONFD_HECONF],
+        content_by_name[envconst.HEConfFiles.HECONFD_BROKER_CONF],
+        content_by_name[envconst.HEConfFiles.HECONFD_VM_CONF]
+    )
+    new_hash = get_conf_archive_MD5(volumepath)
+    if hash == new_hash:
+        _save_configuration_archive(logger, temp_archive, volumepath)
+    else:
+        raise RuntimeError("Update failed. "
+                           "The configuration file was changed by somebody "
+                           "else, try again.")
+
+
 def create_heconfimage(
         logger,
         answefile_content,
@@ -175,6 +213,49 @@ def create_heconfimage(
                  it can be obtained with
                  get_volume_path
     """
+    temp_archive = _create_temp_archive(
+        logger,
+        answefile_content,
+        heconf_content,
+        broker_conf_content,
+        vm_conf_content
+    )
+    _save_configuration_archive(logger, temp_archive, dest)
+
+
+def _save_configuration_archive(logger, temp_archive, dest):
+    if logger:
+        logger.debug('saving on: ' + dest)
+
+    cmd_list = _enforce_vdsm_user([
+        'dd',
+        'if={source}'.format(source=temp_archive),
+        'of={dest}'.format(dest=dest),
+        'bs=4k',
+    ])
+    if logger:
+        logger.debug("executing: '{cmd}'".format(cmd=' '.join(cmd_list)))
+    pipe = subprocess.Popen(
+        cmd_list,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    stdout, stderr = pipe.communicate()
+    pipe.wait()
+    if logger:
+        logger.debug('stdout: ' + str(stdout))
+        logger.debug('stderr: ' + str(stderr))
+    os.unlink(temp_archive)
+    if pipe.returncode != 0:
+        raise RuntimeError('Unable to write HEConfImage')
+
+
+def _create_temp_archive(logger,
+                         answefile_content,
+                         heconf_content,
+                         broker_conf_content,
+                         vm_conf_content):
     tempdir = tempfile.gettempdir()
     fd, _tmp_tar = tempfile.mkstemp(
         suffix='.tar',
@@ -215,32 +296,7 @@ def create_heconfimage(
         pwd.getpwnam(agentconst.VDSM_USER).pw_uid,
         grp.getgrnam(agentconst.VDSM_GROUP).gr_gid,
     )
-
-    if logger:
-        logger.debug('saving on: ' + dest)
-
-    cmd_list = _enforce_vdsm_user([
-        'dd',
-        'if={source}'.format(source=_tmp_tar),
-        'of={dest}'.format(dest=dest),
-        'bs=4k',
-    ])
-    if logger:
-        logger.debug("executing: '{cmd}'".format(cmd=' '.join(cmd_list)))
-    pipe = subprocess.Popen(
-        cmd_list,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    stdout, stderr = pipe.communicate()
-    pipe.wait()
-    if logger:
-        logger.debug('stdout: ' + str(stdout))
-        logger.debug('stderr: ' + str(stderr))
-    os.unlink(_tmp_tar)
-    if pipe.returncode != 0:
-        raise RuntimeError('Unable to write HEConfImage')
+    return _tmp_tar
 
 
 def get_volume_path(type, sd_uuid, img_uuid, vol_uuid):
@@ -297,8 +353,8 @@ def task_wait(cli, logger):
         taskIDs = set(statuses.keys()) - set(['status'])
         for taskID in taskIDs:
             if (
-                'taskState' in statuses[taskID] and
-                statuses[taskID]['taskState'] != 'finished'
+                    'taskState' in statuses[taskID] and
+                    statuses[taskID]['taskState'] != 'finished'
             ):
                 all_completed = False
             else:

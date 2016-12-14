@@ -53,10 +53,7 @@ def notify(**kwargs):
     type = kwargs["type"]
 
     heconf = config.Config(logger=logger)
-    heconf.refresh_local_conf_file(
-        localcopy_filename=constants.NOTIFY_CONF_FILE,
-        archive_fname=constants.NOTIFY_CONF_FILE_ARCHIVE_FNAME,
-    )
+    heconf.refresh_local_conf_file(config.BROKER)
     cfg = ConfigParser.SafeConfigParser()
     cfg.read(constants.NOTIFY_CONF_FILE)
 

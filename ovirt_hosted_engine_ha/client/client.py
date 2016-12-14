@@ -268,6 +268,11 @@ class HAClient(object):
         else:
             raise Exception("Invalid maintenance mode: {0}".format(mode))
 
+    def set_shared_config(self, key, value, config_type=None):
+        if self._config is None:
+            self._config = config.Config()
+        self._config.set_config_on_shared_storage(key, value, config_type)
+
     def reset_lockspace(self, force=False):
         # Lockspace file
         lockspace_file = None

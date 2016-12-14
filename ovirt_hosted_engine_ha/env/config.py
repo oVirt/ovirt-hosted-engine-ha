@@ -71,6 +71,8 @@ MEM_SIZE = 'memSize'
 HA = 'ha'
 LOCAL_MAINTENANCE = 'local_maintenance'
 
+BROKER = 'broker'
+
 
 class Config(object):
     static_files = {
@@ -98,9 +100,16 @@ class Config(object):
         # whenever configuration values are retrieved from them.
         self._dynamic_files = {
             HA: constants.HA_AGENT_CONF_FILE,
+            BROKER: constants.NOTIFY_CONF_FILE
         }
 
+        # This dictionary holds names of config files that are stored in the
+        # configuration archive on the shared storage.
+        # The key is the config type that can be edited and the value is
+        # the file name in the configuration archive.
+        # {type -> file name in archive}
         self._shared_storage_files = {
+            BROKER: constants.HEConfFiles.HECONFD_BROKER_CONF,
             VM: constants.HEConfFiles.HECONFD_VM_CONF
         }
 
@@ -162,9 +171,13 @@ class Config(object):
     def _load_config_files(self, conf_files):
         """
         loads the configuration files to the config dictionary.
+        in case the file is saved on shared storage the method
+        will update the local copy of the file as well.
         :param conf_files: the files to load
         """
         for config_type, fname in conf_files.iteritems():
+            if config_type in self._shared_storage_files:
+                self.refresh_local_conf_file(config_type)
             self._load_single_conf_file(fname, config_type)
 
     @property
@@ -222,6 +235,109 @@ class Config(object):
 
             f.write(text)
             f.truncate()
+
+    def set_config_on_shared_storage(self, key, value, config_type=None):
+        """
+        Writes 'key=value' to the config file for a file on
+        shared storage for 'config_type'.
+        If config_type is not provided the type is found based
+        on the provided key.
+        The method updates the configuration dictionary, the local
+        copy of the file, and the copy on the configuration archive
+        in shared storage.
+        :param key: the key to set
+        :param value: the value to set
+        :param config_type: the type of the file
+        """
+        self._load_config_files(self._dynamic_files)
+        final_type = config_type
+        if config_type:
+            if config_type not in self._dynamic_files:
+                raise Exception("Configuration type {0} cannot be updated"
+                                .format(config_type))
+        else:
+            key_count = 0
+            for shared_config_type in self._shared_storage_files:
+                shared_config_dict = self._config[shared_config_type]
+                for config_key in shared_config_dict:
+                    if key == config_key:
+                        if key_count > 0:
+                            raise Exception("Duplicate key {0}, "
+                                            "please specify the key type"
+                                            .format(key))
+                        final_type = shared_config_type
+                        key_count += 1
+            if key_count == 0:
+                raise KeyError(
+                    "Configuration key not found: key={0}".format(key))
+
+        if key in self._config[final_type]:
+            self._config[final_type][key] = value
+        else:
+            raise KeyError(
+                "Configuration key not found: type={0}, key={1}".format(
+                    final_type,
+                    key
+                )
+            )
+
+        content = self._create_new_content_for_file_on_shared_storage(
+            final_type,
+            key,
+            value
+        )
+        self._update_content_on_shared_conf(final_type, content)
+        self._load_config_files(self._dynamic_files)
+
+    def _update_content_on_shared_conf(self, config_type, file_content):
+        """
+        writes the new content to the specified file.
+        :param config_type: the file to update.
+        :param file_content: the new content
+        """
+        file_name = self._shared_storage_files[config_type]
+        volumepath = self._get_config_volume_path()
+        return heconflib.add_file_to_conf_archive(
+            self._logger,
+            file_name,
+            file_content,
+            volumepath
+        )
+
+    def _create_new_content_for_file_on_shared_storage(
+            self,
+            config_type,
+            key_to_set,
+            new_value
+    ):
+        """
+        creates the new content for the specified config_type
+        with the new value for the given key.
+        this method does not update the file.
+        :param config_type: the file to update
+        :param key_to_set: the key to set
+        :param new_value: the value to set
+        :return: the updated content of the file
+        """
+        text = ''
+        file_content = self._get_file_content_from_shared_storage(
+            config_type
+        )
+        for line in file_content.splitlines():
+            tokens = line.split('=', 1)
+            if len(tokens) > 1:
+                key = tokens[0].strip()
+                value = tokens[1].strip()
+                if key != key_to_set or value == new_value:
+                    new_line = line
+                else:
+                    new_line = '{key} = {new_value}'.\
+                        format(key=key_to_set, new_value=new_value)
+            else:
+                new_line = line
+            text += '{line}\n'.format(line=new_line)
+
+        return text
 
     def refresh_local_conf_file(self, config_type):
         """
