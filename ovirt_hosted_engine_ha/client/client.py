@@ -273,6 +273,11 @@ class HAClient(object):
             self._config = config.Config()
         self._config.set_config_on_shared_storage(key, value, config_type)
 
+    def get_shared_config(self, key, config_type=None):
+        if self._config is None:
+            self._config = config.Config()
+        return self._config.get_config_from_shared_storage(key, config_type)
+
     def reset_lockspace(self, force=False):
         # Lockspace file
         lockspace_file = None

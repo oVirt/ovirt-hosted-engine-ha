@@ -211,6 +211,36 @@ class Config(object):
                 )
             )
 
+    def get_config_from_shared_storage(self, key, config_type=None):
+        final_type = self._determine_final_config_type(key, config_type)
+        value = self.get(final_type, key)
+        value_and_type = [value, final_type]
+        return value_and_type
+
+    def _determine_final_config_type(self, key, config_type=None):
+        self._load_config_files(self._dynamic_files)
+        final_type = config_type
+        if config_type:
+            if config_type not in self._dynamic_files:
+                raise Exception("Invalid configuration type {0}"
+                                .format(config_type))
+        else:
+            key_count = 0
+            for shared_config_type in self._shared_storage_files:
+                shared_config_dict = self._config[shared_config_type]
+                for config_key in shared_config_dict:
+                    if key == config_key:
+                        if key_count > 0:
+                            raise Exception("Duplicate key {0}, "
+                                            "please specify the key type"
+                                            .format(key))
+                        final_type = shared_config_type
+                        key_count += 1
+            if key_count == 0:
+                raise KeyError(
+                    "Configuration key not found: key={0}".format(key))
+        return final_type
+
     def set(self, type, key, value):
         """
         Writes 'key=value' to the config file for 'type'.
@@ -249,28 +279,7 @@ class Config(object):
         :param value: the value to set
         :param config_type: the type of the file
         """
-        self._load_config_files(self._dynamic_files)
-        final_type = config_type
-        if config_type:
-            if config_type not in self._dynamic_files:
-                raise Exception("Configuration type {0} cannot be updated"
-                                .format(config_type))
-        else:
-            key_count = 0
-            for shared_config_type in self._shared_storage_files:
-                shared_config_dict = self._config[shared_config_type]
-                for config_key in shared_config_dict:
-                    if key == config_key:
-                        if key_count > 0:
-                            raise Exception("Duplicate key {0}, "
-                                            "please specify the key type"
-                                            .format(key))
-                        final_type = shared_config_type
-                        key_count += 1
-            if key_count == 0:
-                raise KeyError(
-                    "Configuration key not found: key={0}".format(key))
-
+        final_type = self._determine_final_config_type(key, config_type)
         if key in self._config[final_type]:
             self._config[final_type][key] = value
         else:
