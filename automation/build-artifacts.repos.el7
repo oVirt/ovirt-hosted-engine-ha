@@ -1,4 +1,4 @@
-ovirt-master-snapshot,http://resources.ovirt.org/pub/ovirt-master-snapshot/rpm/$distro
-ovirt-master-snapshot-static,http://resources.ovirt.org/pub/ovirt-master-snapshot-static/rpm/$distro
-centos-ovirt40-candidate,http://cbs.centos.org/repos/virt7-ovirt-40-candidate/x86_64/os/
+ovirt-4.1-snapshot,http://resources.ovirt.org/pub/ovirt-4.1-snapshot/rpm/$distro
+ovirt-4.1-snapshot-static,http://resources.ovirt.org/pub/ovirt-4.1-snapshot-static/rpm/$distro
+centos-ovirt41-candidate,http://cbs.centos.org/repos/virt7-ovirt-41-candidate/x86_64/os/
 centos-ovirt-common-candidate,http://cbs.centos.org/repos/virt7-ovirt-common-candidate/x86_64/os/
