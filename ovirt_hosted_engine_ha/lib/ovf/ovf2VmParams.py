@@ -86,6 +86,22 @@ def addDisks(devices, device, tree, index):
             index += 1
 
 
+def buildRNG(device):
+    if device:
+        rng = buildDevice(device)
+        rng['alias'] = text(device, 'Alias')
+    else:
+        rng = {
+            'type': 'rng',
+            'device': 'virtio',
+            'model': 'virtio',
+            'specParams': {
+                'source': 'urandom',
+            },
+        }
+    return rng
+
+
 def buildDevice(device):
     dev = {}
     dev['type'] = text(device, 'Type')
@@ -192,6 +208,7 @@ def toDict(ovf):
     vmParams['devices'] = devices = []
     index = 0  # 2 saved for cdrom
     cdromBuilt = False
+    rngBuilt = False
     for device in tree.find('Content').iter('Item'):
         if device.find('Type') is not None:
             t = text(device, 'Type')
@@ -210,9 +227,14 @@ def toDict(ovf):
                 pass
             elif t == 'video':
                 devices.append(buildVideo(device))
+            elif t == 'rng':
+                devices.append(buildRNG(device))
+                rngBuilt = True
     # filter out invalid devices (marked by None)
     vmParams['devices'] = [dev for dev in devices
                            if dev is not None and dev != 'None']
+    if not rngBuilt:
+        devices.append(buildRNG(None))
 
     addStubs(vmParams)
 

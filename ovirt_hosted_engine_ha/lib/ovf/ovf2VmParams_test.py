@@ -134,6 +134,17 @@ EXPECTED_VM_CONF_DICT = {
             'alias': 'video0',
             'deviceId': 'd3c45090-2863-4faa-a9c4-58fdd1d06f19',
         },
+        {
+            'address': (
+                '{slot=0x07, bus=0x00, domain=0x0000, type=pci, '
+                'function=0x0}'
+            ),
+            'device': 'virtio',
+            'type': 'rng',
+            'alias': 'rng0',
+            'deviceId': 'e61f8f3b-8bf1-4b5f-9e3a-22d4e60a11ca',
+            'specParams': {'source': 'urandom'}
+        },
     ]
 }
 
