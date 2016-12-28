@@ -306,7 +306,7 @@ class Config(object):
         """
         file_name = self._shared_storage_files[config_type]
         volumepath = self._get_config_volume_path()
-        return heconflib.add_file_to_conf_archive(
+        heconflib.add_file_to_conf_archive(
             self._logger,
             file_name,
             file_content,
@@ -462,8 +462,13 @@ class Config(object):
                 "Reloading vm.conf from the shared storage domain"
             )
 
-        content = self._get_vm_conf_content_from_ovf_store()
-        if not content:
+        content_from_ovf = self._get_vm_conf_content_from_ovf_store()
+        if content_from_ovf:
+            content = content_from_ovf
+        else:
+            content = self._get_file_content_from_shared_storage(VM)
+
+        if content:
             if self.refresh_local_conf_file(VM):
                 mtime = monotonic.time()
                 self.vm_conf_refresh_time = int(mtime)
