@@ -149,7 +149,7 @@ def extractConfFile(logger, imagepath, file):
 
 
 def get_conf_archive_MD5(imagepath):
-    cmd_list = ['sudo', '-u', agentconst.VDSM_USER, 'md5sum', imagepath]
+    cmd_list = _enforce_vdsm_user(['md5sum', imagepath])
     md5_pipe = subprocess.Popen(
         cmd_list,
         stdin=subprocess.PIPE,
