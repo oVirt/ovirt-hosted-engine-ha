@@ -136,8 +136,8 @@ EXPECTED_VM_CONF_DICT = {
         },
         {
             'address': (
-                '{slot=0x07, bus=0x00, domain=0x0000, type=pci, '
-                'function=0x0}'
+                '{slot:0x07, bus:0x00, domain:0x0000, type:pci, '
+                'function:0x0}'
             ),
             'device': 'virtio',
             'type': 'rng',

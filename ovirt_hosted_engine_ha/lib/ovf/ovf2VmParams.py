@@ -109,9 +109,15 @@ def buildDevice(device):
     dev['deviceId'] = text(device, RASD_NS + 'InstanceId')
     address = text(device, RASD_NS + 'Address')
     dev['address'] = address.replace("=", ':') if address is not None else None
-    specParams = device.find(RASD_NS + "SpecParams")
+    specParams = device.find("SpecParams")
     if specParams is not None:
-        dev['specParams'] = specParams
+        specDict = {
+            t.tag: t.text for t in specParams.findall("./")
+            if t.text is not None
+        }
+        if specDict:
+            dev['specParams'] = specDict
+
     return dev
 
 
