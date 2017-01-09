@@ -253,6 +253,20 @@
         <IsReadOnly>false</IsReadOnly>
         <Alias>video0</Alias>
       </Item>
+      <Item>
+        <rasd:ResourceType>0</rasd:ResourceType>
+        <rasd:InstanceId>e61f8f3b-8bf1-4b5f-9e3a-22d4e60a11ca</rasd:InstanceId>
+        <Type>rng</Type>
+        <Device>virtio</Device>
+        <rasd:Address>{slot=0x07, bus=0x00, domain=0x0000, type=pci, function=0x0}</rasd:Address>
+        <BootOrder>0</BootOrder>
+        <IsPlugged>true</IsPlugged>
+        <IsReadOnly>false</IsReadOnly>
+        <Alias>rng0</Alias>
+        <SpecParams>
+          <source>urandom</source>
+        </SpecParams>
+      </Item>
     </Section>
     <Section xsi:type="ovf:SnapshotsSection_Type">
       <Snapshot ovf:id="47093b30-ef1b-4b7f-be3e-d2421fe7c6ef">
