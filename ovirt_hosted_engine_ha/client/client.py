@@ -335,6 +335,10 @@ class HAClient(object):
         sserver = storage_server.StorageServer()
         sserver.connect_storage_server()
 
+    def disconnect_storage_server(self):
+        sserver = storage_server.StorageServer()
+        sserver.disconnect_storage_server()
+
     def is_deployed(self):
         """
         Return True if all files in Config.static_files exist
