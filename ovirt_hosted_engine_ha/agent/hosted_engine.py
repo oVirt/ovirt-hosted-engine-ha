@@ -1079,10 +1079,23 @@ class HostedEngine(object):
             logger=self._log
         )
         status = cli.migrateStatus(vm_id)
-        # TODO: this is bugged since VDSM on the source host is returning
+        # As VDSM could return either
+        # {u'downtime': 156, u'progress': 100,
+        # u'status': {'code': 0, 'message': 'Done'}}
+        # or
         # {'status': {'message': u'Virtual machine does not exist', 'code': 1}}
-        # as soon as the migration completes
-        if status['status']['code'] != 0:
+        # depending or how lucky we are
+        # (and this is clearly a race condition)
+        # we consider both as a mark of successful migration completion.
+        #
+        # In case of 'does not exist' reply we re-write status,
+        # so i looks good enough.
+        if "does not exist" in status['status']['message']:
+            self._log.info("VM not found, assuming that migration is complete")
+            status['progress'] = 100
+            status['downtime'] = 1
+            return status
+        elif status['status']['code'] != 0:
             self._log.error("Failed to get migration status", exc_info=True)
             return False
         else:
