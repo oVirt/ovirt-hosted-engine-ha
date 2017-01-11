@@ -792,8 +792,6 @@ class EngineMigratingAway(EngineState):
             logger.info("Continuing to monitor migration")
             return EngineMigratingAway(new_data), fsm.WAIT
 
-        # TODO: this is bugged since VDSM is not returning MigratedStats on
-        # the source host
         elif (
             new_data.migration_result and
             'progress' in new_data.migration_result and
