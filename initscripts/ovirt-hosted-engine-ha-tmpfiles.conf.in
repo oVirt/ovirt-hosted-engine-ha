@@ -1,0 +1,1 @@
+d @localstatedir@/run/@PACKAGE_NAME@ 0755 @VDSM_USER@ @VDSM_GROUP@

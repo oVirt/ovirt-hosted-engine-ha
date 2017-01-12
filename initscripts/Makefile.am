@@ -28,16 +28,19 @@ DISTCLEANFILES = \
 CLEANFILES = \
 	ovirt-ha-agent.service \
 	ovirt-ha-broker.service \
+	ovirt-hosted-engine-ha-tmpfiles.conf \
 	$(NULL)
 
 nodist_noinst_DATA = \
 	ovirt-ha-agent.service \
 	ovirt-ha-broker.service \
+	ovirt-hosted-engine-ha-tmpfiles.conf \
 	$(NULL)
 
 EXTRA_DIST = \
 	ovirt-ha-agent.service.in \
 	ovirt-ha-broker.service.in \
+	ovirt-hosted-engine-ha-tmpfiles.conf.in \
 	$(NULL)
 
 clean-local: \

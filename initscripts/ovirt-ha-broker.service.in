@@ -9,9 +9,11 @@ After=ovirt-early.service
 
 [Service]
 EnvironmentFile=-/etc/sysconfig/ovirt-ha-broker
-ExecStart=@ENGINE_HA_BINDIR@/ovirt-ha-broker --no-daemon
+ExecStart=@ENGINE_HA_BINDIR@/ovirt-ha-broker
 Restart=on-failure
 StandardOutput=null
+User=@VDSM_USER@
+Group=@VDSM_GROUP@
 
 [Install]
 WantedBy=multi-user.target

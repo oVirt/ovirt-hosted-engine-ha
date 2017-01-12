@@ -76,7 +76,6 @@ VDSM_GROUP = '@VDSM_GROUP@'
 # See http://www.gnu.org/software/automake/manual/html_node/Scripts.html
 LOG_CONF_FILE = '@ENGINE_HA_CONFDIR@/agent-log.conf'
 LOG_FILE = '@ENGINE_HA_LOGDIR@/agent.log'
-PID_FILE = '@ENGINE_HA_RUNDIR@/agent.pid'
 
 AGENT_CONF_FILE = '@ENGINE_HA_CONFDIR@/agent.conf'
 ENGINE_SETUP_CONF_FILE = '/etc/ovirt-hosted-engine/hosted-engine.conf'

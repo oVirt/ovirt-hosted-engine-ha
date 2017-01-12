@@ -90,12 +90,7 @@ make %{?_smp_mflags} install DESTDIR="%{buildroot}"
 
 install -dDm 0700 %{buildroot}%{engine_ha_logdir}
 
-#FIXME: ovirt-hosted-engine-ha.noarch:
-# E: dir-or-file-in-var-run /var/run/ovirt-hosted-engine-ha
-# A file in the package is located in /var/run. It's not permitted for packages
-# to install files in this directory.
-# See http://fedoraproject.org/wiki/Packaging:Tmpfiles.d
-
+install -Dm 0644 initscripts/ovirt-hosted-engine-ha-tmpfiles.conf %{buildroot}%{_tmpfilesdir}/ovirt-hosted-engine-ha-tmpfiles.conf
 install -dDm 0700 %{buildroot}%{engine_ha_rundir}
 install -dDm 0700 %{buildroot}%{engine_ha_statedir}
 # Install the systemd scripts
@@ -121,6 +116,9 @@ install -Dm 0440 sudoers/sudoers %{buildroot}%{_sysconfdir}/sudoers.d/60_ovirt-h
 %dir %{engine_ha_bindir}
 %{engine_ha_bindir}/ovirt-ha-agent
 %{engine_ha_bindir}/ovirt-ha-broker
+
+%dir
+%{_tmpfilesdir}/ovirt-hosted-engine-ha-tmpfiles.conf
 
 %dir %{engine_ha_libdir}
 %{engine_ha_libdir}/*
