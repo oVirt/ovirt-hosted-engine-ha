@@ -366,6 +366,9 @@ class Config(object):
                 )
             return False
 
+        return self._publish_local_conf_file(config_type, content)
+
+    def _publish_local_conf_file(self, config_type, content):
         localcopy_filename = self._dynamic_files[config_type]
         if self._logger:
             self._logger.debug(
@@ -373,7 +376,6 @@ class Config(object):
                     target=localcopy_filename,
                 )
             )
-
         with open(localcopy_filename, 'w') as target:
             target.write(content)
             if self._logger:
@@ -381,7 +383,6 @@ class Config(object):
                     "local conf file was correctly written"
                 )
             target.truncate()
-
         return True
 
     def _get_vm_conf_content_from_ovf_store(self):
@@ -469,7 +470,7 @@ class Config(object):
             content = self._get_file_content_from_shared_storage(VM)
 
         if content:
-            if self.refresh_local_conf_file(VM):
+            if self._publish_local_conf_file(VM, content):
                 mtime = monotonic.time()
                 self.vm_conf_refresh_time = int(mtime)
                 self.vm_conf_refresh_time_epoch = int(time.time() - mtime)
