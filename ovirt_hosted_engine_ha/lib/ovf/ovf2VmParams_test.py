@@ -139,6 +139,7 @@ EXPECTED_VM_CONF_DICT = {
                 '{slot:0x07, bus:0x00, domain:0x0000, type:pci, '
                 'function:0x0}'
             ),
+            'model': 'virtio',
             'device': 'virtio',
             'type': 'rng',
             'alias': 'rng0',
