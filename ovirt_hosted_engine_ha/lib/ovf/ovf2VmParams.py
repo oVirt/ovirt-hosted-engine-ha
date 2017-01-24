@@ -87,7 +87,7 @@ def addDisks(devices, device, tree, index):
 
 
 def buildRNG(device):
-    if device:
+    if device is not None:
         rng = buildDevice(device)
         rng['alias'] = text(device, 'Alias')
     else:
@@ -99,6 +99,12 @@ def buildRNG(device):
                 'source': 'urandom',
             },
         }
+
+    # Make sure RNG device has a model specified
+    # as the engine saves it to the device field only
+    if 'model' not in rng:
+        rng['model'] = rng['device']
+
     return rng
 
 
