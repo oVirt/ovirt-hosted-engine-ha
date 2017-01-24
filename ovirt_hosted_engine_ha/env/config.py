@@ -113,6 +113,14 @@ class Config(object):
             VM: constants.HEConfFiles.HECONFD_VM_CONF
         }
 
+        # This dictionary holds methods that will be called when refreshing
+        # the config file.
+        # If no refresh method is specified the _refresh_local_conf_file
+        # will be called.
+        self._shared_storage_refresh_method = {
+            VM: self.refresh_vm_conf
+        }
+
         self._load_config_files(Config.static_files)
 
         if CONF_FILE in self._config[ENGINE]:
@@ -355,6 +363,12 @@ class Config(object):
         :return: false if there was an error retrieving the file,
                  true if the file was retrieved and updated.
         """
+        # Use a dedicated refresh method if configured
+        if config_type in self._shared_storage_refresh_method:
+            refresh_method = self._shared_storage_refresh_method[config_type]
+            result = refresh_method()
+            return True if result is None else result
+
         content = self._get_file_content_from_shared_storage(
             config_type
         )
@@ -449,6 +463,7 @@ class Config(object):
                     source=config_volume_path,
                 )
             )
+        content = None
         if heconflib.validateConfImage(self._logger, config_volume_path):
             content = heconflib.extractConfFile(
                 self._logger,
