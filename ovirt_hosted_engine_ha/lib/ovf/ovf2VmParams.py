@@ -242,11 +242,12 @@ def toDict(ovf):
             elif t == 'rng':
                 devices.append(buildRNG(device))
                 rngBuilt = True
+
+    if not rngBuilt:
+        devices.append(buildRNG(None))
     # filter out invalid devices (marked by None)
     vmParams['devices'] = [dev for dev in devices
                            if dev is not None and dev != 'None']
-    if not rngBuilt:
-        devices.append(buildRNG(None))
 
     addStubs(vmParams)
 
