@@ -146,6 +146,10 @@ EXPECTED_VM_CONF_DICT = {
             'deviceId': 'e61f8f3b-8bf1-4b5f-9e3a-22d4e60a11ca',
             'specParams': {'source': 'urandom'}
         },
+        {
+            'device': 'console',
+            'type': 'console',
+        },
     ]
 }
 

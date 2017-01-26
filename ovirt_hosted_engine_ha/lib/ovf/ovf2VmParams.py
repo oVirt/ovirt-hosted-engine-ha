@@ -162,7 +162,13 @@ def buildController(device):
 
 
 def buildConsole(device):
-    console = buildDevice(device)
+    if device is not None:
+        console = buildDevice(device)
+    else:
+        console = {
+            'type': 'console',
+            'device': 'console',
+        }
     return console
 
 
@@ -221,6 +227,7 @@ def toDict(ovf):
     index = 0  # 2 saved for cdrom
     cdromBuilt = False
     rngBuilt = False
+    consoleBuilt = False
     for device in tree.find('Content').iter('Item'):
         if device.find('Type') is not None:
             t = text(device, 'Type')
@@ -235,8 +242,8 @@ def toDict(ovf):
             elif t == 'controller':
                 devices.append(buildController(device))
             elif t == 'console':
-                # TODO console device still not supported yet
-                pass
+                devices.append(buildConsole(device))
+                consoleBuilt = True
             elif t == 'video':
                 devices.append(buildVideo(device))
             elif t == 'rng':
@@ -245,6 +252,9 @@ def toDict(ovf):
 
     if not rngBuilt:
         devices.append(buildRNG(None))
+    if not consoleBuilt:
+        devices.append(buildConsole(None))
+
     # filter out invalid devices (marked by None)
     vmParams['devices'] = [dev for dev in devices
                            if dev is not None and dev != 'None']
