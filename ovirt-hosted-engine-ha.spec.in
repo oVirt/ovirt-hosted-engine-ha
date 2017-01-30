@@ -49,7 +49,7 @@ Requires:       sudo
 Requires(pre):  vdsm >= %{vdsm_version}
 Requires(post):  vdsm >= %{vdsm_version}
 Requires:       vdsm >= %{vdsm_version}
-Requires:       vdsm-cli >= %{vdsm_version}
+Requires:       vdsm-client >= %{vdsm_version}
 Requires:       vdsm-python >= %{vdsm_version}
 
 # Otopi is needed for the cli client
@@ -60,7 +60,7 @@ BuildRequires:  python2-devel
 BuildRequires:  python-nose
 BuildRequires:  python-mock
 BuildRequires:  vdsm >= %{vdsm_version}
-BuildRequires:  vdsm-cli >= %{vdsm_version}
+BuildRequires:  vdsm-client >= %{vdsm_version}
 BuildRequires:  vdsm-python >= %{vdsm_version}
 %{?systemd_requires}
 BuildRequires:  systemd
