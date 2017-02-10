@@ -12,7 +12,6 @@ import struct
 from io import BytesIO
 from operator import itemgetter
 import math
-import vdsm.vdscli
 import time
 import uuid
 import json
@@ -239,10 +238,10 @@ class VdsmBackend(StorageBackend):
     def _get_volume_path(self, connection, spUUID, sdUUID, imgUUID, volUUID):
         retval = namedtuple('retval', ['status_code', 'path', 'message'])
         response = connection.prepareImage(
-            spUUID,
-            sdUUID,
-            imgUUID,
-            volUUID
+            storagepoolID=spUUID,
+            storagedomainID=sdUUID,
+            imageID=imgUUID,
+            volumeID=volUUID
         )
         self._logger.debug("prepareImage: '%s'", response)
         path = response.get('path', None)
@@ -268,7 +267,7 @@ class VdsmBackend(StorageBackend):
 
         # Connect to local VDSM
         self._logger.debug("Connecting to VDSM")
-        connection = vdsm.vdscli.connect()
+        connection = util.connect_vdsm_json_rpc(logger=self._logger)
 
         # Check of the volume already exists
         response = self._get_volume_path(
@@ -293,15 +292,17 @@ class VdsmBackend(StorageBackend):
 
         # Create new volume
         create_response = connection.createVolume(
-            self._sd_uuid,
-            self._sp_uuid,
-            image_uuid,
-            str(service_size),  # Need to be str for using bytes.
-            self.RAW_FORMAT,
-            self.PREALLOCATED_VOL,
-            self.DATA_DISK_TYPE,
-            volume_uuid,
-            service_name
+            volumeID=volume_uuid,
+            storagepoolID=self._sp_uuid,
+            storagedomainID=self._sd_uuid,
+            imageID=image_uuid,
+            size=str(service_size),  # Need to be str for using bytes.
+            volFormat=self.RAW_FORMAT,
+            preallocate=self.PREALLOCATED_VOL,
+            diskType=self.DATA_DISK_TYPE,
+            desc=service_name,
+            srcImgUUID=constants.BLANK_UUID,
+            srcVolUUID=constants.BLANK_UUID,
         )
 
         self._logger.debug("createVolume: '%s'", create_response)
@@ -309,20 +310,20 @@ class VdsmBackend(StorageBackend):
             raise RuntimeError(create_response["status"]["message"])
 
         # Wait for the createVolume task to finish
-        task = create_response["uuid"]
+        task = create_response["status"]["message"]
         while True:
-            task_status = connection.getTaskStatus(task)
+            task_status = connection.getTaskStatus(taskID=task)
             self._logger.debug("getTaskStatus: '%s'" % str(task_status))
             if task_status["status"]["code"] != 0:
                 raise RuntimeError(task_status["status"]["message"])
-            elif task_status["taskStatus"]["taskState"] == "finished":
-                if task_status["taskStatus"]["taskResult"] != "success":
-                    raise RuntimeError(task_status["taskStatus"]["message"])
+            elif task_status["taskState"] == "finished":
+                if task_status["taskResult"] != "success":
+                    raise RuntimeError(task_status["taskResult"])
                 break
             else:
                 time.sleep(self.TASK_WAIT)
 
-        response = connection.clearTask(task)
+        response = connection.clearTask(taskID=task)
         self._logger.debug("clearTask: '%s'", response)
         self._logger.info("Image for '%s' created successfully", service_name)
 
@@ -392,7 +393,7 @@ class VdsmBackend(StorageBackend):
 
         # Connect to local VDSM
         self._logger.debug("Connecting to VDSM")
-        connection = vdsm.vdscli.connect()
+        connection = util.connect_vdsm_json_rpc(logger=self._logger)
         for service, volume in self._services.iteritems():
             # Activate volumes and set the volume.path to proper path
             response = self._get_volume_path(
