@@ -233,9 +233,12 @@ class Config(object):
         self._load_config_files(self._dynamic_files)
         final_type = config_type
         if config_type:
-            if config_type not in self._dynamic_files:
-                raise Exception("Invalid configuration type {0}"
-                                .format(config_type))
+            if config_type not in self._editable_shared_storage_files:
+                allowed_types = ", ".join(self._editable_shared_storage_files)
+                raise Exception("Invalid configuration type {0}, "
+                                "supported types are: {1}"
+                                .format(config_type, allowed_types)
+                                )
         else:
             key_count = 0
             for shared_config_type in self._shared_storage_files:
