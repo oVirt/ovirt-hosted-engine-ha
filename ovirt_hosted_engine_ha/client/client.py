@@ -278,6 +278,11 @@ class HAClient(object):
             self._config = config.Config()
         return self._config.get_config_from_shared_storage(key, config_type)
 
+    def get_all_config_keys(self, config_type=None):
+        if self._config is None:
+            self._config = config.Config()
+        return self._config.get_all_shared_keys(config_type)
+
     def reset_lockspace(self, force=False):
         # Lockspace file
         lockspace_file = None
