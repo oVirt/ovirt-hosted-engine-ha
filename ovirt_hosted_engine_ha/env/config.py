@@ -121,6 +121,10 @@ class Config(object):
             VM: self.refresh_vm_conf
         }
 
+        self._editable_shared_storage_files = {
+            BROKER
+        }
+
         self._load_config_files(Config.static_files)
 
         if CONF_FILE in self._config[ENGINE]:
@@ -489,6 +493,21 @@ class Config(object):
                 mtime = monotonic.time()
                 self.vm_conf_refresh_time = int(mtime)
                 self.vm_conf_refresh_time_epoch = int(time.time() - mtime)
+
+    def get_all_shared_keys(self, config_type):
+        if (config_type and
+                config_type not in self._editable_shared_storage_files):
+            return None
+        config_type_to_keys = {}
+        self._load_config_files(self._dynamic_files)
+        if config_type:
+            config_type_to_keys[config_type] = \
+                self._config[config_type].keys()
+        else:
+            for config_type in self._editable_shared_storage_files:
+                config_type_to_keys[config_type] = \
+                    self._config[config_type].keys()
+        return config_type_to_keys
 
     @classmethod
     def static_files_exist(cls):
