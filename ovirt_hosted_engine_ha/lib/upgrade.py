@@ -136,6 +136,8 @@ class Upgrade(object):
             spuuid = self._config.get(config.ENGINE, config.SP_UUID)
             if spuuid == constants.BLANK_UUID:
                 uptodate = True
+            else:
+                self._log.debug("Storage domain UUID is not blank")
         except (KeyError, ValueError):
             uptodate = False
         return uptodate

@@ -117,6 +117,9 @@ class EngineState(BaseState):
 
         upgrademgr = upgrade.Upgrade()
         if not upgrademgr.is_conf_file_uptodate():
+            logger.info("Penalizing score by %d due to "
+                        "not up-to-date VM configuration",
+                        score_cfg['not-uptodate-config-penalty'])
             score -= score_cfg['not-uptodate-config-penalty']
 
         # FIXME score needed for vdsm storage pool connection?
