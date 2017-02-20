@@ -4,6 +4,8 @@ Cmnd_Alias OVIRT_HA = \
     /sbin/losetup --find --show --sizelimit=* @ENGINE_HA_STATEDIR@/*, \
     /sbin/losetup --detach /dev/loop*, \
     /sbin/mkfs -t * /dev/loop*, \
+    /usr/bin/mount /dev/loop* *, \
+    /usr/bin/umount *, \
     /bin/mv -b -f -Z @ENGINE_HA_STATEDIR@/* /etc/ovirt-hosted-engine/hosted-engine.conf, \
     /usr/bin/chown -R vdsm @ENGINE_HA_STATEDIR@/*, \
     /usr/bin/chown root\:root /etc/ovirt-hosted-engine/hosted-engine.conf, \

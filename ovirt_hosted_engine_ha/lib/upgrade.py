@@ -359,26 +359,6 @@ class Upgrade(object):
                 )
             )
 
-    def _refreshStoragePool(self, master):
-        self._log.info(
-            "Refreshing storage pool - "
-            "master '{master}'".format(
-                master=master,
-            )
-        )
-        master_ver = 1
-        status = self._cli.refreshStoragePool(
-            storagepoolID=self._spUUID,
-            masterSdUUID=master,
-            masterVersion=master_ver,
-        )
-        if status['status']['code'] != 0:
-            raise RuntimeError(
-                'Unable to refresh SP: {message}'.format(
-                    message=status['status']['message'],
-                )
-            )
-
     def _get_conffile_content(self, type, update_func=None):
         self._log.info('Reading conf file: %s' % str(type))
         content = None
@@ -686,7 +666,7 @@ class Upgrade(object):
             raise RuntimeError(
                 'Unable to check SPM: ' + str(status['status']['message'])
             )
-        return status['spm_st']['spmStatus'] == 'SPM'
+        return status['spmStatus'] == 'SPM'
 
     def _spmStart(self):
         self._log.info('spmStart')
@@ -702,7 +682,6 @@ class Upgrade(object):
                 storagepoolID=self._spUUID,
                 prevID=prevID,
                 prevLver=prevLVER,
-
                 enableScsiFencing=scsiFencing,
                 maxHostID=maxHostID,
                 domVersion=version,
@@ -824,7 +803,6 @@ class Upgrade(object):
             self._spmStop()
             return False
         self._detachStorageDomain(self._sdUUID, self._fake_mastersd_uuid)
-        self._refreshStoragePool(self._fake_mastersd_uuid)
         self._destroyStoragePool()
         self._disconnectFakeStorageDomainServer()
         self._remove_loopback_device()
@@ -868,8 +846,7 @@ class Upgrade(object):
         vmlist = self._cli.list()
         self._log.debug(vmlist)
         if vmlist['status']['code'] == 0:
-            vms = vmlist['items'] if 'items' in vmlist else []
-            runningVM = set([vm['vmId'] for vm in vms])
+            runningVM = set(vmlist['items'] if 'items' in vmlist else [])
             otherVM = runningVM - set([self._HEVMID])
             if len(otherVM) > 0:
                 self._log.info('Other VMs are running on this host')
