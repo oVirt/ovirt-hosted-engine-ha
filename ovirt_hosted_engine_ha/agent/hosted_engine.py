@@ -657,7 +657,14 @@ class HostedEngine(object):
         self._log.info("Preparing images")
         img.prepare_images()
 
-        self._config.refresh_vm_conf()
+        self._log.info("Refreshing vm.conf")
+        try:
+            self._config.refresh_vm_conf()
+        except KeyError:
+            self._log.error(
+                "Unable to refresh vm.conf from the shared storage. "
+                "Has this HE cluster correctly reached 3.6 level?"
+            )
 
     def _check_service(self, service_name):
         self._log.debug("Checking %s status", service_name)
