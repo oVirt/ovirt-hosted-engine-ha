@@ -26,6 +26,7 @@ from optparse import OptionParser
 import signal
 import sys
 import time
+import traceback
 
 from ..lib import exceptions as ex
 from . import constants
@@ -147,8 +148,8 @@ class Agent(object):
                 self._log.error("Can't initialize brokerlink '{0}'"
                                 " - reinitializing".format(str(e)))
             except Exception as e:
-                self._log.error("Error: '{0}' - trying to restart agent"
-                                .format(str(e)))
+                self._log.error(traceback.format_exc())
+                self._log.error("Trying to restart agent")
 
             time.sleep(constants.AGENT_START_RETRY_WAIT)
             self._log.warn("Restarting agent, attempt '{0}'".format(attempt))
