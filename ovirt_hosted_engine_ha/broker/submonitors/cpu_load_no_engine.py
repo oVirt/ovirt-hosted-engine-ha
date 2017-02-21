@@ -144,15 +144,15 @@ class Submonitor(submonitor_base.SubmonitorBase):
                 len(stats['items']) == 0 or
                 'pid' not in stats['items'][0]
             ):
-                if stats['status']['message'] == (
-                    "Virtual machine does not exist"
-                ):
+                if stats['status']['code'] == 1:
                     self._log.info("VM not on this host",
                                    extra=log_filter.lf_args('vm', 60))
                 else:
                     self._log.error(
-                        "Failed to getVmStats: %s",
-                        stats['status']['message'],
+                        "Failed to getVmStats: {code} - {message}".format(
+                            code=stats['status']['code'],
+                            message=stats['status']['message'],
+                        ),
                         extra=log_filter.lf_args('vm', 60)
                     )
             else:
