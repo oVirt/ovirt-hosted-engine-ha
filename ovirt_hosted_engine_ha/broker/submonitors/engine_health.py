@@ -50,9 +50,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
         )
         stats = cli.getVmStats(self._vm_uuid)
         if stats['status']['code'] != 0 or 'items' not in stats:
-            if stats['status']['message'] == (
-                "Virtual machine does not exist"
-            ):
+            if stats['status']['code'] == 1:
                 self._log.info("VM not on this host",
                                extra=log_filter.lf_args('status', 60))
                 d = {'vm': 'down', 'health': 'bad', 'detail': 'unknown',
@@ -61,8 +59,10 @@ class Submonitor(submonitor_base.SubmonitorBase):
                 return
             else:
                 self._log.error(
-                    "Failed to getVmStats: %s",
-                    str(stats['status']['message'])
+                    "Failed to getVmStats: {code} - {message}".format(
+                        code=stats['status']['code'],
+                        message=stats['status']['message'],
+                    )
                 )
                 d = {'vm': 'unknown', 'health': 'unknown', 'detail': 'unknown',
                      'reason': 'failed to getVmStats'}
