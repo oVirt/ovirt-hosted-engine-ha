@@ -14,6 +14,8 @@ Restart=on-failure
 StandardOutput=null
 User=@VDSM_USER@
 Group=@VDSM_GROUP@
+RuntimeDirectory=@PACKAGE_NAME@
+RuntimeDirectoryMode=0755
 
 [Install]
 WantedBy=multi-user.target
