@@ -378,10 +378,11 @@ class EngineUp(EngineState):
     :transition GlobalMaintenance:
     :transition UnknownLocalVmState:
     :transition LocalMaintenanceMigrateVm:
-    :transition EngineUnexpectedlyDown:
+    :transition EngineMaybeAway:
     :transition EngineMigratingAway:
     :transition EngineStop:
     :transition EngineUpBadHealth:
+    :transition EngineDown:
     :transition:
     """
     def _penalize_memory(self, vm_mem, lm, logger, score, score_cfg):
@@ -398,12 +399,12 @@ class EngineUp(EngineState):
         :type logger: logging.Logger
         """
         if new_data.best_engine_status["vm"] != "up":
-            logger.error("Engine vm died unexpectedly")
-            return EngineUnexpectedlyDown(new_data), fsm.NOWAIT
+            logger.info("Engine vm may be running on another host")
+            return EngineMaybeAway(new_data), fsm.NOWAIT
         elif new_data.best_engine_host_id != new_data.host_id:
-            logger.error("Engine vm unexpectedly running on host %d",
-                         new_data.best_engine_host_id)
-            return EngineUnexpectedlyDown(new_data), fsm.NOWAIT
+            logger.info("Engine vm unexpectedly running on host %d",
+                        new_data.best_engine_host_id)
+            return EngineDown(new_data)
         elif new_data.best_engine_status["detail"] == "migration source":
             logger.info("Engine VM found migrating away")
             return EngineMigratingAway(new_data)
@@ -810,3 +811,48 @@ class EngineMigratingAway(EngineState):
             # Migration failed
             logger.error("Migration failed: %s", new_data.migration_result)
             return ReinitializeFSM(new_data)
+
+
+class EngineMaybeAway(EngineState):
+    """
+    This state waits for the engine VM to appear on another host.
+
+    :transition GlobalMaintenance:
+    :transition UnknownLocalVmState:
+    :transition EngineUp:
+    :transition EngineDown:
+    :transition EngineUnexpectedlyDown:
+    :transition EngineMaybeAway:
+    """
+
+    @check_global_maintenance(GlobalMaintenance)
+    @check_local_vm_unknown(UnknownLocalVmState)
+    @check_local_maintenance(LocalMaintenance)
+    @check_timeout(EngineUnexpectedlyDown,
+                   constants.ENGINE_AWAY_EXPIRATION_SECS, BaseFSM.NOWAIT)
+    def consume(self, fsm, new_data, logger):
+        """
+        :type fsm: BaseFSM
+        :type new_data: HostedEngineData
+        :type logger: logging.Logger
+        """
+        if new_data.best_engine_status["vm"] == "up":
+            if (new_data.best_engine_host_id ==
+                    new_data.stats.host_id):
+                # The engine is unexpectedly running here, start monitoring it
+                logger.info("Engine vm unexpectedly running locally,"
+                            " monitoring vm")
+                return EngineUp(new_data)
+            else:
+                # The engine is running somewhere else
+                hostname = new_data.stats.hosts[
+                    new_data.best_engine_host_id]['hostname']
+                logger.info("Engine vm is running on host %s (id %d)",
+                            hostname,
+                            new_data.best_engine_host_id,
+                            extra=log_filter.lf_args(
+                                self.LF_ENGINE_HEALTH,
+                                self.LF_ENGINE_HEALTH_INT))
+                return EngineDown(new_data)
+
+        return EngineMaybeAway(new_data)
