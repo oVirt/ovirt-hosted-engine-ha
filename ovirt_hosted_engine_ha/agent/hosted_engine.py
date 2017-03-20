@@ -1165,9 +1165,8 @@ class HostedEngine(object):
             )
             stats = cli.getVmStats(vm_id)
             if stats['status']['code'] != 0:
-                if stats['status']['message'] == (
-                    'Virtual machine does not exist'
-                ):
+                if stats['status']['code'] == 1:
+                    # NoSuchVM
                     self._log.info("Vdsm state for VM clean")
                     return
                 else:
@@ -1190,9 +1189,8 @@ class HostedEngine(object):
             )
             status = cli.destroy(vm_id)
             if status['status']['code'] != 0:
-                if stats['status']['message'] == (
-                    "Virtual machine does not exist"
-                ):
+                if stats['status']['code'] == 1:
+                    # NoSuchVM
                     self._log.info("Vdsm state for VM clean")
                     return
                 else:
