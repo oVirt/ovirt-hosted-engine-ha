@@ -344,7 +344,7 @@ class LocalMaintenanceMigrateVm(LocalMaintenance):
 
     :transition GlobalMaintenance:
     :transition UnknownLocalVmState:
-    :transition ReinitializeFSM
+    :transition ReinitializeFSM:
     :transition EngineStop:
     :transition EngineMigratingAway:
     """
@@ -540,6 +540,7 @@ class EngineStop(EngineState):
     :transition EngineForceStop:
     :transition:
     :transition ReinitializeFSM:
+    :transition EngineDown:
     """
     @check_global_maintenance(GlobalMaintenance)
     @check_local_maintenance(LocalMaintenance)
@@ -729,7 +730,10 @@ class EngineStarting(EngineState):
     :transition UnknownLocalVmState:
     :transition LocalMaintenance:
     :transition EngineUp:
-    :transition EngineDown:
+    :transition EngineStop:
+    :transition EngineForceStop:
+    :transition EngineUnexpectedlyDown:
+    :transition:
     """
     @check_global_maintenance(GlobalMaintenance)
     @check_local_vm_unknown(UnknownLocalVmState)
@@ -819,10 +823,11 @@ class EngineMaybeAway(EngineState):
 
     :transition GlobalMaintenance:
     :transition UnknownLocalVmState:
+    :transition LocalMaintenance:
     :transition EngineUp:
     :transition EngineDown:
     :transition EngineUnexpectedlyDown:
-    :transition EngineMaybeAway:
+    :transition:
     """
 
     @check_global_maintenance(GlobalMaintenance)
