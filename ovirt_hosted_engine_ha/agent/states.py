@@ -330,7 +330,7 @@ class ReinitializeFSM(EngineState):
         # if the engine is already up'n'running then EngineStarting will
         # switch to EngineUp (hopefully) without any side effects
         if engine_state and engine_state["vm"] == "up":
-            return EngineStarting(data)
+            return EngineStarting(data), fsm.NOWAIT
         else:
             return EngineDown(data)
 
@@ -456,7 +456,7 @@ class EngineDown(EngineState):
                 logger.info("Engine vm unexpectedly running locally,"
                             " monitoring vm")
                 # can't go directly up, engine needs a while to settle
-                return EngineStarting(new_data),
+                return EngineStarting(new_data), fsm.NOWAIT
             else:
                 # The engine is running somewhere else
                 hostname = new_data.stats.hosts[
