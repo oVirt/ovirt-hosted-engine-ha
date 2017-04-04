@@ -480,6 +480,10 @@ class Config(object):
         return content
 
     def refresh_vm_conf(self):
+        header_comment = (
+            '# Editing the hosted engine VM is only possible via'
+            ' the manager UI\API\n\n'
+        )
         if self._logger:
             self._logger.info(
                 "Reloading vm.conf from the shared storage domain"
@@ -492,6 +496,7 @@ class Config(object):
             content = self._get_file_content_from_shared_storage(VM)
 
         if content:
+            content = "%s%s" % (header_comment, content)
             if self._publish_local_conf_file(VM, content):
                 mtime = monotonic.time()
                 self.vm_conf_refresh_time = int(mtime)
