@@ -98,6 +98,18 @@
         <rasd:UsbPolicy>DISABLED</rasd:UsbPolicy>
       </Item>
       <Item>
+        <rasd:Caption>Graphical Framebuffer</rasd:Caption>
+        <rasd:InstanceId>546172ad-e415-400b-b079-91a033efd4b1</rasd:InstanceId>
+        <rasd:ResourceType>26</rasd:ResourceType>
+        <Type>graphics</Type>
+        <Device>spice</Device>
+        <rasd:Address/>
+        <BootOrder>0</BootOrder>
+        <IsPlugged>true</IsPlugged>
+        <IsReadOnly>false</IsReadOnly>
+        <Alias/>
+      </Item>
+      <Item>
         <rasd:Caption>CDROM</rasd:Caption>
         <rasd:InstanceId>131ab170-8626-4473-b22a-6724a057336b</rasd:InstanceId>
         <rasd:ResourceType>15</rasd:ResourceType>

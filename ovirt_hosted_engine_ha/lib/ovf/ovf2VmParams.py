@@ -161,6 +161,11 @@ def buildController(device):
     return controller
 
 
+def buildGraphics(device):
+    graphics = buildDevice(device)
+    return graphics
+
+
 def buildConsole(device):
     if device is not None:
         console = buildDevice(device)
@@ -249,6 +254,8 @@ def toDict(ovf):
             elif t == 'rng':
                 devices.append(buildRNG(device))
                 rngBuilt = True
+            elif t == 'graphics':
+                devices.append(buildGraphics(device))
 
     if not rngBuilt:
         devices.append(buildRNG(None))
