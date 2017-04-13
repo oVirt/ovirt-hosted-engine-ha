@@ -51,6 +51,12 @@ EXPECTED_VM_CONF_DICT = {
             'shared': 'exclusive'
         },
         {
+            'address': None,
+            'device': 'spice',
+            'type': 'graphics',
+            'deviceId': '546172ad-e415-400b-b079-91a033efd4b1',
+        },
+        {
             'index': '2',
             'iface': 'ide',
             'address': '{ controller:0, target:0,unit:0, bus:1, type:drive}',
