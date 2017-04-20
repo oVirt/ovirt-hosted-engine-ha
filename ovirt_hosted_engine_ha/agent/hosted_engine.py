@@ -37,6 +37,7 @@ from ..lib import exceptions as ex
 from ..lib import image
 from ..lib import log_filter
 from ..lib import metadata
+from ..lib import monotonic
 from ..lib import storage_server
 from ..lib import util
 from ..lib.storage_backends import StorageBackendTypes, VdsmBackend
@@ -421,6 +422,7 @@ class HostedEngine(object):
         self._config.refresh_vm_conf()
 
         for old_state, state, delay in self.fsm:
+            loop_start = monotonic.time()
             if self._shutdown_requested_callback():
                 break
 
@@ -485,6 +487,11 @@ class HostedEngine(object):
                                 constants.MAX_ERROR_COUNT)
                 break
 
+            loop_stop = monotonic.time()
+            self._log.log(log_level, "Monitoring loop execution time %d sec",
+                          loop_stop - loop_start)
+
+            delay = max(0, delay - loop_stop + loop_start)
             self._log.log(log_level, "Sleeping %d seconds", delay)
             time.sleep(delay)
 
