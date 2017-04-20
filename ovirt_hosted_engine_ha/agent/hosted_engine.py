@@ -421,6 +421,9 @@ class HostedEngine(object):
 
         self._config.refresh_vm_conf()
 
+        # Safe initial value, so first time loop will be fully executed
+        prev_delay = 1
+
         for old_state, state, delay in self.fsm:
             loop_start = monotonic.time()
             if self._shutdown_requested_callback():
@@ -434,9 +437,12 @@ class HostedEngine(object):
                                     hostname=socket.gethostname())
 
             try:
-                # make sure everything is still initialized
-                self._initialize_vdsm()
-                self._initialize_storage_images()
+                if prev_delay > 0:
+                    # make sure everything is still initialized
+                    self._initialize_vdsm()
+                    self._initialize_storage_images()
+                    self._initialize_broker()
+                    self._initialize_sanlock()
 
                 # stop the VDSM domain monitor in local maintenance, but
                 # only when the VM is not running locally
@@ -445,9 +451,6 @@ class HostedEngine(object):
                     self._initialize_domain_monitor()
                 else:
                     self._stop_domain_monitor_if_possible(state)
-
-                self._initialize_broker()
-                self._initialize_sanlock()
 
                 # log state
                 self._log.info("Current state %s (score: %d)",
@@ -490,6 +493,8 @@ class HostedEngine(object):
             loop_stop = monotonic.time()
             self._log.log(log_level, "Monitoring loop execution time %d sec",
                           loop_stop - loop_start)
+
+            prev_delay = delay
 
             delay = max(0, delay - loop_stop + loop_start)
             self._log.log(log_level, "Sleeping %d seconds", delay)
