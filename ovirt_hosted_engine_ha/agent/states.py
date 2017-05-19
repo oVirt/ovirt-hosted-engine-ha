@@ -732,7 +732,7 @@ class EngineStarting(EngineState):
     :transition EngineUp:
     :transition EngineStop:
     :transition EngineForceStop:
-    :transition EngineUnexpectedlyDown:
+    :transition EngineMaybeAway:
     :transition:
     """
     @check_global_maintenance(GlobalMaintenance)
@@ -759,7 +759,7 @@ class EngineStarting(EngineState):
             logger.info("Another host already took over..")
             return EngineForceStop(new_data), fsm.NOWAIT
 
-        return EngineUnexpectedlyDown(new_data)
+        return EngineMaybeAway(new_data), fsm.NOWAIT
 
 
 class EngineMigratingAway(EngineState):
