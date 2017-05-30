@@ -20,6 +20,7 @@
 import logging
 import os
 import subprocess
+import time
 
 from ovirt_hosted_engine_ha.broker import submonitor_base
 from ovirt_hosted_engine_ha.lib import log_filter
@@ -34,20 +35,36 @@ class Submonitor(submonitor_base.SubmonitorBase):
         self._log = logging.getLogger("%s.Ping" % __name__)
         self._log.addFilter(log_filter.IntermittentFilter())
         self._addr = options.get('addr')
-        self._timeout = str(options.get('timeout', 10))
+        self._timeout = str(options.get('timeout', 2))
+        self._total = options.get('count', 5)
+        self._delay = options.get('delay', 0.5)
         if self._addr is None:
             raise Exception("ping requires addr address")
         self._log.debug("addr=%s, timeout=%s", self._addr, self._timeout)
 
     def action(self, options):
+        count = 0
+        for i in range(self._total):
+            if self._ping():
+                count += 1
+
+            # wait between pings
+            if i < self._total - 1:
+                time.sleep(self._delay)
+
+        if count == self._total:
+            self._log.info("Successfully pinged %s", self._addr,
+                           extra=log_filter.lf_args('status', 60))
+        else:
+            self._log.warning("Failed to ping %s, (%s out of %s)",
+                              self._addr, count, self._total)
+
+        self.update_result(float(count) / float(self._total))
+
+    def _ping(self):
         with open(os.devnull, "w") as devnull:
             p = subprocess.Popen(['ping', '-c', '1', '-W',
                                   self._timeout, self._addr],
                                  stdout=devnull, stderr=devnull)
-            if p.wait() != 0:
-                self._log.warning("Failed to ping %s", self._addr)
-                self.update_result(False)
-            else:
-                self._log.info("Successfully pinged %s", self._addr,
-                               extra=log_filter.lf_args('status', 60))
-                self.update_result(True)
+
+            return p.wait() == 0

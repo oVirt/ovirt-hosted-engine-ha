@@ -124,12 +124,16 @@ class EngineState(BaseState):
 
         # FIXME score needed for vdsm storage pool connection?
         # (depending on storage integration, may not be able to report...)
-        if not lm['gateway']:
+        if lm['gateway'] < 1.0:
+            penalty = int(
+                (1.0 - lm['gateway']) * score_cfg['gateway-score-penalty']
+            )
+
             logger.info("Penalizing score by %d due to gateway status",
-                        score_cfg['gateway-score-penalty'],
+                        penalty,
                         extra=log_filter.lf_args('score-gateway',
                                                  self.LF_PENALTY_INT))
-            score -= score_cfg['gateway-score-penalty']
+            score -= penalty
         if not lm['bridge']:
             logger.info("Penalizing score by %d due to mgmt bridge status",
                         score_cfg['mgmt-bridge-score-penalty'],
