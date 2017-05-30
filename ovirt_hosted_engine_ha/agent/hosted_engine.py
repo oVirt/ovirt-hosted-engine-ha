@@ -263,7 +263,7 @@ class HostedEngine(object):
         req.append({
             'field': 'gateway',
             'monitor': 'ping',
-            'type': bool,
+            'type': float,
             'options': {
                 'addr': self._config.get(config.ENGINE, config.GATEWAY_ADDR)}
         })
