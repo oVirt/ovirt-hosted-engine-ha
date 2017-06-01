@@ -221,18 +221,18 @@ def __vdsm_json_rpc_check(logger=None):
         while not vdsmReady and retry < VDSM_MAX_RETRY:
             retry += 1
             try:
-                hwinfo = _vdsm_json_rpc.getVdsHardwareInfo()
+                pong = _vdsm_json_rpc.ping()
                 if logger:
-                    logger.debug(str(hwinfo))
-                if hwinfo['status']['code'] == 0:
+                    logger.debug(str(pong))
+                if pong['status']['code'] == 0:
                     vdsmReady = True
                 else:
                     if logger:
-                        logger.debug('Waiting for VDSM hardware info')
+                        logger.debug('VDSM jsonrpc connection is not ready')
                     time.sleep(VDSM_DELAY)
             except socket.error:
                 if logger:
-                    logger.debug('Waiting for VDSM hardware info')
+                    logger.debug('VDSM jsonrpc connection is not ready')
                 time.sleep(VDSM_DELAY)
             except stomp.Disconnected:
                 if logger:
