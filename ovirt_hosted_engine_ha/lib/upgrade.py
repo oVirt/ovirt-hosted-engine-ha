@@ -550,10 +550,12 @@ class Upgrade(object):
         self._log.debug(status)
         if status['status']['code'] != 0:
             raise RuntimeError(status['status']['message'])
-        self._log.debug(self._cli.repoStats(domains=[sdUUID]))
-        self._log.debug(
-            self._cli.getStorageDomainStats(sdUUID)
-        )
+
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug(self._cli.repoStats(domains=[sdUUID]))
+            self._log.debug(
+                self._cli.getStorageDomainStats(sdUUID)
+            )
 
     def _connectFakeStorageDomainServer(self):
         self._log.info('connectFakeStorageDomainServer')
@@ -639,10 +641,11 @@ class Upgrade(object):
         if status['status']['code'] != 0:
             raise RuntimeError(status['status']['message'])
         heconflib.task_wait(self._cli, self._log)
-        self._log.debug(self._cli.getSpmStatus(spUUID))
-        info = self._cli.getStoragePoolInfo(spUUID)
-        self._log.debug(info)
-        self._log.debug(self._cli.repoStats(domains=[sdUUID]))
+
+        if self._log.isEnabledFor(logging.DEBUG):
+            self._log.debug(self._cli.getSpmStatus(spUUID))
+            self._log.debug(self._cli.getStoragePoolInfo(spUUID))
+            self._log.debug(self._cli.repoStats(domains=[sdUUID]))
 
     def _destroyStoragePool(self):
         self._log.info('_destroyStoragePool')
