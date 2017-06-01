@@ -840,7 +840,7 @@ class HostedEngine(object):
         cli = util.connect_vdsm_json_rpc(
             logger=self._log
         )
-        repo_stats = cli.repoStats()
+        repo_stats = cli.repoStats(domains=[sd_uuid])
         if repo_stats['status']['code'] != 0:
             msg = ("Failed to get VDSM domain monitor status: {0}"
                    .format(repo_stats['status']['message']))
