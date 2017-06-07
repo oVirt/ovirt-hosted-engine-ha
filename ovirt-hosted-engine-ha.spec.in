@@ -133,6 +133,14 @@ install -Dm 0440 sudoers/sudoers %{buildroot}%{_sysconfdir}/sudoers.d/60_ovirt-h
 %config(noreplace) %{engine_ha_statedir}/broker.conf
 
 %post
+# Fix answerfile ownership for upgrade purposes: if the configuration volume
+# is still not on the shared storage (upgrading from 3.5 time), ovirt-ha-agent
+# is going to create it uploading local files.
+# ovirt-ha-agent runs as vdsm user so we have to be sure it could read the
+# initial answerfile.
+if [ -e %{_sysconfdir}/ovirt-hosted-engine/answers.conf ] ; then
+    chown root:kvm %{_sysconfdir}/ovirt-hosted-engine/answers.conf
+fi
 # Copy previous broker.conf on upgrade path
 if [ $1 -gt 1 ] ; then
     if [ -e "%{engine_ha_confdir}/broker.conf" ]; then
