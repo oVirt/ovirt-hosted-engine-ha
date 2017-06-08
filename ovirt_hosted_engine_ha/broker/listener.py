@@ -162,8 +162,7 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
                 data = util.socket_readline(self.request, self._log)
                 self._log.debug("Input: %s", data)
                 try:
-                    ret = self._dispatch(threading.current_thread().ident,
-                                         data)
+                    ret = self._dispatch(data)
                     response = "success " + ret
                 except RequestError as e:
                     response = "failure " + format(str(e))
@@ -224,7 +223,7 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
                 self._log.error("Error while closing connection",
                                 exc_info=True)
 
-    def _dispatch(self, client, data):
+    def _dispatch(self, data):
         """
         Parses and dispatches a request to the appropriate subsystem.
 
@@ -235,7 +234,7 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
         """
         tokens = shlex.split(data)
         type = tokens.pop(0)
-        self._log.debug("Request type %s from %s", type, client)
+        self._log.debug("Request type %s", type)
 
         # TODO fix to be less procedural, e.g. dict of req_type=handler_func()
         if type == 'monitor':
@@ -265,38 +264,38 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
             options = self._get_options(tokens)
             with self.server.sp_listener.storage_broker_instance_access_lock:
                 stats = self.server.sp_listener.storage_broker_instance \
-                    .get_all_stats_for_service_type(client, **options)
+                    .get_all_stats_for_service_type(**options)
             return stats
         elif type == 'push-hosts-state':
             options = self._get_options(tokens)
             with self.server.sp_listener.storage_broker_instance_access_lock:
                 self.server.sp_listener.storage_broker_instance \
-                    .push_hosts_state(client, **options)
+                    .push_hosts_state(**options)
             return "ok"
         elif type == 'is-host-alive':
             options = self._get_options(tokens)
             with self.server.sp_listener.storage_broker_instance_access_lock:
                 alive_hosts = self.server.sp_listener.storage_broker_instance \
-                    .is_host_alive(client, **options)
+                    .is_host_alive(**options)
             # list of alive hosts in format <host_id>|<host_id>
             return alive_hosts
         elif type == 'put-stats':
             options = self._get_options(tokens)
             with self.server.sp_listener.storage_broker_instance_access_lock:
                 self.server.sp_listener.storage_broker_instance \
-                    .put_stats(client, **options)
+                    .put_stats(**options)
             return "ok"
         elif type == 'service-path':
             service = tokens.pop(0)
             with self.server.sp_listener.storage_broker_instance_access_lock:
                 return self.server.sp_listener.storage_broker_instance \
-                    .get_service_path(client, service)
+                    .get_service_path(service)
         elif type == 'set-storage-domain':
             sd_type = tokens.pop(0)
             options = self._get_options(tokens)
             with self.server.sp_listener.storage_broker_instance_access_lock:
                 return self.server.sp_listener.storage_broker_instance \
-                    .set_storage_domain(client, sd_type, **options)
+                    .set_storage_domain(sd_type, **options)
         elif type == 'notify':
             options = self._get_options(tokens)
             if notifications.notify(**options):
