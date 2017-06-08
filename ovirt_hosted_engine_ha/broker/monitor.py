@@ -21,6 +21,8 @@ import imp
 import logging
 import os
 
+from six import iteritems
+
 from ..lib.exceptions import RequestError
 
 
@@ -60,9 +62,12 @@ class Monitor(object):
             raise Exception("{0} not a registered submonitor type"
                             .format(submonitor_type))
 
-        # TODO should add a method to index/retrieve running submonitors
-        # so multiple copies of the same one (type+options) aren't started
-        # (maybe just serialize params to use as index of {pstr: id} dict)
+        # Find if a monitor with the same type is already running
+        for k, v in iteritems(self._active_submonitors):
+            if v["type"] == submonitor_type:
+                self.stop_submonitor(k)
+                break
+
         self._log.info("Starting submonitor %s", submonitor_type)
         try:
             sm = self._submonitors[submonitor_type].Submonitor(
