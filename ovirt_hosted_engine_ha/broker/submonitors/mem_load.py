@@ -36,7 +36,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
         self._log.addFilter(log_filter.IntermittentFilter())
 
     def action(self, options):
-        cli = util.connect_vdsm_json_rpc_new(
+        cli = util.connect_vdsm_json_rpc(
             logger=self._log
         )
         try:

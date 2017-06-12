@@ -538,7 +538,7 @@ class HostedEngine(object):
                                .format(constants.MAX_VDSM_WAIT_SECS))
                 time.sleep(constants.MAX_VDSM_WAIT_SECS)
 
-        util.connect_vdsm_json_rpc_new(
+        util.connect_vdsm_json_rpc(
             logger=self._log
         )
 
@@ -685,7 +685,7 @@ class HostedEngine(object):
 
         status = self._get_domain_monitor_status()
         if status != self.DomainMonitorStatus.NONE:
-            cli = util.connect_vdsm_json_rpc_new(
+            cli = util.connect_vdsm_json_rpc(
                 logger=self._log
             )
             try:
@@ -705,7 +705,7 @@ class HostedEngine(object):
 
         dm_status = self._get_domain_monitor_status()
         if dm_status == self.DomainMonitorStatus.NONE:
-            cli = util.connect_vdsm_json_rpc_new(
+            cli = util.connect_vdsm_json_rpc(
                 logger=self._log
             )
             try:
@@ -741,7 +741,7 @@ class HostedEngine(object):
     def _get_domain_monitor_status(self):
         sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
 
-        cli = util.connect_vdsm_json_rpc_new(
+        cli = util.connect_vdsm_json_rpc(
             logger=self._log
         )
         try:
@@ -971,7 +971,7 @@ class HostedEngine(object):
         self._log.debug("Initiating online migration of"
                         " vm %s from localhost to %s",
                         vm_id, hostname)
-        cli = util.connect_vdsm_json_rpc_new(
+        cli = util.connect_vdsm_json_rpc(
             logger=self._log
         )
         try:
@@ -1005,7 +1005,7 @@ class HostedEngine(object):
     def _monitor_migration(self):
         vm_id = self._config.get(config.VM, config.VM_UUID)
         self._log.debug("Monitoring migration of vm %s", vm_id)
-        cli = util.connect_vdsm_json_rpc_new(
+        cli = util.connect_vdsm_json_rpc(
             logger=self._log
         )
 
@@ -1088,7 +1088,7 @@ class HostedEngine(object):
 
         for i in range(0, 10):
             # Loop until state is clear or until timeout
-            cli = util.connect_vdsm_json_rpc_new(
+            cli = util.connect_vdsm_json_rpc(
                 logger=self._log
             )
             try:
@@ -1108,7 +1108,7 @@ class HostedEngine(object):
                 return
 
             self._log.info("Cleaning state for non-running VM")
-            cli = util.connect_vdsm_json_rpc_new(
+            cli = util.connect_vdsm_json_rpc(
                 logger=self._log
             )
             try:

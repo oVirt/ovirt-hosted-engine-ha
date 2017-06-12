@@ -215,7 +215,7 @@ class VdsmBackend(StorageBackend):
 
         # Connect to local VDSM
         self._logger.debug("Connecting to VDSM")
-        connection = util.connect_vdsm_json_rpc_new(logger=self._logger)
+        connection = util.connect_vdsm_json_rpc(logger=self._logger)
 
         # Check of the volume already exists
         response = self._get_volume_path(
@@ -340,7 +340,7 @@ class VdsmBackend(StorageBackend):
         """Initialize the storage."""
         # Connect to local VDSM
         self._logger.debug("Connecting to VDSM")
-        connection = util.connect_vdsm_json_rpc_new(logger=self._logger)
+        connection = util.connect_vdsm_json_rpc(logger=self._logger)
 
         if initialize:
             self._logger.info("Connecting the storage")

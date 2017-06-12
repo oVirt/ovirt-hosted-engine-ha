@@ -124,7 +124,7 @@ class Image(object):
         the LV if on block devices.
         """
         self._log.info("Preparing images")
-        cli = util.connect_vdsm_json_rpc_new(
+        cli = util.connect_vdsm_json_rpc(
             logger=self._log,
             timeout=constants.VDSCLI_SSL_TIMEOUT
         )
@@ -178,7 +178,7 @@ class Image(object):
         the LV if on block devices.
         """
         self._log.info("Teardown images")
-        cli = util.connect_vdsm_json_rpc_new(
+        cli = util.connect_vdsm_json_rpc(
             logger=self._log,
             timeout=constants.VDSCLI_SSL_TIMEOUT
         )

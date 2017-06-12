@@ -34,14 +34,9 @@ from yajsonrpc import stomp
 from ovirt_hosted_engine_ha.env import constants as envconst
 from .exceptions import DisconnectionError
 
-from vdsm import jsonrpcvdscli
-from vdsm.config import config as vdsmconfig
-
 from vdsm import client
 
-# TODO - variable will be removed in a future patch
 _vdsm_json_rpc = None
-_vdsm_json_rpc_new = None
 
 VDSM_MAX_RETRY = 15
 VDSM_DELAY = 1
@@ -183,116 +178,30 @@ def isOvirtNode():
             bool(glob.glob('/etc/ovirt-node-*-release')))
 
 
-# TODO - function will be removed in a future patch
-def __vdsm_json_rpc_connect(logger=None, timeout=envconst.VDSCLI_SSL_TIMEOUT):
-    global _vdsm_json_rpc
-    retry = 0
-    vdsmReady = False
-    requestQueues = vdsmconfig.get('addresses', 'request_queues')
-    requestQueue = requestQueues.split(",")[0]
-    while not vdsmReady and retry < VDSM_MAX_RETRY:
-        time.sleep(VDSM_DELAY)
-        retry += 1
-        try:
-            _vdsm_json_rpc = jsonrpcvdscli.connect(
-                requestQueue=requestQueue,
-            )
-            if timeout:
-                _vdsm_json_rpc.set_default_timeout(timeout)
-            vdsmReady = True
-        except socket.error:
-            if logger:
-                logger.info('Waiting for VDSM to reply')
-    if not vdsmReady:
-        raise RuntimeError(
-            'Couldn''t  connect to VDSM within {timeout} seconds'.format(
-                timeout=VDSM_MAX_RETRY * VDSM_DELAY
-            )
-        )
-    __vdsm_json_rpc_check(logger)
-    if _vdsm_json_rpc is None:
-        raise RuntimeError(
-            'Couldn''t  connect to VDSM within {timeout} seconds'.format(
-                timeout=VDSM_MAX_RETRY * VDSM_DELAY
-            )
-        )
-
-
-# TODO - function will be removed in a future patch
-def __vdsm_json_rpc_check(logger=None):
-    global _vdsm_json_rpc
-    if _vdsm_json_rpc is not None:
-        vdsmReady = False
-        retry = 0
-        while not vdsmReady and retry < VDSM_MAX_RETRY:
-            retry += 1
-            try:
-                pong = _vdsm_json_rpc.ping()
-                if logger:
-                    logger.debug(str(pong))
-                if pong['status']['code'] == 0:
-                    vdsmReady = True
-                else:
-                    if logger:
-                        logger.debug('VDSM jsonrpc connection is not ready')
-                    time.sleep(VDSM_DELAY)
-            except socket.error:
-                if logger:
-                    logger.debug('VDSM jsonrpc connection is not ready')
-                time.sleep(VDSM_DELAY)
-            except stomp.Disconnected:
-                if logger:
-                    logger.debug('VDSM has been disconnected')
-                retry = VDSM_MAX_RETRY
-        if not vdsmReady:
-            _vdsm_json_rpc = None
-
-
-# TODO - function will be removed in a future patch
-def connect_vdsm_json_rpc(logger=None, timeout=envconst.VDSCLI_SSL_TIMEOUT):
-    global _vdsm_json_rpc
-    # Currently jsonrpcvdscli doesn't implement any keep-alive or
-    # reconnection mechanism so the connection status has to be checked each
-    # time. This could be removed once rhbz#1376843 get fixed.
-    __vdsm_json_rpc_check(logger)
-    if _vdsm_json_rpc is None:
-        if logger:
-            logger.debug('Creating a new json-rpc connection to VDSM')
-        __vdsm_json_rpc_connect(logger, timeout)
-    else:
-        if logger:
-            logger.debug('Reusing an existing json-rpc connection to VDSM')
-        if timeout:
-            if logger:
-                logger.debug('Updating json-rpc connection timeout')
-            _vdsm_json_rpc.set_default_timeout(timeout)
-    return _vdsm_json_rpc
-
-
 def __log_debug(logger, *args, **kwargs):
     if logger:
         logger.debug(*args, **kwargs)
 
 
-def __vdsm_json_rpc_connect_new(logger=None,
-                                timeout=envconst.VDSCLI_SSL_TIMEOUT):
-    global _vdsm_json_rpc_new
+def __vdsm_json_rpc_connect(logger=None,
+                            timeout=envconst.VDSCLI_SSL_TIMEOUT):
+    global _vdsm_json_rpc
 
     retry = 0
     while retry < VDSM_MAX_RETRY:
         retry += 1
         try:
-            _vdsm_json_rpc_new = client.connect(host="localhost",
-                                                timeout=timeout)
+            _vdsm_json_rpc = client.connect(host="localhost",
+                                            timeout=timeout)
             break
         except client.ConnectionError:
             __log_debug(logger, 'Waiting for VDSM to connect')
 
         time.sleep(VDSM_DELAY)
 
-    __vdsm_json_rpc_check_new(logger)
+    __vdsm_json_rpc_check(logger)
 
-    if _vdsm_json_rpc_new is None:
+    if _vdsm_json_rpc is None:
         raise RuntimeError(
             "Couldn't  connect to VDSM within {timeout} seconds".format(
                 timeout=VDSM_MAX_RETRY * VDSM_DELAY
@@ -300,17 +209,17 @@ def __vdsm_json_rpc_connect_new(logger=None,
         )
 
 
-def __vdsm_json_rpc_check_new(logger=None):
-    global _vdsm_json_rpc_new
+def __vdsm_json_rpc_check(logger=None):
+    global _vdsm_json_rpc
 
-    if _vdsm_json_rpc_new is None:
+    if _vdsm_json_rpc is None:
         return
 
     retry = 0
     while retry < VDSM_MAX_RETRY:
         retry += 1
         try:
-            _vdsm_json_rpc_new.Host.ping()
+            _vdsm_json_rpc.Host.ping()
             # Successful ping
             return
 
@@ -324,18 +233,18 @@ def __vdsm_json_rpc_check_new(logger=None):
         time.sleep(VDSM_DELAY)
 
     # VDSM is not responding, setting client to None
-    _vdsm_json_rpc_new = None
+    _vdsm_json_rpc = None
 
 
-def connect_vdsm_json_rpc_new(logger=None,
-                              timeout=envconst.VDSCLI_SSL_TIMEOUT):
-    global _vdsm_json_rpc_new
+def connect_vdsm_json_rpc(logger=None,
+                          timeout=envconst.VDSCLI_SSL_TIMEOUT):
+    global _vdsm_json_rpc
     # Currently vdsm.client doesn't implement any keep-alive or
     # reconnection mechanism so the connection status has to be checked each
     # time. This could be removed once rhbz#1376843 get fixed.
-    __vdsm_json_rpc_check_new(logger)
-    if _vdsm_json_rpc_new is None:
+    __vdsm_json_rpc_check(logger)
+    if _vdsm_json_rpc is None:
         __log_debug(logger, 'Creating a new json-rpc connection to VDSM')
-        __vdsm_json_rpc_connect_new(logger, timeout)
+        __vdsm_json_rpc_connect(logger, timeout)
 
-    return _vdsm_json_rpc_new
+    return _vdsm_json_rpc

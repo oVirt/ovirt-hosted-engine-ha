@@ -93,7 +93,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
         dbusy = self.system['cur'].busy - self.system['prev'].busy
         load = dbusy / float(dtotal)
 
-        cli = util.connect_vdsm_json_rpc_new(
+        cli = util.connect_vdsm_json_rpc(
             logger=self._log
         )
 

@@ -207,7 +207,7 @@ class StorageServer(object):
         :return: True if available, False otherwise
         """
         self._log.info("Validating storage server")
-        cli = util.connect_vdsm_json_rpc_new(
+        cli = util.connect_vdsm_json_rpc(
             logger=self._log,
             timeout=constants.VDSCLI_SSL_TIMEOUT
         )
@@ -231,7 +231,7 @@ class StorageServer(object):
         Connect the hosted-engine domain storage server
         """
         self._log.info("Connecting storage server")
-        cli = util.connect_vdsm_json_rpc_new(
+        cli = util.connect_vdsm_json_rpc(
             logger=self._log,
             timeout=constants.VDSCLI_SSL_TIMEOUT
         )
@@ -271,7 +271,7 @@ class StorageServer(object):
         Disconnect the hosted-engine domain storage server
         """
         self._log.info("Disconnecting storage server")
-        cli = util.connect_vdsm_json_rpc_new(
+        cli = util.connect_vdsm_json_rpc(
             logger=self._log,
             timeout=constants.VDSCLI_SSL_TIMEOUT
         )

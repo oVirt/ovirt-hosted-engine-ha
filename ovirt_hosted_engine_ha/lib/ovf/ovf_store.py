@@ -59,7 +59,7 @@ class OVFStore(object):
     def scan(self):
         self._ovf_store_imgUUID = None
         self._ovf_store_volUUID = None
-        cli = util.connect_vdsm_json_rpc_new(
+        cli = util.connect_vdsm_json_rpc(
             logger=self._log,
             timeout=constants.VDSCLI_SSL_TIMEOUT
         )

@@ -47,7 +47,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
 
     def action(self, options):
         # First, see if vdsm tells us it's up
-        cli = util.connect_vdsm_json_rpc_new(
+        cli = util.connect_vdsm_json_rpc(
             logger=self._log
         )
 

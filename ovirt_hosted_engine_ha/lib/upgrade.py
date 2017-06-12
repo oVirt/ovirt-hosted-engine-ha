@@ -49,7 +49,7 @@ class Upgrade(object):
         self._log = logging.getLogger("%s.StorageServer" % __name__)
         self._log.addFilter(log_filter.IntermittentFilter())
         self._config = config.Config(logger=self._log)
-        self._cli = util.connect_vdsm_json_rpc_new(
+        self._cli = util.connect_vdsm_json_rpc(
             logger=self._log,
             timeout=constants.VDSCLI_SSL_TIMEOUT
         )

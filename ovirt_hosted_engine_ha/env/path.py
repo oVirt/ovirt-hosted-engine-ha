@@ -53,7 +53,7 @@ def get_domain_path(config_):
     """
     Return path of storage domain holding engine vm
     """
-    cli = util.connect_vdsm_json_rpc_new(
+    cli = util.connect_vdsm_json_rpc(
         logger=None,
         timeout=constants.VDSCLI_SSL_TIMEOUT
     )
