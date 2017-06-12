@@ -36,6 +36,8 @@ from io import StringIO
 from ovirt_hosted_engine_ha.agent import constants as agentconst
 from ovirt_hosted_engine_ha.env import constants as envconst
 
+from vdsm.client import ServerError
+
 
 _CONF_FILES = [
     envconst.HEConfFiles.HECONFD_VERSION,
@@ -373,19 +375,19 @@ def task_wait(cli, logger):
     while wait:
         if logger:
             logger.debug('Waiting for existing tasks to complete')
-        statuses = cli.getAllTasksStatuses()
-        if logger:
-            logger.debug(statuses)
-        code = statuses['status']['code']
-        message = statuses['status']['message']
-        if code != 0:
+
+        try:
+            statuses = cli.Host.getAllTasksStatuses()
+            if logger:
+                logger.debug(statuses)
+        except ServerError as e:
             raise RuntimeError(
                 'Error getting task status: {error}'.format(
-                    error=message
+                    error=str(e)
                 )
             )
         all_completed = True
-        taskIDs = set(statuses.keys()) - set(['status'])
+        taskIDs = set(statuses.keys())
         for taskID in taskIDs:
             if (
                     'taskState' in statuses[taskID] and
@@ -393,7 +395,12 @@ def task_wait(cli, logger):
             ):
                 all_completed = False
             else:
-                cli.clearTask(taskID)
+                try:
+                    cli.Task.clear(taskID=taskID)
+                except ServerError:
+                    # Ignore error
+                    pass
+
         if all_completed:
             wait = False
         else:
@@ -407,13 +414,16 @@ def domain_wait(sdUUID, cli, logger):
         time.sleep(POLLING_INTERVAL)
         if logger:
             logger.debug('Waiting for domain monitor')
-        response = cli.getVdsStats()
-        if logger:
-            logger.debug(response)
-        if response['status']['code'] != 0:
+
+        try:
+            response = cli.Host.getStats()
             if logger:
-                logger.debug(response['status']['message'])
-            raise RuntimeError('Error acquiring VDS status')
+                logger.debug(response)
+        except ServerError as e:
+            if logger:
+                logger.error(e)
+            raise RuntimeError('Error acquiring VDS status: %s', str(e))
+
         try:
             domains = response['storageDomains']
             acquired = domains[sdUUID]['acquired']
@@ -440,51 +450,51 @@ def create_and_prepare_image(
         desc
 ):
     # creates a volume on the storage (SPM verb)
-    status = cli.createVolume(
-        volumeID=volUUID,
-        storagepoolID=spUUID,
-        storagedomainID=sdUUID,
-        imageID=imgUUID,
-        size=str(int(sizeGB) * pow(2, 30)),
-        volFormat=volFormat,
-        preallocate=preallocate,
-        diskType=diskType,
-        desc=desc,
-        srcImgUUID=envconst.BLANK_UUID,
-        srcVolUUID=envconst.BLANK_UUID,
-    )
+    try:
+        newUUID = cli.Volume.create(
+            volumeID=volUUID,
+            storagepoolID=spUUID,
+            storagedomainID=sdUUID,
+            imageID=imgUUID,
+            size=str(int(sizeGB) * pow(2, 30)),
+            volFormat=volFormat,
+            preallocate=preallocate,
+            diskType=diskType,
+            desc=desc,
+            srcImgUUID=envconst.BLANK_UUID,
+            srcVolUUID=envconst.BLANK_UUID,
+        )
+    except ServerError as e:
+        raise RuntimeError(str(e))
+
     if logger:
-        logger.debug(status)
-    if status['status']['code'] != 0:
-        raise RuntimeError(status['status']['message'])
-    else:
-        if logger:
-            logger.debug(
-                (
-                    'Created configuration volume {newUUID}, request was:\n'
-                    '- image: {imgUUID}\n'
-                    '- volume: {volUUID}'
-                ).format(
-                    newUUID=status['status']['message'],
-                    imgUUID=imgUUID,
-                    volUUID=volUUID,
-                )
+        logger.debug(
+            (
+                'Created configuration volume {newUUID}, request was:\n'
+                '- image: {imgUUID}\n'
+                '- volume: {volUUID}'
+            ).format(
+                newUUID=newUUID,
+                imgUUID=imgUUID,
+                volUUID=volUUID,
             )
+        )
 
     task_wait(cli, logger)
     # Expose the image (e.g., activates the lv) on the host (HSM verb).
     if logger:
         logger.debug('configuration volume: prepareImage')
-    response = cli.prepareImage(
-        storagepoolID=spUUID,
-        storagedomainID=sdUUID,
-        imageID=imgUUID,
-        volumeID=volUUID
-    )
-    if logger:
-        logger.debug(response)
-    if response['status']['code'] != 0:
-        raise RuntimeError(response['status']['message'])
 
+    try:
+        path = cli.Image.prepare(
+            storagepoolID=spUUID,
+            storagedomainID=sdUUID,
+            imageID=imgUUID,
+            volumeID=volUUID
+        )
+        if logger:
+            logger.debug(path)
+    except ServerError as e:
+        raise RuntimeError(str(e))
 
 # vim: expandtab tabstop=4 shiftwidth=4
