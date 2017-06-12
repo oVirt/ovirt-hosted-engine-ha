@@ -44,6 +44,8 @@ from ovirt_hosted_engine_ha.lib import upgrade
 from .state_machine import EngineStateMachine
 from .states import AgentStopped
 
+from vdsm.client import ServerError
+
 
 class MetadataTooNewError(Exception):
     """
@@ -536,7 +538,7 @@ class HostedEngine(object):
                                .format(constants.MAX_VDSM_WAIT_SECS))
                 time.sleep(constants.MAX_VDSM_WAIT_SECS)
 
-        util.connect_vdsm_json_rpc(
+        util.connect_vdsm_json_rpc_new(
             logger=self._log
         )
 
@@ -683,21 +685,19 @@ class HostedEngine(object):
 
         status = self._get_domain_monitor_status()
         if status != self.DomainMonitorStatus.NONE:
-            cli = util.connect_vdsm_json_rpc(
+            cli = util.connect_vdsm_json_rpc_new(
                 logger=self._log
             )
-            status = cli.stopMonitoringDomain(
-                sdUUID=sd_uuid,
-            )
-            self._log.debug(status)
-            if status['status']['code'] != 0:
-                self._log.info(
-                    "Failed to stop monitoring domain (sd_uuid=%s): %s",
-                    sd_uuid,
-                    status['status']['message']
+            try:
+                cli.Host.stopMonitoringDomain(
+                    sdUUID=sd_uuid,
                 )
-            else:
-                self._log.info("Stopped VDSM domain monitor for %s", sd_uuid)
+            except ServerError as e:
+                self._log.info("Failed to stop monitoring domain")
+                self._log.info(e)
+                return
+
+            self._log.info("Stopped VDSM domain monitor for %s", sd_uuid)
 
     def _initialize_domain_monitor(self):
         sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
@@ -705,26 +705,21 @@ class HostedEngine(object):
 
         dm_status = self._get_domain_monitor_status()
         if dm_status == self.DomainMonitorStatus.NONE:
-            cli = util.connect_vdsm_json_rpc(
+            cli = util.connect_vdsm_json_rpc_new(
                 logger=self._log
             )
-            status = cli.startMonitoringDomain(
-                sdUUID=sd_uuid,
-                hostID=host_id,
-            )
-            self._log.debug(status)
-            if status['status']['code'] != 0:
-                msg = (
-                    "Failed to start monitoring domain "
-                    "(sd_uuid={0}, host_id={1}): {2}"
-                ).format(
-                    sd_uuid, host_id, str(status['status']['message'])
+            try:
+                cli.Host.startMonitoringDomain(
+                    sdUUID=sd_uuid,
+                    hostID=host_id,
                 )
-                self._log.error(msg, exc_info=True)
-                raise Exception(msg)
-            else:
-                self._log.info("Started VDSM domain monitor for %s", sd_uuid)
-                dm_status = self._get_domain_monitor_status()
+            except ServerError:
+                self._log.error("Failed to start monitoring domain",
+                                exc_info=True)
+                raise
+
+            self._log.info("Started VDSM domain monitor for %s", sd_uuid)
+            dm_status = self._get_domain_monitor_status()
 
         waited = 0
         while dm_status != self.DomainMonitorStatus.ACQUIRED \
@@ -746,15 +741,16 @@ class HostedEngine(object):
     def _get_domain_monitor_status(self):
         sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
 
-        cli = util.connect_vdsm_json_rpc(
+        cli = util.connect_vdsm_json_rpc_new(
             logger=self._log
         )
-        repo_stats = cli.repoStats(domains=[sd_uuid])
-        if repo_stats['status']['code'] != 0:
+        try:
+            repo_stats = cli.Host.getStorageRepoStats(domains=[sd_uuid])
+        except ServerError as e:
             msg = ("Failed to get VDSM domain monitor status: {0}"
-                   .format(repo_stats['status']['message']))
+                   .format(str(e)))
             self._log.error(msg)
-            raise Exception(msg)
+            raise
 
         if sd_uuid not in repo_stats:
             status = self.DomainMonitorStatus.NONE
@@ -975,25 +971,26 @@ class HostedEngine(object):
         self._log.debug("Initiating online migration of"
                         " vm %s from localhost to %s",
                         vm_id, hostname)
-        cli = util.connect_vdsm_json_rpc(
+        cli = util.connect_vdsm_json_rpc_new(
             logger=self._log
         )
-        status = cli.migrate(
-            vmID=vm_id,
-            params={
-                'tunneled': False,
-                'dstqemu': hostname,
-                'autoConverge': True,
-                'src': 'localhost',
-                'enableGuestEvents': True,
-                'dst': hostname,
-                'vmID': vm_id,
-                'abortOnError': True,
-                'compressed': True,
-                'method': 'online'
-            },
-        )
-        if status['status']['code'] != 0:
+        try:
+            cli.VM.migrate(
+                vmID=vm_id,
+                params={
+                    'tunneled': False,
+                    'dstqemu': hostname,
+                    'autoConverge': True,
+                    'src': 'localhost',
+                    'enableGuestEvents': True,
+                    'dst': hostname,
+                    'vmID': vm_id,
+                    'abortOnError': True,
+                    'compressed': True,
+                    'method': 'online'
+                }
+            )
+        except ServerError:
             self._log.error("Migration to host %s (id %d) failed to start",
                             hostname,
                             host_id)
@@ -1003,31 +1000,40 @@ class HostedEngine(object):
     def _monitor_migration(self):
         vm_id = self._config.get(config.VM, config.VM_UUID)
         self._log.debug("Monitoring migration of vm %s", vm_id)
-        cli = util.connect_vdsm_json_rpc(
+        cli = util.connect_vdsm_json_rpc_new(
             logger=self._log
         )
-        status = cli.migrateStatus(vm_id)
-        # As VDSM could return either
-        # {u'downtime': 156, u'progress': 100,
-        # u'status': {'code': 0, 'message': 'Done'}}
-        # or
-        # {'status': {'message': u'Virtual machine does not exist', 'code': 1}}
-        # depending or how lucky we are
-        # (and this is clearly a race condition)
-        # we consider both as a mark of successful migration completion.
-        #
-        # In case of 'does not exist' reply we re-write status,
-        # so i looks good enough.
-        if "does not exist" in status['status']['message']:
-            self._log.info("VM not found, assuming that migration is complete")
-            status['progress'] = 100
-            status['downtime'] = 1
-            return status
-        elif status['status']['code'] != 0:
-            self._log.error("Failed to get migration status", exc_info=True)
-            return False
-        else:
-            return status
+        status = {}
+        try:
+            status = cli.VM.getMigrationStatus(vmID=vm_id)
+        except ServerError as e:
+            # As VDSM could return either
+            # {u'downtime': 156, u'progress': 100,
+            # u'status': {'code': 0, 'message': 'Done'}}
+            # or
+            # {'status':
+            #   {'message': u'Virtual machine does not exist', 'code': 1}
+            # }
+            # depending or how lucky we are
+            # (and this is clearly a race condition)
+            # we consider both as a mark of successful migration completion.
+            #
+            # In case of 'does not exist' reply we re-write status,
+            # so i looks good enough.
+            if "does not exist" in e.message:
+                self._log.info(
+                    "VM not found, assuming that migration is complete"
+                )
+                status['progress'] = 100
+                status['downtime'] = 1
+                return status
+            else:
+                self._log.error("Failed to get migration status",
+                                exc_info=True)
+                self._log.error(e)
+                return False
+
+        return status
 
     def _start_engine_vm(self):
         try:
@@ -1081,41 +1087,37 @@ class HostedEngine(object):
 
         for i in range(0, 10):
             # Loop until state is clear or until timeout
-            cli = util.connect_vdsm_json_rpc(
+            cli = util.connect_vdsm_json_rpc_new(
                 logger=self._log
             )
-            stats = cli.getVmStats(vm_id)
-            if stats['status']['code'] != 0:
-                if stats['status']['code'] == 1:
+            try:
+                stats = cli.VM.getStats(vmID=vm_id)[0]
+            except ServerError as e:
+                if e.code == 1:
                     # NoSuchVM
                     self._log.info("Vdsm state for VM clean")
                     return
-                else:
-                    raise
+                raise
 
             vm_status = None
-            if (
-                'items' in stats and
-                len(stats['items']) > 0 and
-                'status' in stats['items'][0]
-            ):
-                vm_status = stats['items'][0]['status'].lower()
+            if 'status' in stats:
+                vm_status = stats['status'].lower()
             if vm_status == 'powering up' or vm_status == 'up':
                 self._log.info("VM is running on host")
                 return
 
             self._log.info("Cleaning state for non-running VM")
-            cli = util.connect_vdsm_json_rpc(
+            cli = util.connect_vdsm_json_rpc_new(
                 logger=self._log
             )
-            status = cli.destroy(vm_id)
-            if status['status']['code'] != 0:
-                if stats['status']['code'] == 1:
+            try:
+                cli.destroy(vm_id)
+            except ServerError as e:
+                if e.code == 1:
                     # NoSuchVM
                     self._log.info("Vdsm state for VM clean")
                     return
-                else:
-                    raise
+                raise
             time.sleep(1)
 
         raise Exception("Timed out trying to clean VDSM state for VM")
