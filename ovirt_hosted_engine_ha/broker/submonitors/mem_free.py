@@ -23,6 +23,8 @@ from ovirt_hosted_engine_ha.broker import submonitor_base
 from ovirt_hosted_engine_ha.lib import log_filter
 from ovirt_hosted_engine_ha.lib import util as util
 
+from vdsm.client import ServerError
+
 
 def register():
     return "mem-free"
@@ -34,14 +36,13 @@ class Submonitor(submonitor_base.SubmonitorBase):
         self._log.addFilter(log_filter.IntermittentFilter())
 
     def action(self, options):
-        cli = util.connect_vdsm_json_rpc(
+        cli = util.connect_vdsm_json_rpc_new(
             logger=self._log
         )
-        stats = cli.getVdsStats()
-        if stats['status']['code'] != 0 or 'memFree' not in stats:
-            self._log.error(
-                "Failed to getVdsStats: %s", stats['status']['message']
-            )
+        try:
+            stats = cli.Host.getStats()
+        except ServerError as e:
+            self._log.error(e)
             self.update_result(None)
             return
 

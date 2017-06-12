@@ -25,6 +25,9 @@ from ovirt_hosted_engine_ha.broker import submonitor_base
 from ovirt_hosted_engine_ha.lib import log_filter
 from ovirt_hosted_engine_ha.lib import util as util
 
+from vdsm.client import ServerError
+
+
 Ticks = namedtuple('Ticks', 'total, busy')
 
 
@@ -134,36 +137,33 @@ class Submonitor(submonitor_base.SubmonitorBase):
             # Look for the engine vm pid and try to get the stats
             self.engine_pid = None
             self.engine_pid_start_time = None
-            cli = util.connect_vdsm_json_rpc(
+            cli = util.connect_vdsm_json_rpc_new(
                 logger=self._log
             )
-            stats = cli.getVmStats(self._vm_uuid)
-            if (
-                stats['status']['code'] != 0 or
-                'items' not in stats or
-                len(stats['items']) == 0 or
-                'pid' not in stats['items'][0]
-            ):
-                if stats['status']['code'] == 1:
+
+            stats = {}
+            try:
+                stats = cli.VM.getStats(vmID=self._vm_uuid)[0]
+            except ServerError as e:
+                if e.code == 1:
                     self._log.info("VM not on this host",
                                    extra=log_filter.lf_args('vm', 60))
                 else:
-                    self._log.error(
-                        "Failed to getVmStats: {code} - {message}".format(
-                            code=stats['status']['code'],
-                            message=stats['status']['message'],
-                        ),
-                        extra=log_filter.lf_args('vm', 60)
-                    )
-            else:
-                pid = int(stats['items'][0]['pid'])
-                fname = '/proc/{0}/stat'.format(pid)
-                try:
-                    with open(fname, 'r') as f:
-                        self.proc_stat = f.readline().split()
-                    self.engine_pid_start_time = int(self.proc_stat[21])
-                    self.engine_pid = pid
-                except Exception as e:
-                    # Try again next time
-                    self._log.error("Failed to read vm stats: %s", str(e),
-                                    extra=log_filter.lf_args('vm', 60))
+                    self._log.error(e, extra=log_filter.lf_args('vm', 60))
+
+            if 'pid' not in stats:
+                self._log.error("PID not present in VM stats.",
+                                extra=log_filter.lf_args('vm', 60))
+                return
+
+            pid = int(stats['pid'])
+            fname = '/proc/{0}/stat'.format(pid)
+            try:
+                with open(fname, 'r') as f:
+                    self.proc_stat = f.readline().split()
+                self.engine_pid_start_time = int(self.proc_stat[21])
+                self.engine_pid = pid
+            except Exception as e:
+                # Try again next time
+                self._log.error("Failed to read vm stats: %s", str(e),
+                                extra=log_filter.lf_args('vm', 60))

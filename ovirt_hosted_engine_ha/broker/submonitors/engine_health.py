@@ -27,6 +27,8 @@ from ovirt_hosted_engine_ha.lib import log_filter
 from ovirt_hosted_engine_ha.lib import util as util
 from ovirt_hosted_engine_ha.lib import engine
 
+from vdsm.client import ServerError
+
 
 def register():
     return "engine-health"
@@ -45,30 +47,27 @@ class Submonitor(submonitor_base.SubmonitorBase):
 
     def action(self, options):
         # First, see if vdsm tells us it's up
-        cli = util.connect_vdsm_json_rpc(
+        cli = util.connect_vdsm_json_rpc_new(
             logger=self._log
         )
-        stats = cli.getVmStats(self._vm_uuid)
-        if stats['status']['code'] != 0 or 'items' not in stats:
-            if stats['status']['code'] == 1:
+
+        try:
+            stats = cli.VM.getStats(vmID=self._vm_uuid)[0]
+        except ServerError as e:
+            if e.code == 1:
                 self._log.info("VM not on this host",
                                extra=log_filter.lf_args('status', 60))
                 d = {'vm': 'down', 'health': 'bad', 'detail': 'unknown',
                      'reason': 'vm not running on this host'}
-                self.update_result(json.dumps(d))
-                return
             else:
-                self._log.error(
-                    "Failed to getVmStats: {code} - {message}".format(
-                        code=stats['status']['code'],
-                        message=stats['status']['message'],
-                    )
-                )
+                self._log.error(e)
                 d = {'vm': 'unknown', 'health': 'unknown', 'detail': 'unknown',
                      'reason': 'failed to getVmStats'}
-                self.update_result(json.dumps(d))
-                return
-        vm_status = stats['items'][0]['status'].lower()
+
+            self.update_result(json.dumps(d))
+            return
+
+        vm_status = stats['status'].lower()
 
         # Report states that are not really Up, but should be
         # reported as such
@@ -86,7 +85,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
             return
 
         # Check if another host was faster in acquiring the storage lock
-        exit_message = stats['items'][0].get('exitMessage', "")
+        exit_message = stats.get('exitMessage', "")
         if vm_status == 'down' \
                 and exit_message.endswith(
                     'Failed to acquire lock: error -243'):

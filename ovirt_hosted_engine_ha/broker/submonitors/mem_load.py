@@ -23,6 +23,8 @@ from ovirt_hosted_engine_ha.broker import submonitor_base
 from ovirt_hosted_engine_ha.lib import log_filter
 from ovirt_hosted_engine_ha.lib import util as util
 
+from vdsm.client import ServerError
+
 
 def register():
     return "mem-load"
@@ -34,21 +36,14 @@ class Submonitor(submonitor_base.SubmonitorBase):
         self._log.addFilter(log_filter.IntermittentFilter())
 
     def action(self, options):
-        cli = util.connect_vdsm_json_rpc(
+        cli = util.connect_vdsm_json_rpc_new(
             logger=self._log
         )
-        stats = cli.getVdsStats()
-        if stats['status']['code'] != 0 or 'memUsed' not in stats:
-            self._log.error(
-                "Failed to getVdsStats: %s", stats['status']['message']
-            )
-            self.update_result(None)
-            return
-        caps = cli.getVdsCapabilities()
-        if caps['status']['code'] != 0 or 'memSize' not in caps:
-            self._log.error(
-                "Failed to getVdsCapabilities: %s", caps['status']['message']
-            )
+        try:
+            stats = cli.Host.getStats()
+            caps = cli.Host.getCapabilities()
+        except ServerError as e:
+            self._log.error(e)
             self.update_result(None)
             return
 

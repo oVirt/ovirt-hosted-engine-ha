@@ -23,6 +23,8 @@ from ovirt_hosted_engine_ha.broker import submonitor_base
 from ovirt_hosted_engine_ha.lib import log_filter
 from ovirt_hosted_engine_ha.lib import util as util
 
+from vdsm.client import ServerError
+
 
 def register():
     return "mgmt-bridge"
@@ -38,18 +40,23 @@ class Submonitor(submonitor_base.SubmonitorBase):
         self._log.debug("bridge=%s", self._bridge)
 
     def action(self, options):
-        cli = util.connect_vdsm_json_rpc(
+        cli = util.connect_vdsm_json_rpc_new(
             logger=self._log
         )
-        caps = cli.getVdsCapabilities()
-        if caps['status']['code'] != 0 or 'bridges' not in caps:
-            self._log.error(
-                "Failed to getVdsCapabilities: %s", caps['status']['message']
-            )
+        try:
+            caps = cli.Host.getCapabilities()
+        except ServerError as e:
+            self._log.error(e)
             self.update_result(None)
             return
 
-        if 'bridges' in caps and self._bridge in caps['bridges']:
+        if 'bridges' not in caps:
+            self._log.error("Failed to getVdsCapabilities: "
+                            "No 'bridges' in result")
+            self.update_result(None)
+            return
+
+        if self._bridge in caps['bridges']:
             if 'ports' in caps['bridges'][self._bridge]:
                 self._log.info("Found bridge %s with ports", self._bridge,
                                extra=log_filter.lf_args('status', 60))
