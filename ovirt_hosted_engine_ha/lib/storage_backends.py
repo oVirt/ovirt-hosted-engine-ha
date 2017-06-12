@@ -10,6 +10,8 @@ import math
 import time
 import uuid
 
+from vdsm.client import ServerError
+
 from ..env import constants
 from ..lib import image
 from ..lib import storage_server
@@ -180,17 +182,20 @@ class VdsmBackend(StorageBackend):
 
     def _get_volume_path(self, connection, spUUID, sdUUID, imgUUID, volUUID):
         retval = namedtuple('retval', ['status_code', 'path', 'message'])
-        response = connection.prepareImage(
-            storagepoolID=spUUID,
-            storagedomainID=sdUUID,
-            imageID=imgUUID,
-            volumeID=volUUID
-        )
-        self._logger.debug("prepareImage: '%s'", response)
-        path = response.get('path', None)
-        self._logger.debug("prepareImage: returned '%s' as path", path)
-        return retval(response["status"]["code"], path,
-                      response["status"].get("message", ""))
+        try:
+            result = connection.Image.prepare(
+                storagepoolID=spUUID,
+                storagedomainID=sdUUID,
+                imageID=imgUUID,
+                volumeID=volUUID
+            )
+        except ServerError as e:
+            self._logger.debug(e)
+            return retval(e.code, None, str(e))
+
+        path = result['path']
+        self._logger.debug("Image.prepare: returned '%s' as path", path)
+        return retval(0, path, "")
 
     def create_volume(self, service_name, service_size,
                       volume_uuid, image_uuid):
@@ -210,7 +215,7 @@ class VdsmBackend(StorageBackend):
 
         # Connect to local VDSM
         self._logger.debug("Connecting to VDSM")
-        connection = util.connect_vdsm_json_rpc(logger=self._logger)
+        connection = util.connect_vdsm_json_rpc_new(logger=self._logger)
 
         # Check of the volume already exists
         response = self._get_volume_path(
@@ -229,45 +234,49 @@ class VdsmBackend(StorageBackend):
         elif response.status_code not in (201, 254):
             # 201 is returned when the volume doesn't exist
             # 254 is returned when Image path doesn't exist
-            raise RuntimeError(response["status"]["message"])
+            raise RuntimeError(response["message"])
 
         self._logger.info("Creating Image for '%s' ...", service_name)
 
-        # Create new volume
-        create_response = connection.createVolume(
-            volumeID=volume_uuid,
-            storagepoolID=self._sp_uuid,
-            storagedomainID=self._sd_uuid,
-            imageID=image_uuid,
-            size=str(service_size),  # Need to be str for using bytes.
-            volFormat=self.RAW_FORMAT,
-            preallocate=self.PREALLOCATED_VOL,
-            diskType=self.DATA_DISK_TYPE,
-            desc=service_name,
-            srcImgUUID=constants.BLANK_UUID,
-            srcVolUUID=constants.BLANK_UUID,
-        )
-
-        self._logger.debug("createVolume: '%s'", create_response)
-        if create_response["status"]["code"] != 0:
-            raise RuntimeError(create_response["status"]["message"])
+        try:
+            # Create new volume
+            task = connection.Volume.create(
+                volumeID=volume_uuid,
+                storagepoolID=self._sp_uuid,
+                storagedomainID=self._sd_uuid,
+                imageID=image_uuid,
+                size=str(service_size),  # Need to be str for using bytes.
+                volFormat=self.RAW_FORMAT,
+                preallocate=self.PREALLOCATED_VOL,
+                diskType=self.DATA_DISK_TYPE,
+                desc=service_name,
+                srcImgUUID=constants.BLANK_UUID,
+                srcVolUUID=constants.BLANK_UUID,
+            )
+            self._logger.debug("Create volume task: %s", task)
+        except ServerError as e:
+            raise RuntimeError(str(e))
 
         # Wait for the createVolume task to finish
-        task = create_response["status"]["message"]
         while True:
-            task_status = connection.getTaskStatus(taskID=task)
-            self._logger.debug("getTaskStatus: '%s'" % str(task_status))
-            if task_status["status"]["code"] != 0:
-                raise RuntimeError(task_status["status"]["message"])
-            elif task_status["taskState"] == "finished":
+            try:
+                task_status = connection.Task.getStatus(taskID=task)
+                self._logger.debug("getTaskStatus: '%s'" % str(task_status))
+            except ServerError as e:
+                raise RuntimeError(str(e))
+
+            if task_status["taskState"] == "finished":
                 if task_status["taskResult"] != "success":
                     raise RuntimeError(task_status["taskResult"])
                 break
             else:
                 time.sleep(self.TASK_WAIT)
 
-        response = connection.clearTask(taskID=task)
-        self._logger.debug("clearTask: '%s'", response)
+        try:
+            connection.Task.clear(taskID=task)
+        except ServerError as e:
+            self._logger.debug("clearTask error: '%s'", str(e))
+
         self._logger.info("Image for '%s' created successfully", service_name)
 
         response = self._get_volume_path(
@@ -331,7 +340,7 @@ class VdsmBackend(StorageBackend):
         """Initialize the storage."""
         # Connect to local VDSM
         self._logger.debug("Connecting to VDSM")
-        connection = util.connect_vdsm_json_rpc(logger=self._logger)
+        connection = util.connect_vdsm_json_rpc_new(logger=self._logger)
 
         if initialize:
             self._logger.info("Connecting the storage")

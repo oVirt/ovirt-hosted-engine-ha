@@ -24,6 +24,8 @@ from . import constants
 
 from ovirt_hosted_engine_ha.lib import util
 
+from vdsm.client import ServerError
+
 
 MOUNT_DIR = {
     "nfs3": "",
@@ -51,7 +53,7 @@ def get_domain_path(config_):
     """
     Return path of storage domain holding engine vm
     """
-    vdsm = util.connect_vdsm_json_rpc(
+    cli = util.connect_vdsm_json_rpc_new(
         logger=None,
         timeout=constants.VDSCLI_SSL_TIMEOUT
     )
@@ -64,19 +66,19 @@ def get_domain_path(config_):
         constants.DOMAIN_TYPE_NFS4,
         constants.DOMAIN_TYPE_GLUSTERFS,
     ):
-        response = vdsm.getStorageDomainInfo(sd_uuid)
-        if response['status']['code'] == 0:
-            try:
-                path = canonize_file_path(
-                    dom_type,
-                    response['remotePath'],
-                    sd_uuid
-                )
-                if os.access(path, os.F_OK):
-                    return path
+        try:
+            response = cli.StorageDomain.getInfo(storagedomainID=sd_uuid)
+            path = canonize_file_path(
+                dom_type,
+                response['remotePath'],
+                sd_uuid
+            )
+            if os.access(path, os.F_OK):
+                return path
+
+        except (ServerError, KeyError):
             # don't have remotePath? so fallback to old logic
-            except KeyError:
-                pass
+            pass
 
     # fallback in case of getStorageDomainInfo call fails
     # please note that this code will get stuck if some of

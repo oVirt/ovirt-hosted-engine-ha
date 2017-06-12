@@ -24,6 +24,8 @@ import glob
 from . import log_filter
 from ovirt_hosted_engine_ha.lib import util
 
+from vdsm.client import ServerError
+
 
 logger = logging.getLogger(__name__)
 
@@ -94,12 +96,13 @@ class Image(object):
         """
         It scans for all the available images and volumes on the hosted-engine
         storage domain.
-        :param cli a jsonrpcvdscli instance
+        :param cli a clinet instance
         :return the list of available images
         """
-        result = cli.getImagesList(self._sdUUID)
-        self._log.debug('getImagesList: {r}'.format(r=result))
-        if result['status']['code'] != 0 or 'items' not in result:
+        try:
+            images = cli.StorageDomain.getImages(storagedomainID=self._sdUUID)
+            self._log.debug('getImagesList: {r}'.format(r=images))
+        except ServerError as e:
             # VDSM getImagesList doesn't work when the SD is not connect to
             # a storage pool so we have to reimplement it
             # see: https://bugzilla.redhat.com/1274622
@@ -107,13 +110,10 @@ class Image(object):
                 (
                     'VDSM getImagesList failed, '
                     'trying an alternative way: {message}'
-                ).format(
-                    message=result['status']['message']
-                )
+                ).format(message=str(e))
             )
             images = self._my_get_images_list()
-        else:
-            images = result['items']
+
         return images
 
     def prepare_images(self):
@@ -124,59 +124,51 @@ class Image(object):
         the LV if on block devices.
         """
         self._log.info("Preparing images")
-        cli = util.connect_vdsm_json_rpc(
+        cli = util.connect_vdsm_json_rpc_new(
             logger=self._log,
             timeout=constants.VDSCLI_SSL_TIMEOUT
         )
         images = self.get_images_list(cli)
 
         for imgUUID in images:
-            vm_vol_uuid_l = cli.getVolumesList(
-                imageID=imgUUID,
-                storagepoolID=self._spUUID,
-                storagedomainID=self._sdUUID,
-            )
-            self._log.debug(vm_vol_uuid_l)
-            if vm_vol_uuid_l['status']['code'] == 0:
-                vl = vm_vol_uuid_l['items'] if 'items' in vm_vol_uuid_l else []
-                for volUUID in vl:
-                    self._log.debug(
-                        "Prepare image {storagepoolID} {storagedomainID} "
-                        "{imageID} {volumeID}".format(
-                            storagepoolID=self._spUUID,
-                            storagedomainID=self._sdUUID,
-                            imageID=imgUUID,
-                            volumeID=volUUID,
-                        )
+            try:
+                vm_vol_uuid_l = cli.StorageDomain.getVolumes(
+                    imageID=imgUUID,
+                    storagepoolID=self._spUUID,
+                    storagedomainID=self._sdUUID,
+                )
+                self._log.debug(vm_vol_uuid_l)
+            except ServerError as e:
+                self._log.error(
+                    'Error fetching volumes list: {msg}'.format(
+                        msg=str(e)
                     )
-                    status = cli.prepareImage(
+                )
+                return
+
+            for volUUID in vm_vol_uuid_l:
+                self._log.debug(
+                    "Prepare image {storagepoolID} {storagedomainID} "
+                    "{imageID} {volumeID}".format(
                         storagepoolID=self._spUUID,
                         storagedomainID=self._sdUUID,
                         imageID=imgUUID,
                         volumeID=volUUID,
                     )
-                    self._log.debug('Status: {status}'.format(status=status))
-                    if status['status']['code'] != 0:
-                        self._log.error(
-                            (
-                                'Error preparing image - storagepoolID: '
-                                '{spuuid} - storagedomainID: {sduuid} - '
-                                'imageID: {imguuid} - '
-                                'volumeID: {voluuid}: {message}'
-                            ).format(
-                                spuuid=self._spUUID,
-                                sduuid=self._sdUUID,
-                                imguuid=imgUUID,
-                                voluuid=volUUID,
-                                message=status['status']['message'],
-                            )
-                        )
-            else:
-                self._log.error(
-                    'Error fetching volumes list: {msg}'.format(
-                        msg=vm_vol_uuid_l['status']['message'],
-                    )
                 )
+                try:
+                    cli.Image.prepare(
+                        storagepoolID=self._spUUID,
+                        storagedomainID=self._sdUUID,
+                        imageID=imgUUID,
+                        volumeID=volUUID,
+                    )
+                except ServerError as e:
+                    self._log.error(
+                        'Error preparing image: {message}'.format(
+                            message=str(e)
+                        )
+                    )
 
     def teardown_images(self):
         """
@@ -186,56 +178,49 @@ class Image(object):
         the LV if on block devices.
         """
         self._log.info("Teardown images")
-        cli = util.connect_vdsm_json_rpc(
+        cli = util.connect_vdsm_json_rpc_new(
             logger=self._log,
             timeout=constants.VDSCLI_SSL_TIMEOUT
         )
         images = self.get_images_list(cli)
 
         for imgUUID in images:
-            vm_vol_uuid_l = cli.getVolumesList(
-                imageID=imgUUID,
-                storagepoolID=self._spUUID,
-                storagedomainID=self._sdUUID,
-            )
-            self._log.debug(vm_vol_uuid_l)
-            if vm_vol_uuid_l['status']['code'] == 0:
-                vl = vm_vol_uuid_l['items'] if 'items' in vm_vol_uuid_l else []
-                for volUUID in vl:
-                    self._log.debug(
-                        "Teardown image {storagepoolID} {storagedomainID} "
-                        "{imageID} {volumeID}".format(
-                            storagepoolID=self._spUUID,
-                            storagedomainID=self._sdUUID,
-                            imageID=imgUUID,
-                            volumeID=volUUID,
-                        )
+            try:
+                vm_vol_uuid_l = cli.StorageDomain.getVolumes(
+                    imageID=imgUUID,
+                    storagepoolID=self._spUUID,
+                    storagedomainID=self._sdUUID,
+                )
+                self._log.debug(vm_vol_uuid_l)
+            except ServerError as e:
+                self._log.error(
+                    'Error fetching volumes list: {msg}'.format(
+                        msg=str(e),
                     )
-                    status = cli.teardownImage(
+                )
+                return
+
+            for volUUID in vm_vol_uuid_l:
+                self._log.debug(
+                    "Teardown image {storagepoolID} {storagedomainID} "
+                    "{imageID} {volumeID}".format(
                         storagepoolID=self._spUUID,
                         storagedomainID=self._sdUUID,
                         imageID=imgUUID,
                         volumeID=volUUID,
                     )
-                    self._log.debug('Status: {status}'.format(status=status))
-                    if status['status']['code'] != 0:
-                        self._log.error(
-                            (
-                                'Error teardown image - sp_uuid: {spuuid} - '
-                                'sd_uuid: {sduuid} - '
-                                'img_uuid: {imguuid} - '
-                                'vol_uuid: {voluuid}: {message}'
-                            ).format(
-                                spuuid=self._spUUID,
-                                sduuid=self._sdUUID,
-                                imguuid=imgUUID,
-                                voluuid=volUUID,
-                                message=status['status']['message'],
-                            )
-                        )
-            else:
-                self._log.error(
-                    'Error fetching volumes list: {msg}'.format(
-                        msg=vm_vol_uuid_l['status']['message'],
-                    )
                 )
+
+                try:
+                    cli.Image.teardown(
+                        storagepoolID=self._spUUID,
+                        storagedomainID=self._sdUUID,
+                        imageID=imgUUID,
+                        volumeID=volUUID,
+                    )
+                except ServerError as e:
+                    self._log.error(
+                        'Error teardown image: {message}'.format(
+                            message=str(e)
+                        )
+                    )

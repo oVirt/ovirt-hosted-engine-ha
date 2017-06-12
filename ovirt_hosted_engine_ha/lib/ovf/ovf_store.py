@@ -23,6 +23,8 @@ from ovirt_hosted_engine_ha.lib import image
 from ovirt_hosted_engine_ha.lib import log_filter
 from ovirt_hosted_engine_ha.lib import util
 
+from vdsm.client import ServerError
+
 import json
 import logging
 
@@ -57,34 +59,37 @@ class OVFStore(object):
     def scan(self):
         self._ovf_store_imgUUID = None
         self._ovf_store_volUUID = None
-        _cli = util.connect_vdsm_json_rpc(
+        cli = util.connect_vdsm_json_rpc_new(
             logger=self._log,
             timeout=constants.VDSCLI_SSL_TIMEOUT
         )
 
         imgs = image.Image(self._type, self._sdUUID)
-        imageslist = imgs.get_images_list(_cli)
+        imageslist = imgs.get_images_list(cli)
 
         for img_uuid in imageslist:
-            volumeslist = _cli.getVolumesList(
-                imageID=img_uuid,
-                storagepoolID=self._spUUID,
-                storagedomainID=self._sdUUID,
-            )
-            self._log .debug(volumeslist)
-            if volumeslist['status']['code'] != 0:
-                raise RuntimeError(volumeslist['status']['message'])
-            vl = volumeslist['items'] if 'items' in volumeslist else []
-            for vol_uuid in vl:
-                volumeinfo = _cli.getVolumeInfo(
-                    volumeID=vol_uuid,
+            try:
+                volumeslist = cli.StorageDomain.getVolumes(
                     imageID=img_uuid,
                     storagepoolID=self._spUUID,
                     storagedomainID=self._sdUUID,
                 )
-                self._log.debug(volumeinfo)
-                if volumeinfo['status']['code'] != 0:
-                    raise RuntimeError(volumeinfo['status']['message'])
+                self._log .debug(volumeslist)
+            except ServerError as e:
+                raise RuntimeError(str(e))
+
+            for vol_uuid in volumeslist:
+                try:
+                    volumeinfo = cli.Volume.getInfo(
+                        volumeID=vol_uuid,
+                        imageID=img_uuid,
+                        storagepoolID=self._spUUID,
+                        storagedomainID=self._sdUUID,
+                    )
+                    self._log.debug(volumeinfo)
+                except ServerError as e:
+                    raise RuntimeError(str(e))
+
                 description = volumeinfo['description']
                 if (
                     'Disk Description' in description and
