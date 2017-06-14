@@ -25,6 +25,7 @@ import errno
 import glob
 import os
 import socket
+import threading
 import time
 import mmap
 from contextlib import contextmanager, closing
@@ -37,6 +38,7 @@ from .exceptions import DisconnectionError
 from vdsm import client
 
 _vdsm_json_rpc = None
+_vdsm_json_rpc_lock = threading.Lock()
 
 VDSM_MAX_RETRY = 15
 VDSM_DELAY = 1
@@ -242,9 +244,10 @@ def connect_vdsm_json_rpc(logger=None,
     # Currently vdsm.client doesn't implement any keep-alive or
     # reconnection mechanism so the connection status has to be checked each
     # time. This could be removed once rhbz#1376843 get fixed.
-    __vdsm_json_rpc_check(logger)
-    if _vdsm_json_rpc is None:
-        __log_debug(logger, 'Creating a new json-rpc connection to VDSM')
-        __vdsm_json_rpc_connect(logger, timeout)
+    with _vdsm_json_rpc_lock:
+        __vdsm_json_rpc_check(logger)
+        if _vdsm_json_rpc is None:
+            __log_debug(logger, 'Creating a new json-rpc connection to VDSM')
+            __vdsm_json_rpc_connect(logger, timeout)
 
-    return _vdsm_json_rpc
+        return _vdsm_json_rpc
