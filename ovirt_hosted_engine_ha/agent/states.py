@@ -404,8 +404,14 @@ class EngineUp(EngineState):
         :type logger: logging.Logger
         """
         if new_data.best_engine_status["vm"] != engine.VMState.UP:
+            local_health = new_data.stats.local["engine-health"]
+            if local_health["vm"] == engine.VMState.DOWN:
+                logger.info("Engine vm is running on another host")
+                return EngineDown(new_data)
+
             logger.info("Engine vm may be running on another host")
             return EngineMaybeAway(new_data), fsm.NOWAIT
+
         elif new_data.best_engine_host_id != new_data.host_id:
             logger.info("Engine vm unexpectedly running on host %d",
                         new_data.best_engine_host_id)
@@ -760,10 +766,12 @@ class EngineStarting(EngineState):
             else:
                 logger.info("VM is powering up..")
                 return EngineStarting(new_data)
-        if engine_state["vm"] == engine.VMState.ALREADY_LOCKED:
+
+        if engine_state["vm"] == engine.VMState.DOWN:
             logger.info("Another host already took over..")
             return EngineForceStop(new_data), fsm.NOWAIT
 
+        logger.info("VM is unexpectedly down.")
         return EngineMaybeAway(new_data), fsm.NOWAIT
 
 

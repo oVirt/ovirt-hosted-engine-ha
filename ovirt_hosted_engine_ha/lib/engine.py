@@ -20,8 +20,15 @@
 
 class VMState(object):
     UP = "up"
+
+    # This state is used in case:
+    # - When the broker starts and the VM is not running locally.
+    # - The VM has successfully migrated to another host.
+    # - The VM is already running elsewhere and the storage is locked.
     DOWN = "down"
-    ALREADY_LOCKED = "already_locked"
+
+    # The VM is down for any reason other than those mentioned in DOWN state.
+    DOWN_UNEXPECTED = "down_unexpected"
 
 
 class Health(object):

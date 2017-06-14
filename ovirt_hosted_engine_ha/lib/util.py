@@ -152,7 +152,7 @@ def engine_status_score(status):
     if status['vm'] == 'unknown':
         return 0
 
-    if status['vm'] in (engine.VMState.DOWN, engine.VMState.ALREADY_LOCKED):
+    if status['vm'] in (engine.VMState.DOWN, engine.VMState.DOWN_UNEXPECTED):
         return 1
 
     if status['health'] == engine.Health.BAD:
