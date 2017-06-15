@@ -39,6 +39,7 @@ from yajsonrpc import stomp
 from ovirt_hosted_engine_ha.env import constants as envconst
 from .exceptions import DisconnectionError
 from . import monotonic
+from . import engine
 
 from vdsm.config import config as vdsmconfig
 from vdsm import client
@@ -150,14 +151,17 @@ def engine_status_score(status):
     """
     if status['vm'] == 'unknown':
         return 0
-    elif status['vm'] in ('down', 'already_locked'):
+
+    if status['vm'] in (engine.VMState.DOWN, engine.VMState.ALREADY_LOCKED):
         return 1
-    elif status['health'] == 'bad':
+
+    if status['health'] == engine.Health.BAD:
         return 2
-    elif status['health'] == 'good':
+
+    if status['health'] == engine.Health.GOOD:
         return 3
-    else:
-        raise ValueError("Invalid engine status: %r" % status)
+
+    raise ValueError("Invalid engine status: %r" % status)
 
 
 @contextmanager

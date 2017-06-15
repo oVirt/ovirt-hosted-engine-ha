@@ -33,6 +33,7 @@ import sanlock
 from . import constants
 from ..env import config
 from ..lib import brokerlink
+from ..lib import engine
 from ..lib import exceptions as ex
 from ..lib import log_filter
 from ..lib import metadata
@@ -42,7 +43,9 @@ from ovirt_hosted_engine_ha.lib import upgrade
 from .state_machine import EngineStateMachine
 from .states import AgentStopped
 
+from vdsm.common import exception as vdsm_exception
 from vdsm.client import ServerError
+from vdsm.virt import vmstatus
 
 
 class MetadataTooNewError(Exception):
@@ -636,7 +639,8 @@ class HostedEngine(object):
         # would kill it (treat the VM as up when no data, better
         # keep the monitor running if not sure)
         lm = state.data.stats.local
-        if lm.get("engine-health", {}).get("vm", "up") == "up":
+        if lm.get("engine-health", {})\
+                .get("vm", engine.VMState.UP) == engine.VMState.UP:
             self._log.warn("The VM is running locally or we have no data,"
                            " keeping the domain monitor.")
         else:
@@ -916,7 +920,7 @@ class HostedEngine(object):
             #
             # In case of 'does not exist' reply we re-write status,
             # so i looks good enough.
-            if e.code == 1:
+            if e.code == vdsm_exception.NoSuchVM.code:
                 self._log.info(
                     "VM not found, assuming that migration is complete"
                 )
@@ -984,16 +988,12 @@ class HostedEngine(object):
             try:
                 stats = cli.VM.getStats(vmID=vm_id)[0]
             except ServerError as e:
-                if e.code == 1:
-                    # NoSuchVM
+                if e.code == vdsm_exception.NoSuchVM.code:
                     self._log.info("Vdsm state for VM clean")
                     return
                 raise
 
-            vm_status = None
-            if 'status' in stats:
-                vm_status = stats['status'].lower()
-            if vm_status == 'powering up' or vm_status == 'up':
+            if stats.get('status') in (vmstatus.POWERING_UP, vmstatus.UP):
                 self._log.info("VM is running on host")
                 return
 
@@ -1004,8 +1004,7 @@ class HostedEngine(object):
             try:
                 cli.VM.destroy(vmID=vm_id)
             except ServerError as e:
-                if e.code == 1:
-                    # NoSuchVM
+                if e.code == vdsm_exception.NoSuchVM.code:
                     self._log.info("Vdsm state for VM clean")
                     return
                 raise

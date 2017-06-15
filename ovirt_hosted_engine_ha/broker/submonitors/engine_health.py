@@ -30,7 +30,9 @@ from ovirt_hosted_engine_ha.lib import util as util
 from ovirt_hosted_engine_ha.lib import engine
 from ovirt_hosted_engine_ha.lib import monotonic
 
+from vdsm.common import exception as vdsm_exception
 from vdsm.client import ServerError
+from vdsm.virt import vmstatus
 
 
 def register():
@@ -83,10 +85,12 @@ class Submonitor(submonitor_base.SubmonitorBase):
         try:
             stats = cli.VM.getStats(vmID=self._vm_uuid)[0]
         except ServerError as e:
-            if e.code == 1:
+            if e.code == vdsm_exception.NoSuchVM.code:
                 self._log.info("VM not on this host",
                                extra=log_filter.lf_args('status', 60))
-                d = {'vm': 'down', 'health': 'bad', 'detail': 'unknown',
+                d = {'vm': engine.VMState.DOWN,
+                     'health': engine.Health.BAD,
+                     'detail': 'unknown',
                      'reason': 'vm not running on this host'}
             else:
                 self._log.error(e)
@@ -133,14 +137,14 @@ class Submonitor(submonitor_base.SubmonitorBase):
             self.update_result(json.dumps(res))
 
     def _result_from_stats(self, stats):
-        vm_status = stats['status'].lower()
+        vm_status = stats['status']
 
         # Report states that are not really Up, but should be
         # reported as such
-        if vm_status in ('paused',
-                         'waitforlaunch',
-                         'restoringstate',
-                         'powering up'):
+        if vm_status in (vmstatus.PAUSED,
+                         vmstatus.WAIT_FOR_LAUNCH,
+                         vmstatus.RESTORING_STATE,
+                         vmstatus.POWERING_UP):
             self._log.info("VM status: %s", vm_status,
                            extra=log_filter.lf_args('status', 60))
             return {'vm': engine.VMState.UP,
@@ -150,7 +154,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
 
         # Check if another host was faster in acquiring the storage lock
         exit_message = stats.get('exitMessage', "")
-        if vm_status == 'down' and (
+        if vm_status == vmstatus.DOWN and (
             exit_message.endswith('Failed to acquire lock: error -243') or
             exit_message.endswith(
                 'Failed to acquire lock: Lease is held by another host'
@@ -163,7 +167,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
                               'Is another host already starting the VM?'}
 
         # Check for states that are definitely down
-        if vm_status in ('down', 'migration destination'):
+        if vm_status in (vmstatus.DOWN, vmstatus.MIGRATION_DESTINATION):
             self._log.info("VM not running on this host, status %s", vm_status,
                            extra=log_filter.lf_args('status', 60))
             return {'vm': engine.VMState.DOWN,

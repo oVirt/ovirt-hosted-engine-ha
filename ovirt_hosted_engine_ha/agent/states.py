@@ -6,6 +6,7 @@ from . import constants
 from .state_decorators import check_local_maintenance, check_timeout
 from .state_decorators import check_local_vm_unknown, check_global_maintenance
 from .state_data import time as dtime, load_factor
+from vdsm.virt import vmstatus
 import time
 
 __author__ = 'msivak'
@@ -333,7 +334,7 @@ class ReinitializeFSM(EngineState):
         # we might end up in EngineUpBadHealth and killing the VM
         # if the engine is already up'n'running then EngineStarting will
         # switch to EngineUp (hopefully) without any side effects
-        if engine_state and engine_state["vm"] == "up":
+        if engine_state and engine_state["vm"] == engine.VMState.UP:
             return EngineStarting(data), fsm.NOWAIT
         else:
             return EngineDown(data)
@@ -402,14 +403,15 @@ class EngineUp(EngineState):
         :type new_data: HostedEngineData
         :type logger: logging.Logger
         """
-        if new_data.best_engine_status["vm"] != "up":
+        if new_data.best_engine_status["vm"] != engine.VMState.UP:
             logger.info("Engine vm may be running on another host")
             return EngineMaybeAway(new_data), fsm.NOWAIT
         elif new_data.best_engine_host_id != new_data.host_id:
             logger.info("Engine vm unexpectedly running on host %d",
                         new_data.best_engine_host_id)
             return EngineDown(new_data)
-        elif new_data.best_engine_status["detail"] == "migration source":
+        elif new_data.best_engine_status["detail"] ==\
+                vmstatus.MIGRATION_SOURCE:
             logger.info("Engine VM found migrating away")
             return EngineMigratingAway(new_data)
         elif (new_data.best_score_host and
@@ -421,8 +423,8 @@ class EngineUp(EngineState):
                          new_data.best_score_host['hostname'],
                          new_data.best_score_host["host-id"])
             return EngineStop(new_data)
-        elif (new_data.best_engine_status["vm"] == "up" and
-              new_data.best_engine_status["health"] == "bad"):
+        elif (new_data.best_engine_status["vm"] == engine.VMState.UP and
+              new_data.best_engine_status["health"] == engine.Health.BAD):
             return EngineUpBadHealth(new_data)
         else:
             logger.info("Engine vm running on localhost",
@@ -453,9 +455,8 @@ class EngineDown(EngineState):
         :type new_data: HostedEngineData
         :type logger: logging.Logger
         """
-        if new_data.best_engine_status["vm"] == "up":
-            if (new_data.best_engine_host_id ==
-                    new_data.stats.host_id):
+        if new_data.best_engine_status["vm"] == engine.VMState.UP:
+            if new_data.best_engine_host_id == new_data.stats.host_id:
                 # The engine is unexpectedly running here, start monitoring it
                 logger.info("Engine vm unexpectedly running locally,"
                             " monitoring vm")
@@ -557,7 +558,7 @@ class EngineStop(EngineState):
         :type new_data: HostedEngineData
         :type logger: logging.Logger
         """
-        if (new_data.best_engine_status["vm"] != "up" or
+        if (new_data.best_engine_status["vm"] != engine.VMState.UP or
                 new_data.best_engine_host_id != new_data.host_id):
             logger.info("Engine vm not running on local host")
             return EngineDown(new_data)
@@ -643,7 +644,7 @@ class EngineUnexpectedlyDown(EngineState):
         :type new_data: HostedEngineData
         :type logger: logging.Logger
         """
-        if new_data.best_engine_status["vm"] == "up":
+        if new_data.best_engine_status["vm"] == engine.VMState.UP:
             if (new_data.best_engine_host_id ==
                     new_data.stats.host_id):
                 # The engine is unexpectedly running here, start monitoring it
@@ -754,7 +755,7 @@ class EngineStarting(EngineState):
         # engine is running
         engine_state = new_data.stats.local["engine-health"]
         if engine_state["vm"] == engine.VMState.UP:
-            if engine_state["health"] == 'good':
+            if engine_state["health"] == engine.Health.GOOD:
                 return EngineUp(new_data)
             else:
                 logger.info("VM is powering up..")
@@ -845,7 +846,7 @@ class EngineMaybeAway(EngineState):
         :type new_data: HostedEngineData
         :type logger: logging.Logger
         """
-        if new_data.best_engine_status["vm"] == "up":
+        if new_data.best_engine_status["vm"] == engine.VMState.UP:
             if (new_data.best_engine_host_id ==
                     new_data.stats.host_id):
                 # The engine is unexpectedly running here, start monitoring it

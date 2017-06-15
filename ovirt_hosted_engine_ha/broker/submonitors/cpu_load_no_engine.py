@@ -26,6 +26,7 @@ from ovirt_hosted_engine_ha.broker import submonitor_base
 from ovirt_hosted_engine_ha.lib import log_filter
 from ovirt_hosted_engine_ha.lib import util as util
 
+from vdsm.common import exception as vdsm_exception
 from vdsm.client import ServerError
 
 
@@ -104,7 +105,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
             cpu_count = multiprocessing.cpu_count()
             engine_load = (vm_cpu_total / cpu_count) / 100.0
         except ServerError as e:
-            if e.code == 1:
+            if e.code == vdsm_exception.NoSuchVM.code:
                 self._log.info("VM not on this host",
                                extra=log_filter.lf_args('vm', 60))
             else:
