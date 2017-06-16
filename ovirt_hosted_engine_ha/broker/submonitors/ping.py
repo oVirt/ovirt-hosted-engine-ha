@@ -42,6 +42,9 @@ class Submonitor(submonitor_base.SubmonitorBase):
             raise Exception("ping requires addr address")
         self._log.debug("addr=%s, timeout=%s", self._addr, self._timeout)
 
+        # Set initial result to success instead of None
+        self.update_result(1.0)
+
     def action(self, options):
         count = 0
         for i in range(self._total):
