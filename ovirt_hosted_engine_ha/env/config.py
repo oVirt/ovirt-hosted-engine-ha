@@ -72,6 +72,7 @@ HA = 'ha'
 LOCAL_MAINTENANCE = 'local_maintenance'
 
 BROKER = 'broker'
+HE_CONF = 'he_conf'
 
 
 class Config(object):
@@ -100,7 +101,8 @@ class Config(object):
         # whenever configuration values are retrieved from them.
         self._dynamic_files = {
             HA: constants.HA_AGENT_CONF_FILE,
-            BROKER: constants.NOTIFY_CONF_FILE
+            BROKER: constants.NOTIFY_CONF_FILE,
+            HE_CONF: constants.ENGINE_SETUP_CONF_FILE
         }
 
         # This dictionary holds names of config files that are stored in the
@@ -110,7 +112,8 @@ class Config(object):
         # {type -> file name in archive}
         self._shared_storage_files = {
             BROKER: constants.HEConfFiles.HECONFD_BROKER_CONF,
-            VM: constants.HEConfFiles.HECONFD_VM_CONF
+            VM: constants.HEConfFiles.HECONFD_VM_CONF,
+            HE_CONF: constants.HEConfFiles.HECONFD_HECONF
         }
 
         # This dictionary holds methods that will be called when refreshing
@@ -122,7 +125,8 @@ class Config(object):
         }
 
         self._editable_shared_storage_files = {
-            BROKER
+            BROKER,
+            HE_CONF
         }
 
         self._load_config_files(Config.static_files)
@@ -355,7 +359,7 @@ class Config(object):
                 if key != key_to_set or value == new_value:
                     new_line = line
                 else:
-                    new_line = '{key} = {new_value}'.\
+                    new_line = '{key}={new_value}'.\
                         format(key=key_to_set, new_value=new_value)
             else:
                 new_line = line
