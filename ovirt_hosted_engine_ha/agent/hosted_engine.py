@@ -1149,7 +1149,7 @@ class HostedEngine(object):
                 if output[0].startswith("Virtual machine already exists"):
                     self._log.warning("Failed to start engine VM,"
                                       " already running according to VDSM")
-                    return
+                    return True
 
                 raise Exception(output[1])
 
