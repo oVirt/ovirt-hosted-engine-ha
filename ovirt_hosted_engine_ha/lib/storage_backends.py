@@ -228,13 +228,13 @@ class VdsmBackend(StorageBackend):
 
         if response.status_code == 0:
             self._logger.info("Image for '%s' already exists", service_name)
-            path = response['path']
+            path = response.path
             return False, path
 
         elif response.status_code not in (201, 254):
             # 201 is returned when the volume doesn't exist
             # 254 is returned when Image path doesn't exist
-            raise RuntimeError(response["message"])
+            raise RuntimeError(response.message)
 
         self._logger.info("Creating Image for '%s' ...", service_name)
 

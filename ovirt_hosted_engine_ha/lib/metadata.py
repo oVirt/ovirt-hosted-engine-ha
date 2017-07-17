@@ -209,7 +209,7 @@ def parse_metadata_to_dict(host_str, data):
             raise MetadataError("Malformed metadata for host {0}:"
                                 " provided checksum {1} does not match"
                                 " the data {2}."
-                                .format(host_id, ret[9], crc32))
+                                .format(host_id, ret['crc32'], crc32))
 
     # support conf_on_shared_storage and local_conf_timestamp fields if
     # present, but ignore if the aren't

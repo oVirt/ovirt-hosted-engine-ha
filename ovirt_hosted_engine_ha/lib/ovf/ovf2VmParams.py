@@ -278,7 +278,7 @@ def toDict(ovf):
 def confFromOvf(ovf):
     """
 
-    :param  ovf: path to the OVF file
+    :param  ovf: contents of the OVF file
     :type ovf: str
     :return:  key=value representation of the VM from ovf,
               consumable as a conf file
@@ -300,7 +300,8 @@ def confFromOvf(ovf):
 
 
 if __name__ == '__main__':
-    print(confFromOvf(open(sys.argv[1], 'r')))
+    with open(sys.argv[1], 'r') as ovf_file:
+        print(confFromOvf(ovf_file.read()))
 
 
 # vim: expandtab tabstop=4 shiftwidth=4
