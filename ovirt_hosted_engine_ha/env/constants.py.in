@@ -68,6 +68,10 @@ DEFAULT_CONF_IMAGE_SIZE_GB = 1
 
 BLANK_UUID = '00000000-0000-0000-0000-000000000000'
 
+# We want agent monitoring loop to be executed every 10
+# seconds, not longer, not shorter.
+LOOP_DELAY = 10
+
 
 class HEConfFiles(object):
     HECONFD_VERSION = 'version'
