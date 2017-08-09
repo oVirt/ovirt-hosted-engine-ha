@@ -407,7 +407,7 @@ class HostedEngine(object):
         # initialize it once the FSM is started (we need maintenance data
         # to decide)
         self._initialize_vdsm()
-        self._initialize_storage_images()
+        self._initialize_storage_images(force=True)
         self._initialize_broker()
         self._initialize_sanlock()
 
@@ -638,13 +638,19 @@ class HostedEngine(object):
             logger=self._log
         )
 
-    def _initialize_storage_images(self):
+    def _initialize_storage_images(self, force=False):
         self._log.info("Connecting the storage")
         sserver = storage_server.StorageServer()
         img = image.Image(
             self._config.get(config.ENGINE, config.DOMAIN_TYPE),
             self._config.get(config.ENGINE, config.SD_UUID)
         )
+
+        if sserver.validate_storage_server() and not force:
+            self._log.info(
+                "Storage domain reported as valid and reconnect is not forced."
+            )
+            return
 
         try:
             sserver.connect_storage_server()
