@@ -17,7 +17,8 @@ ConditionFileNotEmpty=/etc/ovirt-hosted-engine/hosted-engine.conf
 [Service]
 EnvironmentFile=-/etc/sysconfig/ovirt-ha-agent
 ExecStart=@ENGINE_HA_BINDIR@/ovirt-ha-agent
-Restart=on-failure
+RestartSec=10s
+Restart=always
 StandardOutput=null
 User=@VDSM_USER@
 Group=@VDSM_GROUP@
