@@ -466,7 +466,6 @@ class HostedEngine(object):
             except ServiceNotUpException as e:
                 self._log.info("Required service %s is not up." % e.message)
                 delay = max(delay, 30)
-                log_level = logging.INFO
 
             except Exception as e:
                 self._log.warning("Error while monitoring engine: %s", str(e))
@@ -476,11 +475,9 @@ class HostedEngine(object):
 
                 delay = max(delay, 60)
                 error_count += 1
-                log_level = logging.INFO
 
             else:
                 error_count = 0  # All is well, reset the error counter
-                log_level = logging.DEBUG
 
             if error_count >= constants.MAX_ERROR_COUNT:
                 self._log.error("Shutting down the agent because of "
@@ -489,13 +486,13 @@ class HostedEngine(object):
                 break
 
             loop_stop = monotonic.time()
-            self._log.log(log_level, "Monitoring loop execution time %d sec",
-                          loop_stop - loop_start)
+            self._log.info("Monitoring loop execution time %d sec",
+                           loop_stop - loop_start)
 
             prev_delay = delay
 
             delay = max(0, delay - loop_stop + loop_start)
-            self._log.log(log_level, "Sleeping %d seconds", delay)
+            self._log.debug("Sleeping %d seconds", delay)
             time.sleep(delay)
 
         # Publish stopped status
