@@ -212,6 +212,26 @@ class StorageServer(object):
             conList[0]['mnt_options'] = self._mnt_options
         return conList, storageType
 
+    def validate_storage_server(self):
+        """
+        Checks the hosted-engine storage domain availability
+        :return: True if available, False otherwise
+        """
+        self._log.info("Validating storage server")
+        cli = util.connect_vdsm_json_rpc(
+            logger=self._log,
+            timeout=constants.VDSCLI_SSL_TIMEOUT
+        )
+        status = cli.repoStats(domains=[self._sdUUID])
+        try:
+            valid = status[self._sdUUID]['valid']
+            delay = float(status[self._sdUUID]['delay'])
+            if valid and delay <= constants.LOOP_DELAY:
+                return True
+        except Exception:
+            self._log.warn("Hosted-engine storage domain is in invalid state")
+        return False
+
     def connect_storage_server(self):
         """
         Connect the hosted-engine domain storage server
