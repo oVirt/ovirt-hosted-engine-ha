@@ -25,7 +25,6 @@ import logging.config
 from optparse import OptionParser
 import signal
 import sys
-import time
 import traceback
 
 from ..lib import exceptions as ex
@@ -59,12 +58,10 @@ class Agent(object):
             return he.clean(options.force_cleanup)
 
         action = action_proper
-        retries = constants.AGENT_START_RETRIES
         errcode = 0
 
         if options.cleanup:
             action = action_clean
-            retries = 1
 
         self._initialize_logging()
         self._log.info("%s started", constants.FULL_PROG_NAME)
@@ -73,7 +70,7 @@ class Agent(object):
 
         try:
             self._log.debug("Running agent")
-            errcode = self._run_agent(action, options.host_id, retries)
+            errcode = self._run_agent(action, options.host_id)
 
         except Exception as e:
             self._log.critical("Could not start ha-agent", exc_info=True)
@@ -123,37 +120,26 @@ class Agent(object):
     def shutdown_requested(self):
         return self._shutdown
 
-    def _run_agent(self, action, host_id=None,
-                   retries=constants.AGENT_START_RETRIES):
+    def _run_agent(self, action, host_id=None):
         # Only one service type for now, run it in the main thread
 
-        for attempt in range(retries):
-            try:
-                he = hosted_engine.HostedEngine(self.shutdown_requested,
-                                                host_id=host_id)
+        try:
+            he = hosted_engine.HostedEngine(self.shutdown_requested,
+                                            host_id=host_id)
 
-                # if we're here, the agent stopped gracefully,
-                # so we don't want to restart it
-                return action(he)
+            # if we're here, the agent stopped gracefully
+            return action(he)
 
-            except hosted_engine.ServiceNotUpException as e:
-                self._log.error("Service %s is not running and the admin"
-                                " is responsible for starting it."
-                                " Waiting..." % e.message)
-            except ex.DisconnectionError as e:
-                self._log.error("Disconnected from broker '{0}'"
-                                " - reinitializing".format(str(e)))
-            except (ex.BrokerInitializationError, ex.BrokerConnectionError)\
-                    as e:
-                self._log.error("Can't initialize brokerlink '{0}'"
-                                " - reinitializing".format(str(e)))
-            except Exception as e:
-                self._log.error(traceback.format_exc())
-                self._log.error("Trying to restart agent")
+        except hosted_engine.ServiceNotUpException as e:
+            self._log.error("Service %s is not running and the admin"
+                            " is responsible for starting it." % e.message)
+        except ex.DisconnectionError as e:
+            self._log.error("Disconnected from broker '{0}'".format(str(e)))
+        except (ex.BrokerInitializationError, ex.BrokerConnectionError)\
+                as e:
+            self._log.error("Can't initialize brokerlink '{0}'".format(str(e)))
+        except Exception as e:
+            self._log.error(traceback.format_exc())
+            self._log.error("Trying to restart agent")
 
-            time.sleep(constants.AGENT_START_RETRY_WAIT)
-            self._log.warn("Restarting agent, attempt '{0}'".format(attempt))
-        else:
-            self._log.error("Too many errors occurred, giving up. "
-                            "Please review the log and consider filing a bug.")
-            return -99
+        return -99

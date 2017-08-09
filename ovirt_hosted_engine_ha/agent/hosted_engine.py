@@ -390,8 +390,6 @@ class HostedEngine(object):
         return 0
 
     def start_monitoring(self):
-        error_count = 0
-
         # Shut down the agent when HE is not fully configured
         if not self.configured:
             self._log.error("Hosted Engine is not configured. Shutting down.")
@@ -472,17 +470,6 @@ class HostedEngine(object):
                 if not (isinstance(e, ex.DisconnectionError) or
                         isinstance(e, ex.RequestError)):
                     self._log.warning("Unexpected error", exc_info=True)
-
-                delay = max(delay, 60)
-                error_count += 1
-
-            else:
-                error_count = 0  # All is well, reset the error counter
-
-            if error_count >= constants.MAX_ERROR_COUNT:
-                self._log.error("Shutting down the agent because of "
-                                "%d failures in a row!",
-                                constants.MAX_ERROR_COUNT)
                 break
 
             loop_stop = monotonic.time()
