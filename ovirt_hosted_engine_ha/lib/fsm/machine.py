@@ -3,6 +3,8 @@ import abc
 from abc import abstractmethod
 import copy
 
+from ovirt_hosted_engine_ha.env import constants
+
 __author__ = 'msivak'
 __all__ = ["BaseFSM", "BaseState"]
 
@@ -129,10 +131,10 @@ class BaseFSM(object):
         old_state = self._state
         self._state, commands = self.decode_consume(ret)
 
-        sleep_time = 10
+        sleep_time = constants.LOOP_DELAY
         for command in commands:
             if command == self.WAIT:
-                sleep_time = 10
+                sleep_time = constants.LOOP_DELAY
             elif command == self.NOWAIT:
                 sleep_time = 0
             elif command == self.QUIT:
