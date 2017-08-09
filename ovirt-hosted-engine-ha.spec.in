@@ -181,6 +181,9 @@ fi
 
 
 %changelog
+* Wed Aug  9 2017 Simone Tiraboschi <stirabos@redhat.com> - 2.1.5-1
+- 2.1.5-1
+
 * Wed Jun 21 2017 Sandro Bonazzola <sbonazzo@redhat.com> - 2.1.5-0.0.master
 - 2.1.5-0.0.master
 
