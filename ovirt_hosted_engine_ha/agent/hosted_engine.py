@@ -418,9 +418,27 @@ class HostedEngine(object):
 
         self._config.refresh_vm_conf()
 
+        try:
+            self._monitoring_loop()
+        finally:
+            # Publish stopped status
+            stopped = AgentStopped(self.fsm.state.data)
+            self.publish(stopped)
+
+            # Free lockspace
+            self._log.debug("Releasing sanlock")
+            self._release_sanlock()
+            self._stop_domain_monitor_if_possible(stopped)
+
+            self._log.debug("Disconnecting from ha-broker")
+            if self._broker and self._broker.is_connected():
+                self._broker.disconnect()
+
+            return 0
+
+    def _monitoring_loop(self):
         # Safe initial value, so first time loop will be fully executed
         prev_delay = 1
-
         for old_state, state, delay in self.fsm:
             loop_start = monotonic.time()
             if self._shutdown_requested_callback():
@@ -465,13 +483,6 @@ class HostedEngine(object):
                 self._log.info("Required service %s is not up." % e.message)
                 delay = max(delay, 30)
 
-            except Exception as e:
-                self._log.warning("Error while monitoring engine: %s", str(e))
-                if not (isinstance(e, ex.DisconnectionError) or
-                        isinstance(e, ex.RequestError)):
-                    self._log.warning("Unexpected error", exc_info=True)
-                break
-
             loop_stop = monotonic.time()
             self._log.info("Monitoring loop execution time %d sec",
                            loop_stop - loop_start)
@@ -481,21 +492,6 @@ class HostedEngine(object):
             delay = max(0, delay - loop_stop + loop_start)
             self._log.debug("Sleeping %d seconds", delay)
             time.sleep(delay)
-
-        # Publish stopped status
-        stopped = AgentStopped(self.fsm.state.data)
-        self.publish(stopped)
-
-        # Free lockspace
-        self._log.debug("Releasing sanlock")
-        self._release_sanlock()
-        self._stop_domain_monitor_if_possible(stopped)
-
-        self._log.debug("Disconnecting from ha-broker")
-        if self._broker and self._broker.is_connected():
-            self._broker.disconnect()
-
-        return 0
 
     def _initialize_broker(self, monitors=None):
         if self._broker:
