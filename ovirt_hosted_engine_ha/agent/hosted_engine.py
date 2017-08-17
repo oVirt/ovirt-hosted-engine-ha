@@ -549,7 +549,7 @@ class HostedEngine(object):
         sserver = storage_server.StorageServer()
         if not sserver.validate_storage_server():
             self._log.warn("Hosted-engine storage domain is in invalid state")
-            raise RuntimeError(
+            raise ex.StorageDisconnectedError(
                 "Hosted-engine storage domain is in invalid state")
 
     def _initialize_storage_images(self):

@@ -67,3 +67,12 @@ class DuplicateStorageConnectionException(Exception):
     The agent should exits disconnecting the storage server.
     Systemd will restart the agent if needed.
     """
+
+
+class StorageDisconnectedError(Exception):
+    """
+    This exceptions is raised when storage domain is in invalid state.
+
+    The agent should exit.
+    Systemd will restart the agent if needed.
+    """

@@ -138,6 +138,8 @@ class Agent(object):
         except (ex.BrokerInitializationError, ex.BrokerConnectionError)\
                 as e:
             self._log.error("Can't initialize brokerlink '{0}'".format(str(e)))
+        except ex.StorageDisconnectedError as e:
+            self._log.error("Storage disconnected '{0}'".format(str(e)))
         except Exception as e:
             self._log.error(traceback.format_exc())
             self._log.error("Trying to restart agent")
