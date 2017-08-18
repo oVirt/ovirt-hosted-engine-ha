@@ -990,12 +990,17 @@ class HostedEngine(object):
                     'method': 'online'
                 }
             )
-        except ServerError:
-            self._log.error("Migration to host %s (id %d) failed to start",
-                            hostname,
-                            host_id)
-            return False
-        return True
+            return True
+
+        except ServerError as e:
+            self._log.error(
+                "Migration to host %s (id %d) failed to start: %s",
+                hostname,
+                host_id,
+                str(e)
+            )
+
+        return False
 
     def _monitor_migration(self):
         vm_id = self._config.get(config.VM, config.VM_UUID)
@@ -1003,9 +1008,10 @@ class HostedEngine(object):
         cli = util.connect_vdsm_json_rpc_new(
             logger=self._log
         )
-        status = {}
+
         try:
-            status = cli.VM.getMigrationStatus(vmID=vm_id)
+            return cli.VM.getMigrationStatus(vmID=vm_id)
+
         except ServerError as e:
             # As VDSM could return either
             # {u'downtime': 156, u'progress': 100,
@@ -1020,20 +1026,15 @@ class HostedEngine(object):
             #
             # In case of 'does not exist' reply we re-write status,
             # so i looks good enough.
-            if "does not exist" in e.message:
+            if e.code == 1:
                 self._log.info(
                     "VM not found, assuming that migration is complete"
                 )
-                status['progress'] = 100
-                status['downtime'] = 1
-                return status
-            else:
-                self._log.error("Failed to get migration status",
-                                exc_info=True)
-                self._log.error(e)
-                return False
+                return {'progress': 100, 'downtime': 1}
 
-        return status
+            self._log.error("Failed to get migration status", exc_info=True)
+            self._log.error(e)
+            return None
 
     def _start_engine_vm(self):
         try:
