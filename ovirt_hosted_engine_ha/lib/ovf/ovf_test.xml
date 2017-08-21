@@ -139,7 +139,7 @@
         <rasd:ResourceType>0</rasd:ResourceType>
         <rasd:InstanceId>243e6a18-ae41-47dc-af9e-29f2df1b3713</rasd:InstanceId>
         <Type>controller</Type>
-        <Device>scsi</Device>
+        <Device>virtio-scsi</Device>
         <rasd:Address>{bus=0x00, slot=0x06, domain=0x0000, type=pci, function=0x0}</rasd:Address>
         <BootOrder>0</BootOrder>
         <IsPlugged>true</IsPlugged>
