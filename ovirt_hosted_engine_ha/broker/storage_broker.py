@@ -25,7 +25,7 @@ import threading
 from ..env import constants
 from ..lib import monotonic
 from ..lib.exceptions import RequestError
-from ..lib.storage_backends import FilesystemBackend, BlockBackend, VdsmBackend
+from ..lib.storage_backends import FilesystemBackend, VdsmBackend
 from ..lib.storage_backends import StorageBackendTypes
 from ..lib.util import aligned_buffer, uninterruptible
 
@@ -34,7 +34,6 @@ class StorageBroker(object):
 
     DOMAINTYPES = {
         StorageBackendTypes.FilesystemBackend: FilesystemBackend,
-        StorageBackendTypes.BlockBackend: BlockBackend,
         StorageBackendTypes.VdsmBackend: VdsmBackend,
     }
 
