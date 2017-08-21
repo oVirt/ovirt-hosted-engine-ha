@@ -156,6 +156,9 @@ def buildNic(device):
 
 def buildController(device):
     controller = buildDevice(device)
+    if controller['device'] == 'virtio-scsi':
+        controller['device'] = 'scsi'
+
     if controller['device'] == 'scsi':
         controller['model'] = 'virtio-scsi'
     return controller
