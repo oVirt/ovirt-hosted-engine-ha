@@ -10,8 +10,6 @@ from collections import namedtuple
 import math
 import time
 import uuid
-import json
-import base64
 
 logger = logging.getLogger(__name__)
 
@@ -145,44 +143,6 @@ class VdsmBackend(StorageBackend):
             self.volume_uuid = volume_uuid
             self.path = path
 
-        def dump(self):
-            """
-            Creates a string representation of the Device object
-            which can be send thru the brokerlink
-            """
-            return base64.b16encode(
-                json.dumps(
-                    {
-                        "image_uuid": self.image_uuid,
-                        "volume_uuid": self.volume_uuid,
-                        "path": self.path
-                    }
-                )
-            )
-
-        def load(self, obj):
-            """
-            Loads a Device values from it's string representation.
-            """
-
-            if obj is None:
-                return self
-
-            # already a Device obj, no need to convert
-            if type(obj) == type(self):
-                return obj
-
-            device_dict = json.loads(base64.b16decode(obj))
-            for slot in self.__slots__:
-                self.__setattr__(slot, device_dict[slot])
-
-            return self
-
-        @classmethod
-        def device_from_str(cls, obj):
-            dev = cls(None, None, None)
-            return dev.load(obj)
-
     # VDSM storage constants
     RAW_FORMAT = 5
     PREALLOCATED_VOL = 1
@@ -210,14 +170,7 @@ class VdsmBackend(StorageBackend):
         :type activate_devices: dict[str]=VdsmBackend.Device
         """
         super(VdsmBackend, self).__init__()
-        self._services = \
-            dict(
-                map(
-                    lambda (service, device):
-                    (service, self.Device.device_from_str(device)),
-                    activate_devices.items()
-                )
-            )
+        self._services = activate_devices
         self._sp_uuid = sp_uuid
         self._sd_uuid = sd_uuid
         self._dom_type = dom_type
