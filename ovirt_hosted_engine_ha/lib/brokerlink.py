@@ -163,22 +163,6 @@ class BrokerLink(object):
         self._log.debug("Success, service path %s", response)
         return response
 
-    def set_storage_domain(self, sd_type, **options):
-        request = ["set-storage-domain {0}".format(sd_type)]
-        for (k, v) in options.iteritems():
-            request.append("{0}={1}".format(k, str(v)))
-        request = " ".join(request)
-
-        try:
-            response = self._checked_communicate(request)
-        except Exception as e:
-            raise RequestError("Failed to set storage domain {0}, "
-                               "options {1}: {2}"
-                               .format(sd_type, options, e))
-
-        self._log.info("Success, id %s", response)
-        return response
-
     def put_stats_on_storage(self, service_type, host_id, data):
         """
         Puts data on the shared storage according to the parameters.

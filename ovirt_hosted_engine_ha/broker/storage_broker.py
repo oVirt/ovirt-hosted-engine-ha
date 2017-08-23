@@ -22,6 +22,7 @@ import logging
 import os
 import threading
 
+from ..env import config
 from ..env import constants
 from ..lib import monotonic
 from ..lib.exceptions import RequestError
@@ -39,30 +40,47 @@ class StorageBroker(object):
 
     def __init__(self):
         self._log = logging.getLogger("%s.StorageBroker" % __name__)
+        self._config = config.Config(logger=self._log)
         self._storage_access_lock = threading.Lock()
-        self._backend = None
         """
         Hosts state (liveness) history as reported by agents:
         format: {service_type: (timestamp, [<host_id>, <host_id>])}
         """
         self._stats_cache = {}
 
-    def set_storage_domain(self, sd_type, **kwargs):
-        """
-        The first thing any new broker client should do is to configure
-        the storage it wants to use. Client is arbitrary hashable structure,
-        but usually is (host, ip) of the agent that opened the connection
-        to the broker. The client value is provided by the broker logic.
+        # register storage domain info
+        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
+        sp_uuid = self._config.get(config.ENGINE, config.SP_UUID)
+        dom_type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
 
-        :param sd_type: The type of backend the clients want to use
-        :type sd_type: Values from StorageBackendTypes tuple
-        """
-        self.cleanup()
-
-        self._backend = self.DOMAINTYPES[sd_type](**kwargs)
-        self._log.debug("Connecting to %s", self._backend)
-        self._backend.connect()
-        return str(id(self._backend))
+        try:
+            devices = {
+                constants.SERVICE_TYPE + constants.MD_EXTENSION:
+                    VdsmBackend.Device(
+                        self._config.get(config.ENGINE,
+                                         config.METADATA_IMAGE_UUID,
+                                         raise_on_none=True),
+                        self._config.get(config.ENGINE,
+                                         config.METADATA_VOLUME_UUID,
+                                         raise_on_none=True),
+                    ),
+                constants.SERVICE_TYPE + constants.LOCKSPACE_EXTENSION:
+                    VdsmBackend.Device(
+                        self._config.get(config.ENGINE,
+                                         config.LOCKSPACE_IMAGE_UUID,
+                                         raise_on_none=True),
+                        self._config.get(config.ENGINE,
+                                         config.LOCKSPACE_VOLUME_UUID,
+                                         raise_on_none=True),
+                    )
+            }
+            self._backend = VdsmBackend(sp_uuid, sd_uuid, dom_type, **devices)
+            self._backend.connect()
+        except Exception as _ex:
+            self._log.warn("Can't read volume uuids from config "
+                           "-> assuming fs based storage: '{0}'"
+                           .format(str(_ex)))
+            self._backend = FilesystemBackend(sd_uuid, dom_type)
 
     def is_host_alive(self, service_type):
         timestamp, host_list = self._stats_cache.get(service_type, (0, ""))
@@ -100,10 +118,6 @@ class StorageBroker(object):
         Note: this method is called from the client as well as from
         self.get_all_stats_for_service_type().
         """
-        if not self._backend:
-            self._log.error("No storage configured")
-            return {}
-
         path, offset = self._backend.filename(service_type)
         self._log.debug("Getting stats for service %s from %s with"
                         " offset %d",
@@ -157,10 +171,6 @@ class StorageBroker(object):
         segments, so long as a) the writes don't overlap, and b) we close
         the file after the write.
         """
-        if not self._backend:
-            self._log.error("No storage configured")
-            return None
-
         host_id = int(host_id)
         path, offset = self._backend.filename(service_type)
         offset += host_id * constants.HOST_SEGMENT_BYTES
@@ -203,20 +213,4 @@ class StorageBroker(object):
 
         Client ID is provided by the broker logic.
         """
-        if not self._backend:
-            self._log.error("No storage configured")
-            return ""
-
         return self._backend.filename(service)[0]
-
-    def cleanup(self):
-        """
-        After client (like ha_agent) disconnects the storage backend
-        needs to be freed properly.
-
-        Client ID is provided by the broker logic.
-        """
-        if self._backend:
-            self._log.debug("Cleaning up")
-            self._backend.disconnect()
-            self._backend = None

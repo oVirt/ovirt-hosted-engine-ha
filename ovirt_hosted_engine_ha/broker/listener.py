@@ -211,11 +211,6 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
                                 + "%d - %s", id, str(e))
         self._remove_monitor_conn_entry()
 
-        # cleanup storage
-        with self.server.sp_listener.storage_broker_instance_access_lock:
-            self.server.sp_listener.storage_broker_instance \
-                .cleanup(threading.current_thread().ident)
-
         try:
             SocketServer.BaseRequestHandler.finish(self)
         except socket.error as e:
@@ -290,12 +285,6 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
             with self.server.sp_listener.storage_broker_instance_access_lock:
                 return self.server.sp_listener.storage_broker_instance \
                     .get_service_path(service)
-        elif type == 'set-storage-domain':
-            sd_type = tokens.pop(0)
-            options = self._get_options(tokens)
-            with self.server.sp_listener.storage_broker_instance_access_lock:
-                return self.server.sp_listener.storage_broker_instance \
-                    .set_storage_domain(sd_type, **options)
         elif type == 'notify':
             options = self._get_options(tokens)
             if notifications.notify(**options):

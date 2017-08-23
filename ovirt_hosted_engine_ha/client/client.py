@@ -76,7 +76,6 @@ class HAClient(object):
 
     def _check_liveness_metadata(self, md, broker):
         with broker.connection(self._retries, self._wait):
-            self._configure_broker_conn(broker)
             service = constants.SERVICE_TYPE + agent_constants.MD_EXTENSION
             md["live-data"] = broker.is_host_alive(service, md["host-id"])
             self._log.debug("Is host '{0}' alive? -> '{1}'"
@@ -100,7 +99,6 @@ class HAClient(object):
             self._config = config.Config()
         broker = brokerlink.BrokerLink()
         with broker.connection(self._retries, self._wait):
-            self._configure_broker_conn(broker)
             service = constants.SERVICE_TYPE + agent_constants.MD_EXTENSION
             stats = broker.get_stats_from_storage(service)
 
@@ -170,15 +168,6 @@ class HAClient(object):
             service_type,
             self.StatModes.HOST)
 
-    def _configure_broker_conn(self, broker):
-        if self._config is None:
-            self._config = config.Config()
-        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
-        dom_type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
-        broker.set_storage_domain(StorageBackendTypes.FilesystemBackend,
-                                  sd_uuid=sd_uuid,
-                                  dom_type=dom_type)
-
     def set_global_md_flag(self, flag, value):
         """
         Connects to HA broker and sets flags in global metadata, leaving
@@ -199,7 +188,6 @@ class HAClient(object):
 
         broker = brokerlink.BrokerLink()
         with broker.connection(self._retries, self._wait):
-            self._configure_broker_conn(broker)
             service = constants.SERVICE_TYPE + agent_constants.MD_EXTENSION
             all_stats = broker.get_stats_from_storage(service)
 
@@ -235,7 +223,6 @@ class HAClient(object):
         host_id = int(self._config.get(config.ENGINE, config.HOST_ID))
         broker = brokerlink.BrokerLink()
         with broker.connection(self._retries, self._wait):
-            self._configure_broker_conn(broker)
             service = constants.SERVICE_TYPE + agent_constants.MD_EXTENSION
             stats = broker.get_stats_from_storage(service)
 
@@ -307,7 +294,6 @@ class HAClient(object):
         broker = brokerlink.BrokerLink()
 
         with broker.connection():
-            self._configure_broker_conn(broker)
             stats = broker.get_stats_from_storage(service)
             lockspace_file = broker.get_service_path(lockspace)
 

@@ -40,7 +40,6 @@ from ..lib import metadata
 from ..lib import monotonic
 from ..lib import storage_server
 from ..lib import util
-from ..lib.storage_backends import StorageBackendTypes, VdsmBackend
 from ovirt_hosted_engine_ha.lib import upgrade
 from .state_machine import EngineStateMachine
 from .states import AgentStopped
@@ -544,71 +543,6 @@ class HostedEngine(object):
                 raise
             else:
                 self._local_monitors[m['field']] = lm
-
-        # register storage domain info
-        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
-        sp_uuid = self._config.get(config.ENGINE, config.SP_UUID)
-        dom_type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
-
-        # use filesystem type as the default fallback
-        storage_backend_type = StorageBackendTypes.FilesystemBackend
-        storage_params = {
-            'sd_uuid': sd_uuid,
-            'dom_type': dom_type
-        }
-        try:
-            storage_backend_type = StorageBackendTypes.VdsmBackend
-            storage_params = {
-                'sp_uuid': sp_uuid,
-                'sd_uuid': sd_uuid,
-                'dom_type': dom_type,
-                constants.SERVICE_TYPE + constants.MD_EXTENSION:
-                VdsmBackend.Device(
-                    self._config.get(config.ENGINE,
-                                     config.METADATA_IMAGE_UUID,
-                                     raise_on_none=True),
-                    self._config.get(config.ENGINE,
-                                     config.METADATA_VOLUME_UUID,
-                                     raise_on_none=True),
-                ).dump(),
-                constants.SERVICE_TYPE + constants.LOCKSPACE_EXTENSION:
-                VdsmBackend.Device(
-                    self._config.get(config.ENGINE,
-                                     config.LOCKSPACE_IMAGE_UUID,
-                                     raise_on_none=True),
-                    self._config.get(config.ENGINE,
-                                     config.LOCKSPACE_VOLUME_UUID,
-                                     raise_on_none=True),
-                ).dump()
-            }
-            # check if we have all the needed config params needed for vdsm api
-            if any(v in ('None', None, '') for v in storage_params.values()):
-                storage_params = {
-                    'sd_uuid': sd_uuid,
-                    'dom_type': dom_type
-                }
-                storage_backend_type = StorageBackendTypes.FilesystemBackend
-
-        except Exception as _ex:
-            self._log.warn("Can't read volume uuids from config "
-                           "-> assuming fs based storage: '{0}'"
-                           .format(str(_ex)))
-            storage_backend_type = StorageBackendTypes.FilesystemBackend
-
-        for attempt in range(0, constants.WAIT_FOR_STORAGE_RETRY):
-            try:
-                self._broker.set_storage_domain(storage_backend_type,
-                                                **storage_params)
-                break
-            except Exception as _ex:
-                self._log.info("Failed set the storage domain: '{0}'."
-                               " Waiting '{1}'s before the next attempt".
-                               format(_ex, constants.WAIT_FOR_STORAGE_DELAY))
-                time.sleep(constants.WAIT_FOR_STORAGE_DELAY)
-        else:
-            raise ex.BrokerInitializationError(
-                "Can't set the storage domain, "
-                "the number of errors has exceeded the limit")
 
         self._log.info("Broker initialized, all submonitors started")
 
