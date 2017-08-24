@@ -41,7 +41,7 @@ class Listener(object):
         self._log.info("Initializing SocketServer")
 
         # Coordinate access to resources across connections
-        self._conn_monitors = {}
+        self._conn_monitors = []
         self._conn_monitors_access_lock = threading.Lock()
         self._monitor_instance = monitor_instance
         self._monitor_instance_access_lock = threading.Lock()
@@ -134,7 +134,6 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
         self._log.info("Connection established")
         self.request.settimeout(0.7)
         SocketServer.BaseRequestHandler.setup(self)
-        self._init_monitors_for_conn()
 
     def recover(self, e):
         """
@@ -200,17 +199,6 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
         Overridden method.
         Silence exception when a connection is closed remotely.
         """
-        local_monitors = self._get_monitors_for_conn()
-        for id in local_monitors:
-            try:
-                with self.server.sp_listener.monitor_instance_access_lock:
-                    self.server.sp_listener.monitor_instance \
-                        .stop_submonitor(id)
-            except Exception as e:
-                self._log.error("Could not close submonitor on disconnection:"
-                                + "%d - %s", id, str(e))
-        self._remove_monitor_conn_entry()
-
         try:
             SocketServer.BaseRequestHandler.finish(self)
         except socket.error as e:
@@ -309,37 +297,10 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
             options[arg] = value
         return options
 
-    def _init_monitors_for_conn(self):
-        """
-        This function (and others related) assume each connection corresponds
-        to a thread and uses this to track monitors accordingly.
-        """
-        with self.server.sp_listener.conn_monitors_access_lock:
-            self.server.sp_listener.conn_monitors[
-                threading.current_thread().ident
-            ] = []
-
-    def _get_monitors_for_conn(self):
-        with self.server.sp_listener.conn_monitors_access_lock:
-            ret = self.server.sp_listener.conn_monitors[
-                threading.current_thread().ident
-            ]
-        return ret
-
     def _add_monitor_for_conn(self, id):
         with self.server.sp_listener.conn_monitors_access_lock:
-            self.server.sp_listener.conn_monitors[
-                threading.current_thread().ident
-            ].append(id)
+            self.server.sp_listener.conn_monitors.append(id)
 
     def _remove_monitor_for_conn(self, id):
         with self.server.sp_listener.conn_monitors_access_lock:
-            self.server.sp_listener.conn_monitors[
-                threading.current_thread().ident
-            ].remove(id)
-
-    def _remove_monitor_conn_entry(self):
-        with self.server.sp_listener.conn_monitors_access_lock:
-            del self.server.sp_listener.conn_monitors[
-                threading.current_thread().ident
-            ]
+            self.server.sp_listener.conn_monitors.remove(id)
