@@ -42,12 +42,11 @@ class Listener(object):
 
         # Coordinate access to resources across connections
         self._conn_monitors = []
-        self._conn_monitors_access_lock = threading.Lock()
         self._monitor_instance = monitor_instance
-        self._monitor_instance_access_lock = threading.Lock()
         self._storage_broker_instance = storage_broker_instance
-        self._storage_broker_instance_access_lock = threading.Lock()
         self._need_exit = False
+
+        self._actions = ActionsHandler(self)
 
         self._remove_socket_file()
         self._server = ThreadedStreamServer(
@@ -60,24 +59,16 @@ class Listener(object):
         return self._conn_monitors
 
     @property
-    def conn_monitors_access_lock(self):
-        return self._conn_monitors_access_lock
+    def actions(self):
+        return self._actions
 
     @property
     def monitor_instance(self):
         return self._monitor_instance
 
     @property
-    def monitor_instance_access_lock(self):
-        return self._monitor_instance_access_lock
-
-    @property
     def storage_broker_instance(self):
         return self._storage_broker_instance
-
-    @property
-    def storage_broker_instance_access_lock(self):
-        return self._storage_broker_instance_access_lock
 
     @property
     def need_exit(self):
@@ -215,73 +206,103 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
         On success, output is returned as a string.
         On failure, a RequestError exception is raised (often by dispatchees).
         """
+        return self.server.sp_listener.actions.handle(data)
+
+
+class ActionsHandler(object):
+    def __init__(self, listener):
+        self._log = logging.getLogger("%s.ActionsHandler" % __name__)
+
+        self._listener = listener
+        self._conn_monitors_access_lock = threading.Lock()
+        self._monitor_instance_access_lock = threading.Lock()
+        self._storage_broker_instance_access_lock = threading.Lock()
+
+        self._dispatcher = {
+            'monitor': self._handle_monitor,
+            'stop-monitor': self._handle_stop_monitor,
+            'status': self._handle_status,
+            'get-stats': self._handle_get_stats,
+            'push-hosts-state': self._handle_push_host_stats,
+            'is-host-alive': self._handle_is_host_alive,
+            'put-stats': self._handle_put_stats,
+            'service-path': self._handle_service_path,
+            'notify': self._handle_notify
+        }
+
+    def handle(self, data):
         tokens = shlex.split(data)
         type = tokens.pop(0)
         self._log.debug("Request type %s", type)
 
-        # TODO fix to be less procedural, e.g. dict of req_type=handler_func()
-        if type == 'monitor':
-            # Start a submonitor and add its id to the list at this
-            # thread's slot of the self.server.sp_listener.conn_monitors dict
-            submonitor = tokens.pop(0)
-            options = self._get_options(tokens)
-            with self.server.sp_listener.monitor_instance_access_lock:
-                id = self.server.sp_listener.monitor_instance \
-                    .start_submonitor(submonitor, options)
-            self._add_monitor_for_conn(id)
-            return str(id)
-        elif type == 'stop-monitor':
-            # Stop a submonitor and remove it from the conn_monitors list
-            id = int(tokens.pop(0))
-            with self.server.sp_listener.monitor_instance_access_lock:
-                status = self.server.sp_listener.monitor_instance \
-                    .stop_submonitor(id)
-            self._remove_monitor_for_conn(id)
-            return "ok"
-        elif type == 'status':
-            id = int(tokens.pop(0))
-            with self.server.sp_listener.monitor_instance_access_lock:
-                status = self.server.sp_listener.monitor_instance.get_value(id)
-            return str(status)
-        elif type == 'get-stats':
-            options = self._get_options(tokens)
-            with self.server.sp_listener.storage_broker_instance_access_lock:
-                stats = self.server.sp_listener.storage_broker_instance \
-                    .get_all_stats_for_service_type(**options)
-            return stats
-        elif type == 'push-hosts-state':
-            options = self._get_options(tokens)
-            with self.server.sp_listener.storage_broker_instance_access_lock:
-                self.server.sp_listener.storage_broker_instance \
-                    .push_hosts_state(**options)
-            return "ok"
-        elif type == 'is-host-alive':
-            options = self._get_options(tokens)
-            with self.server.sp_listener.storage_broker_instance_access_lock:
-                alive_hosts = self.server.sp_listener.storage_broker_instance \
-                    .is_host_alive(**options)
-            # list of alive hosts in format <host_id>|<host_id>
-            return alive_hosts
-        elif type == 'put-stats':
-            options = self._get_options(tokens)
-            with self.server.sp_listener.storage_broker_instance_access_lock:
-                self.server.sp_listener.storage_broker_instance \
-                    .put_stats(**options)
-            return "ok"
-        elif type == 'service-path':
-            service = tokens.pop(0)
-            with self.server.sp_listener.storage_broker_instance_access_lock:
-                return self.server.sp_listener.storage_broker_instance \
-                    .get_service_path(service)
-        elif type == 'notify':
-            options = self._get_options(tokens)
-            if notifications.notify(**options):
-                return "sent"
-            else:
-                return "ignored"
-        else:
+        if type not in self._dispatcher:
             self._log.error("Unrecognized request: %s", data)
             raise RequestError("unrecognized request")
+
+        return self._dispatcher[type](tokens)
+
+    def _handle_monitor(self, tokens):
+        submonitor = tokens.pop(0)
+        options = self._get_options(tokens)
+        with self._monitor_instance_access_lock:
+            id = self._listener.monitor_instance \
+                .start_submonitor(submonitor, options)
+        self._add_monitor_for_conn(id)
+        return str(id)
+
+    def _handle_stop_monitor(self, tokens):
+        # Stop a submonitor and remove it from the conn_monitors list
+        id = int(tokens.pop(0))
+        with self._monitor_instance_access_lock:
+            self._listener.monitor_instance.stop_submonitor(id)
+        self._remove_monitor_for_conn(id)
+        return "ok"
+
+    def _handle_status(self, tokens):
+        id = int(tokens.pop(0))
+        with self._monitor_instance_access_lock:
+            status = self._listener.monitor_instance.get_value(id)
+        return str(status)
+
+    def _handle_get_stats(self, tokens):
+        options = self._get_options(tokens)
+        with self._storage_broker_instance_access_lock:
+            stats = self._listener.storage_broker_instance \
+                .get_all_stats_for_service_type(**options)
+        return stats
+
+    def _handle_push_host_stats(self, tokens):
+        options = self._get_options(tokens)
+        with self._storage_broker_instance_access_lock:
+            self._listener.storage_broker_instance.push_hosts_state(**options)
+        return "ok"
+
+    def _handle_is_host_alive(self, tokens):
+        options = self._get_options(tokens)
+        with self._storage_broker_instance_access_lock:
+            alive_hosts = self._listener.storage_broker_instance \
+                .is_host_alive(**options)
+        # list of alive hosts in format <host_id>|<host_id>
+        return alive_hosts
+
+    def _handle_put_stats(self, tokens):
+        options = self._get_options(tokens)
+        with self._storage_broker_instance_access_lock:
+            self._listener.storage_broker_instance.put_stats(**options)
+        return "ok"
+
+    def _handle_service_path(self, tokens):
+        service = tokens.pop(0)
+        with self._storage_broker_instance_access_lock:
+            return self._listener.storage_broker_instance \
+                .get_service_path(service)
+
+    def _handle_notify(self, tokens):
+        options = self._get_options(tokens)
+        if notifications.notify(**options):
+            return "sent"
+        else:
+            return "ignored"
 
     def _get_options(self, tokens):
         """
@@ -298,9 +319,9 @@ class ConnectionHandler(SocketServer.BaseRequestHandler):
         return options
 
     def _add_monitor_for_conn(self, id):
-        with self.server.sp_listener.conn_monitors_access_lock:
-            self.server.sp_listener.conn_monitors.append(id)
+        with self._conn_monitors_access_lock:
+            self._listener.conn_monitors.append(id)
 
     def _remove_monitor_for_conn(self, id):
-        with self.server.sp_listener.conn_monitors_access_lock:
-            self.server.sp_listener.conn_monitors.remove(id)
+        with self._conn_monitors_access_lock:
+            self._listener.conn_monitors.remove(id)
