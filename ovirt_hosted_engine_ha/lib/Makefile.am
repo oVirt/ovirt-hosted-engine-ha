@@ -28,7 +28,6 @@ halibdir = $(engine_ha_libdir)/lib
 dist_halib_PYTHON = \
 	__init__.py \
 	brokerlink.py \
-	brokerlink_test.py \
 	exceptions.py \
 	image.py \
 	log_filter.py \
@@ -40,6 +39,7 @@ dist_halib_PYTHON = \
 	util.py \
 	monotonic.py \
 	engine.py \
+	unixrpc.py \
 	upgrade.py \
 	$(NULL)
 

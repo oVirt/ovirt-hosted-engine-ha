@@ -21,6 +21,7 @@ import base64
 import logging
 import os
 import threading
+import xmlrpclib
 
 from ..env import config
 from ..env import constants
@@ -93,7 +94,7 @@ class StorageBroker(object):
     def push_hosts_state(self, service_type, data):
         current_time = monotonic.time()
         self._stats_cache[service_type] =\
-            (current_time, base64.b16decode(data))
+            (current_time, data)
 
     def get_all_stats_for_service_type(self, service_type):
         """
@@ -101,14 +102,11 @@ class StorageBroker(object):
         space-delimited string of "<host_id>=<hex data>" for each host.
         """
         d = self.get_raw_stats_for_service_type(service_type)
-        str_list = []
+        result = {}
 
         for host_id in sorted(d.keys()):
-            hex_data = base64.b16encode(d.get(host_id))
-            self._log.debug("Read for host id %d: %s",
-                            host_id, hex_data)
-            str_list.append("{0}={1}".format(host_id, hex_data))
-        return ' '.join(str_list)
+            result[str(host_id)] = xmlrpclib.Binary(d.get(host_id))
+        return result
 
     def get_raw_stats_for_service_type(self, service_type):
         """
@@ -178,7 +176,7 @@ class StorageBroker(object):
                         " to file %s, offset %d",
                         service_type, host_id, path, offset)
 
-        byte_data = base64.b16decode(data)
+        byte_data = data.data
         byte_data = byte_data.ljust(constants.HOST_SEGMENT_BYTES, '\0')
 
         with self._storage_access_lock,\

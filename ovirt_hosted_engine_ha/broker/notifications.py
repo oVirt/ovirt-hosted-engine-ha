@@ -40,24 +40,19 @@ def send_email(cfg, email_body):
         return False
 
 
-def notify(**kwargs):
+def notify(type, detail, options):
     """Try sending a notification to the configured addresses. If the
     configuration does not contain a matching rule, do nothing.
 
     The configuration is refreshed with every call of this method.
     """
     logger = logging.getLogger("%s.Notifications" % __name__)
-    logger.debug("nofity: %s" % (repr(kwargs),))
-
-    assert "type" in kwargs
-    type = kwargs["type"]
+    logger.debug("nofity: %s" % (repr(options),))
 
     heconf = config.Config(logger=logger)
     heconf.refresh_local_conf_file(config.BROKER)
     cfg = ConfigParser.SafeConfigParser()
     cfg.read(constants.NOTIFY_CONF_FILE)
-
-    detail = kwargs.get("detail", "")
 
     try:
         rules = cfg.get("notify", type)
@@ -89,14 +84,15 @@ def notify(**kwargs):
     except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
         pass
 
+    options['detail'] = detail
     # pass SMTP configuration to the formatting dictionary
     # so we can use email addresses in the templates
     for k, v in smtp_config.iteritems():
-        kwargs.setdefault(k, v)
+        options.setdefault(k, v)
 
     # fill in the values to the template
     try:
-        email_body = template.format(**kwargs)
+        email_body = template.format(**options)
     except KeyError as e:
         logging.getLogger("%s.Notifications" % __name__).exception(e)
         return False
