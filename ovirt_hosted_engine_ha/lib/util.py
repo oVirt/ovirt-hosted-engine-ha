@@ -21,20 +21,26 @@
 Utility functions
 """
 
+import atexit
 import errno
 import glob
+import logging
 import os
 import socket
 import threading
 import time
 import mmap
+import weakref
 from contextlib import contextmanager, closing
+from six.moves import queue
 
 from yajsonrpc import stomp
 
 from ovirt_hosted_engine_ha.env import constants as envconst
 from .exceptions import DisconnectionError
+from . import monotonic
 
+from vdsm.config import config as vdsmconfig
 from vdsm import client
 
 _vdsm_json_rpc = None
@@ -180,6 +186,185 @@ def isOvirtNode():
             bool(glob.glob('/etc/ovirt-node-*-release')))
 
 
+class ConnectionClosed(Exception):
+    pass
+
+
+class _EventBroadcaster(object):
+    RECONNECT_WAIT_TIME_SECONDS = 20
+    CONNECTION_CHECK_INTERVAL_SEC = 20
+    EVENT_QUEUE_TIMEOUT = 1
+
+    def __init__(self):
+        self._log = logging.getLogger("%s._EventDistributor" % __name__)
+        self._event_queue_name = vdsmconfig.get("addresses", "event_queue")
+
+        self._queues = weakref.WeakSet()
+        self._lock = threading.Lock()
+        self._condition = threading.Condition(self._lock)
+
+        self._vdsm_client_queue = None
+        self._sub_id = None
+        self._connection_ok = False
+        self._last_check_time = monotonic.time()
+
+        self._thread_running = True
+        self._thread = threading.Thread(target=self._thread_func)
+        self._thread.daemon = True
+        self._thread.start()
+
+    def register_queue(self, queue):
+        """
+        Registers queue to receive events from vdsm.
+
+        Only a weak_ref to the queue is kept, so explicit
+        unregistering is not needed.
+
+        :param queue: Queue instance to receive events
+        """
+
+        if not self._thread_running:
+            raise RuntimeError(
+                "Cannot register queue, broadcaster thread is not running."
+            )
+
+        with self._lock:
+            self._queues.add(queue)
+            # Signal the thread that a queue was added
+            self._condition.notify_all()
+
+    def notify_connection_was_closed(self):
+        self._connection_ok = False
+
+    def close(self):
+        if not self._thread_running:
+            return
+
+        self._thread_running = False
+        with self._lock:
+            self._condition.notify()
+
+        self._thread.join()
+        self._queues.clear()
+
+    def _thread_func(self):
+        while self._thread_running:
+            try:
+                self._unsubscribe_and_wait()
+
+                if not self._thread_running:
+                    break
+
+                if not self._is_subscribed():
+                    self._subscribe()
+
+                self._handle_event()
+                self._check_connection()
+
+            except ConnectionClosed:
+                self._sub_id = None
+                self._vdsm_client_queue = None
+
+            except Exception as e:
+                # Error; Wait for a while before trying again
+                self._log.error(e)
+                time.sleep(self.RECONNECT_WAIT_TIME_SECONDS)
+
+        if self._is_subscribed():
+            self._unsubscribe()
+
+    def _subscribe(self):
+        cli = connect_vdsm_json_rpc(self._log)
+        self._connection_ok = True
+        self._update_connection_check_time()
+
+        self._vdsm_client_queue = queue.Queue()
+        self._sub_id = cli.subscribe(
+            self._event_queue_name,
+            self._vdsm_client_queue
+        )
+
+    def _unsubscribe(self):
+        cli = get_vdsm_json_rpc(self._log)
+        self._update_connection_check_time()
+        if cli is not None:
+            cli.unsubscribe(self._sub_id)
+
+        self._sub_id = None
+        self._vdsm_client_queue = None
+
+    def _is_subscribed(self):
+        return self._sub_id is not None
+
+    def _unsubscribe_and_wait(self):
+        with self._lock:
+            if len(self._queues) != 0:
+                return
+
+            if self._is_subscribed():
+                self._unsubscribe()
+
+            # Wait until a queue registered or thread is exiting
+            while len(self._queues) == 0 and self._thread_running:
+                self._condition.wait()
+
+    def _handle_event(self):
+        try:
+            event = self._vdsm_client_queue.get(
+                timeout=self.EVENT_QUEUE_TIMEOUT
+            )
+        except queue.Empty:
+            # Return, to check if connection is active or thread is exiting
+            return
+
+        self._update_connection_check_time()
+
+        if event is None:
+            raise ConnectionClosed()
+
+        with self._lock:
+            queues = list(self._queues)
+
+        for q in queues:
+            q.put(event)
+
+    def _update_connection_check_time(self):
+        self._last_check_time = monotonic.time()
+
+    def _check_connection(self):
+        check_time = (self._last_check_time +
+                      self.CONNECTION_CHECK_INTERVAL_SEC)
+
+        if monotonic.time() >= check_time:
+            self._log.debug(
+                "No events received for a while, checking connection."
+            )
+            self._update_connection_check_time()
+            cli = get_vdsm_json_rpc(self._log)
+            if cli is None:
+                raise ConnectionClosed()
+
+        if not self._connection_ok:
+            raise ConnectionClosed()
+
+
+__event_broadcaster = None
+
+
+def event_broadcaster():
+    global __event_broadcaster
+
+    if __event_broadcaster is None:
+        __event_broadcaster = _EventBroadcaster()
+
+        # Close broadcaster when exiting, stop the thread and wait for it.
+        # Becasue the thread is daemon, the interpreter does not wait for
+        # it to finish and calls registered atexit functions
+        atexit.register(__event_broadcaster.close)
+
+    return __event_broadcaster
+
+
 def __log_debug(logger, *args, **kwargs):
     if logger:
         logger.debug(*args, **kwargs)
@@ -235,6 +420,7 @@ def __vdsm_json_rpc_check(logger=None):
         time.sleep(VDSM_DELAY)
 
     # VDSM is not responding, setting client to None
+    event_broadcaster().notify_connection_was_closed()
     _vdsm_json_rpc = None
 
 
@@ -250,4 +436,13 @@ def connect_vdsm_json_rpc(logger=None,
             __log_debug(logger, 'Creating a new json-rpc connection to VDSM')
             __vdsm_json_rpc_connect(logger, timeout)
 
+        return _vdsm_json_rpc
+
+
+def get_vdsm_json_rpc(logger=None):
+    global _vdsm_json_rpc
+
+    # Check if VDSM connection is ready
+    with _vdsm_json_rpc_lock:
+        __vdsm_json_rpc_check(logger)
         return _vdsm_json_rpc

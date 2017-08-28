@@ -28,7 +28,7 @@
 
 %global         vdsm_user @VDSM_USER@
 %global         vdsm_group @VDSM_GROUP@
-%global         vdsm_version 4.20.0-948
+%global         vdsm_version 4.20.3
 
 Summary:        oVirt Hosted Engine High Availability Manager
 Name:           @PACKAGE_NAME@

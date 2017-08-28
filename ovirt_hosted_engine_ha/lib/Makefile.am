@@ -37,6 +37,7 @@ dist_halib_PYTHON = \
 	storage_backends_test.py \
 	storage_server.py \
 	util.py \
+	util_test.py \
 	monotonic.py \
 	engine.py \
 	unixrpc.py \
