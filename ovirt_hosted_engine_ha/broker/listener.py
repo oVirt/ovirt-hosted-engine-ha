@@ -19,7 +19,6 @@
 
 import logging
 import os
-import six
 import threading
 
 from ..env import constants
@@ -45,8 +44,7 @@ class Listener(object):
 
         self._remove_socket_file()
         self._server = unixrpc.UnixXmlRpcServer(constants.BROKER_SOCKET_FILE)
-        for name, func in six.iteritems(self._actions.mappings):
-            self._server.register_function(func, name)
+        self._server.register_instance(self._actions)
 
         self._log.info("RPCServer ready")
 
@@ -104,30 +102,14 @@ class ActionsHandler(object):
         self._monitor_instance_access_lock = threading.Lock()
         self._storage_broker_instance_access_lock = threading.Lock()
 
-        self._dispatcher = {
-            'start_monitor': self._handle_monitor,
-            'stop_monitor': self._handle_stop_monitor,
-            'status': self._handle_status,
-            'get_stats': self._handle_get_stats,
-            'push_hosts_state': self._handle_push_host_state,
-            'is_host_alive': self._handle_is_host_alive,
-            'put_stats': self._handle_put_stats,
-            'service_path': self._handle_service_path,
-            'notify': self._handle_notify
-        }
-
-    @property
-    def mappings(self):
-        return self._dispatcher
-
-    def _handle_monitor(self, type, options):
+    def start_monitor(self, type, options):
         with self._monitor_instance_access_lock:
             id = self._listener.monitor_instance \
                 .start_submonitor(type, options)
         self._add_monitor_for_conn(id)
         return id
 
-    def _handle_stop_monitor(self, tokens):
+    def stop_monitor(self, tokens):
         # Stop a submonitor and remove it from the conn_monitors list
         id = int(tokens.pop(0))
         with self._monitor_instance_access_lock:
@@ -135,42 +117,42 @@ class ActionsHandler(object):
         self._remove_monitor_for_conn(id)
         return "ok"
 
-    def _handle_status(self, id):
+    def status_monitor(self, id):
         with self._monitor_instance_access_lock:
             status = self._listener.monitor_instance.get_value(id)
         return str(status)
 
-    def _handle_get_stats(self, service_type):
+    def get_stats(self, service_type):
         with self._storage_broker_instance_access_lock:
             stats = self._listener.storage_broker_instance \
                 .get_all_stats_for_service_type(service_type)
         return stats
 
-    def _handle_push_host_state(self, service_type, alive_hosts):
+    def push_hosts_state(self, service_type, alive_hosts):
         with self._storage_broker_instance_access_lock:
             self._listener.storage_broker_instance \
                 .push_hosts_state(service_type, alive_hosts)
         return "ok"
 
-    def _handle_is_host_alive(self, service_type):
+    def is_host_alive(self, service_type):
         with self._storage_broker_instance_access_lock:
             alive_hosts = self._listener.storage_broker_instance \
                 .is_host_alive(service_type)
         # list of alive hosts in format <host_id>|<host_id>
         return alive_hosts
 
-    def _handle_put_stats(self, service_type, host_id, data):
+    def put_stats(self, service_type, host_id, data):
         with self._storage_broker_instance_access_lock:
             self._listener.storage_broker_instance \
                 .put_stats(service_type, host_id, data)
         return "ok"
 
-    def _handle_service_path(self, service):
+    def service_path(self, service):
         with self._storage_broker_instance_access_lock:
             return self._listener.storage_broker_instance \
                 .get_service_path(service)
 
-    def _handle_notify(self, event_type, detail, options):
+    def notify(self, event_type, detail, options):
         if notifications.notify(event_type, detail, options):
             return "sent"
         else:

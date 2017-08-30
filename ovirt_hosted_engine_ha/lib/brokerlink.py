@@ -87,7 +87,7 @@ class BrokerLink(object):
 
     def get_monitor_status(self, id):
         try:
-            response = self._proxy.status(id)
+            response = self._proxy.status_monitor(id)
         except Exception as e:
             self._log.error("Exception getting monitor status: %s", str(e))
             raise RequestError("Failed to get monitor status: {0}"
