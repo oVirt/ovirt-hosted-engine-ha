@@ -66,12 +66,9 @@ class Listener(object):
 
     def listen(self):
         """
-        Listen briefly and return to the main loop.
+        Listen and block
         """
-        # Using SocketServer.server_forever() is tempting, but it's easier to
-        # shut down cleanly (and with less chance of deadlock) by returning
-        # control to a main loop which checks for exit requests.
-        self._server.handle_request()
+        self._server.serve_forever()
 
     def close_connections(self):
         """

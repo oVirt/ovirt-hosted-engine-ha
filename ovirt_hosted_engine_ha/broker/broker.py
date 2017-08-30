@@ -20,10 +20,8 @@
 from __future__ import print_function
 
 import ConfigParser
-import errno
 import logging
 import logging.config
-import select
 import signal
 import sys
 
@@ -38,7 +36,6 @@ class Broker(object):
         self._listener = None
         self._monitor_instance = None
         self._storage_broker_instance = None
-        self._serve_requests = False
 
     def run(self):
         self._initialize_logging()
@@ -47,12 +44,20 @@ class Broker(object):
         self._initialize_signal_handlers()
 
         try:
+            """
+            Performs setup and execution of main server code, encompassing a
+            monitor manager, storage broker, and request listener.
+            """
             self._log.debug("Running broker")
-            self._run_server()
+            self._monitor_instance = self._get_monitor()
+            self._storage_broker_instance = self._get_storage_broker()
+            self._listener = self._get_listener(self._monitor_instance,
+                                                self._storage_broker_instance)
+            self._listener.listen()
 
         except Exception as e:
-            self._log.critical("Could not start ha-broker", exc_info=True)
-            print("Could not start ha-broker: {0} (see log for details)"
+            self._log.critical("Exception in ha-broker", exc_info=True)
+            print("Excepting in ha-broker: {0} (see log for details)"
                   .format(str(e)), file=sys.stderr)
             sys.exit(1)
 
@@ -86,27 +91,7 @@ class Broker(object):
             signal.signal(signum, handler)
 
     def _handle_quit(self, signum, frame):
-        # Remain re-entrant
-        self._serve_requests = False
         self._listener.close_connections()
-
-    def _run_server(self):
-        """
-        Performs setup and execution of main server code, encompassing a
-        monitor manager, storage broker, and request listener.
-        """
-        self._log.debug("Initializing server tasks")
-        self._monitor_instance = self._get_monitor()
-        self._storage_broker_instance = self._get_storage_broker()
-        self._listener = self._get_listener(self._monitor_instance,
-                                            self._storage_broker_instance)
-        self._serve_requests = True
-        while self._serve_requests:
-            try:
-                self._listener.listen()
-            except select.error as e:
-                if e[0] != errno.EINTR:
-                    raise
 
     def _get_monitor(self):
         """
