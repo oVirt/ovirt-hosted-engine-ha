@@ -17,7 +17,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-import base64
 import logging
 import os
 import threading
@@ -87,9 +86,9 @@ class StorageBroker(object):
         timestamp, host_list = self._stats_cache.get(service_type, (0, ""))
         # the last report from client is too old, so we don't know
         if monotonic.time() - timestamp > constants.HOST_ALIVE_TIMEOUT_SECS:
-            return ""  # the data is too old
+            return []  # the data is too old
 
-        return base64.b16encode(host_list)
+        return host_list
 
     def push_hosts_state(self, service_type, data):
         current_time = monotonic.time()
