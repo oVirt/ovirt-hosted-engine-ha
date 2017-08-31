@@ -24,6 +24,7 @@ import logging
 import logging.config
 import signal
 import sys
+import threading
 
 from . import constants
 from . import listener
@@ -43,23 +44,16 @@ class Broker(object):
 
         self._initialize_signal_handlers()
 
-        try:
-            """
-            Performs setup and execution of main server code, encompassing a
-            monitor manager, storage broker, and request listener.
-            """
-            self._log.debug("Running broker")
-            self._monitor_instance = self._get_monitor()
-            self._storage_broker_instance = self._get_storage_broker()
-            self._listener = self._get_listener(self._monitor_instance,
-                                                self._storage_broker_instance)
-            self._listener.listen()
-
-        except Exception as e:
-            self._log.critical("Exception in ha-broker", exc_info=True)
-            print("Excepting in ha-broker: {0} (see log for details)"
-                  .format(str(e)), file=sys.stderr)
-            sys.exit(1)
+        """
+        Performs setup and execution of main server code, encompassing a
+        monitor manager, storage broker, and request listener.
+        """
+        self._log.debug("Running broker")
+        self._monitor_instance = self._get_monitor()
+        self._storage_broker_instance = self._get_storage_broker()
+        self._listener = self._get_listener(self._monitor_instance,
+                                            self._storage_broker_instance)
+        self._listener.listen()
 
         # Server shutdown...
         self._log.info("Server shutting down")
@@ -91,7 +85,13 @@ class Broker(object):
             signal.signal(signum, handler)
 
     def _handle_quit(self, signum, frame):
-        self._listener.close_connections()
+        # xmlrpc server shutdown should not be called from thread,
+        # that called serve_forever. Unfortunately, due to python
+        # bug, it is not possible to run serve_forever() on the other thread
+        # and wait for it in the main thread, cause it will block singal
+        # processing. Therefore, i had to start a new thread directly
+        # in a signal handler and call shutdown from that thread.
+        threading.Thread(target=self._listener.close_connections).start()
 
     def _get_monitor(self):
         """
