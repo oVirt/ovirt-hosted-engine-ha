@@ -2,11 +2,6 @@ import unittest
 
 from mock import Mock, call
 
-# Mock vdsm.vdscli to be able to build on machine with no VDSM
-import sys
-sys.modules["vdsm"] = Mock()
-sys.modules["vdsm.vdscli"] = Mock()
-
 from .storage_backends import FilesystemBackend, BackendFailureException
 from ..env import constants
 
