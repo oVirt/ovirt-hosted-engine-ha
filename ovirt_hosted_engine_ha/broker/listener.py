@@ -48,10 +48,6 @@ class Listener(object):
         self._log.info("RPCServer ready")
 
     @property
-    def actions(self):
-        return self._actions
-
-    @property
     def monitor_instance(self):
         return self._monitor_instance
 
