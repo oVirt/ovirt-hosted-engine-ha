@@ -36,7 +36,6 @@ class Listener(object):
         self._log.info("Initializing RPCServer")
 
         # Coordinate access to resources across connections
-        self._conn_monitors = []
         self._monitor_instance = monitor_instance
         self._storage_broker_instance = storage_broker_instance
 
@@ -47,10 +46,6 @@ class Listener(object):
         self._server.register_instance(self._actions)
 
         self._log.info("RPCServer ready")
-
-    @property
-    def conn_monitors(self):
-        return self._conn_monitors
 
     @property
     def actions(self):
@@ -95,7 +90,6 @@ class ActionsHandler(object):
         self._log = logging.getLogger("%s.ActionsHandler" % __name__)
 
         self._listener = listener
-        self._conn_monitors_access_lock = threading.Lock()
         self._monitor_instance_access_lock = threading.Lock()
         self._storage_broker_instance_access_lock = threading.Lock()
 
@@ -103,15 +97,12 @@ class ActionsHandler(object):
         with self._monitor_instance_access_lock:
             id = self._listener.monitor_instance \
                 .start_submonitor(type, options)
-        self._add_monitor_for_conn(id)
         return id
 
-    def stop_monitor(self, tokens):
+    def stop_monitor(self, id):
         # Stop a submonitor and remove it from the conn_monitors list
-        id = int(tokens.pop(0))
         with self._monitor_instance_access_lock:
             self._listener.monitor_instance.stop_submonitor(id)
-        self._remove_monitor_for_conn(id)
         return "ok"
 
     def status_monitor(self, id):
@@ -154,11 +145,3 @@ class ActionsHandler(object):
             return "sent"
         else:
             return "ignored"
-
-    def _add_monitor_for_conn(self, id):
-        with self._conn_monitors_access_lock:
-            self._listener.conn_monitors.append(id)
-
-    def _remove_monitor_for_conn(self, id):
-        with self._conn_monitors_access_lock:
-            self._listener.conn_monitors.remove(id)
