@@ -21,8 +21,6 @@ import imp
 import logging
 import os
 
-from six import iteritems
-
 from ..lib.exceptions import RequestError
 
 
@@ -51,57 +49,53 @@ class Monitor(object):
             self._log.info("Loaded submonitor %s", smname)
         self._log.info("Finished loading submonitors")
 
-    def start_submonitor(self, submonitor_type, options=None):
+    def start_submonitor(self, sm_type, options=None):
         """
         Starts a monitoring thread, returning an id to the caller which
         it can use to identify this thread to the monitor manager.
 
         Returns numeric id of new submonitor
         """
-        if submonitor_type not in self._submonitors:
+        if sm_type not in self._submonitors:
             raise Exception("{0} not a registered submonitor type"
-                            .format(submonitor_type))
+                            .format(sm_type))
 
         # Find if a monitor with the same type is already running
-        for k, v in iteritems(self._active_submonitors):
-            if v["type"] == submonitor_type:
-                self.stop_submonitor(k)
-                break
+        if sm_type in self._active_submonitors:
+            self.stop_submonitor(sm_type)
 
-        self._log.info("Starting submonitor %s", submonitor_type)
+        self._log.info("Starting submonitor %s", sm_type)
         try:
-            sm = self._submonitors[submonitor_type].Submonitor(
-                submonitor_type, None, options)
+            sm = self._submonitors[sm_type].Submonitor(
+                sm_type, None, options)
             sm.start()
         except Exception as e:
             self._log.error("Failed to start submonitor", exc_info=True)
             raise RequestError("failed to start submonitor: {0}"
                                .format(str(e)))
 
-        sm_id = id(sm)
-        self._active_submonitors[sm_id] = {"type": submonitor_type,
-                                           "instance": sm}
-        self._log.info("Started submonitor %s, id %d", submonitor_type, sm_id)
-        return sm_id
+        self._active_submonitors[sm_type] = sm
+        self._log.info("Started submonitor %s", sm_type)
+        return sm_type
 
-    def stop_submonitor(self, id):
+    def stop_submonitor(self, sm_type):
         """
-        Stops submonitor with the given id.
+        Stops submonitor with the given type.
         """
-        try:
-            sm_type = self._active_submonitors[id]["type"]
-        except KeyError:
-            raise RequestError("submonitor %d not found".format(id))
-        self._log.info("Stopping submonitor %s, id %d", sm_type, id)
+        if sm_type not in self._active_submonitors:
+            raise RequestError("submonitor %s not found", sm_type)
+
+        self._log.info("Stopping submonitor %s", sm_type)
 
         try:
-            self._active_submonitors[id]["instance"].stop()
+            self._active_submonitors[sm_type].stop()
         except Exception as e:
-            self._log.error("Failed to stop submonitor %d", id, exc_info=True)
+            self._log.error("Failed to stop submonitor %s", sm_type,
+                            exc_info=True)
             raise RequestError("failed to stop submonitor: %s", str(e))
-        del self._active_submonitors[id]
+        del self._active_submonitors[sm_type]
 
-        self._log.info("Stopped submonitor %s, id %d", sm_type, id)
+        self._log.info("Stopped submonitor %s", sm_type)
 
     def stop_all_submonitors(self):
         """
@@ -109,24 +103,23 @@ class Monitor(object):
         """
         self._log.info("Stopping all submonitors")
         errors = []
-        for id in self._active_submonitors.keys():
+        for sm_type in self._active_submonitors.keys():
             try:
-                self.stop_submonitor(id)
+                self.stop_submonitor(sm_type)
             except RequestError as e:
-                errors.append("{0} - {1}".format(str(id), str(e)))
+                errors.append("{0} - {1}".format(str(sm_type), str(e)))
         if errors:
             raise RequestError("failed to stop submonitors: {0}"
                                .format(";".join(errors)))
 
-    def get_value(self, id):
+    def get_value(self, sm_type):
         """
         Returns the most recent result from the specified submonitor.
         """
         try:
-            val = self._active_submonitors[id]["instance"].get_last_result()
+            val = self._active_submonitors[sm_type].get_last_result()
         except KeyError:
             raise RequestError("submonitor id not found")
 
-        self._log.debug("Submonitor %s id %d current value: %s",
-                        self._active_submonitors[id]["type"], id, val)
+        self._log.debug("Submonitor %s current value: %s", sm_type, val)
         return val
