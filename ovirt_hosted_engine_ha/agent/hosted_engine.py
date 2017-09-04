@@ -430,10 +430,6 @@ class HostedEngine(object):
             self._release_sanlock()
             self._stop_domain_monitor_if_possible(stopped)
 
-            self._log.debug("Disconnecting from ha-broker")
-            if self._broker and self._broker.is_connected():
-                self._broker.disconnect()
-
             return 0
 
     def _monitoring_loop(self):
@@ -511,8 +507,6 @@ class HostedEngine(object):
             except ex.RequestError:
                 self._log.error("Failed to start necessary monitors")
                 # Stopping monitors will occur automatically upon disconnection
-                self._broker.disconnect()
-                self._broker = None
                 raise
             else:
                 self._local_monitors[m['field']] = lm
