@@ -21,6 +21,8 @@ import logging
 import os
 import threading
 
+from functools import wraps
+
 from ..env import constants
 from ..lib import unixrpc
 from . import notifications
@@ -81,6 +83,21 @@ class Listener(object):
             os.unlink(constants.BROKER_SOCKET_FILE)
 
 
+def logged(f):
+    @wraps(f)
+    def wrapper(*args, **kwds):
+        _log = logging.getLogger("%s.Action.%s" % (__name__, f.__name__))
+        try:
+            _log.debug("Executing RPC handler %s with params %s",
+                       f.__name__, str(args))
+            return f(*args, **kwds)
+        except Exception as e:
+            _log.error("Error in RPC call: %s" % str(e))
+            _log.debug("Traceback:", exc_info=1)
+
+    return wrapper
+
+
 class ActionsHandler(object):
     def __init__(self, listener):
         self._log = logging.getLogger("%s.ActionsHandler" % __name__)
@@ -89,35 +106,41 @@ class ActionsHandler(object):
         self._monitor_instance_access_lock = threading.Lock()
         self._storage_broker_instance_access_lock = threading.Lock()
 
+    @logged
     def start_monitor(self, type, options):
         with self._monitor_instance_access_lock:
             id = self._listener.monitor_instance \
                 .start_submonitor(type, options)
         return id
 
+    @logged
     def stop_monitor(self, id):
         # Stop a submonitor and remove it from the conn_monitors list
         with self._monitor_instance_access_lock:
             self._listener.monitor_instance.stop_submonitor(id)
         return "ok"
 
+    @logged
     def status_monitor(self, id):
         with self._monitor_instance_access_lock:
             status = self._listener.monitor_instance.get_value(id)
         return str(status)
 
+    @logged
     def get_stats(self, service_type):
         with self._storage_broker_instance_access_lock:
             stats = self._listener.storage_broker_instance \
                 .get_all_stats_for_service_type(service_type)
         return stats
 
+    @logged
     def push_hosts_state(self, service_type, alive_hosts):
         with self._storage_broker_instance_access_lock:
             self._listener.storage_broker_instance \
                 .push_hosts_state(service_type, alive_hosts)
         return "ok"
 
+    @logged
     def is_host_alive(self, service_type):
         with self._storage_broker_instance_access_lock:
             alive_hosts = self._listener.storage_broker_instance \
@@ -125,17 +148,20 @@ class ActionsHandler(object):
         # list of alive hosts in format <host_id>|<host_id>
         return alive_hosts
 
+    @logged
     def put_stats(self, service_type, host_id, data):
         with self._storage_broker_instance_access_lock:
             self._listener.storage_broker_instance \
                 .put_stats(service_type, host_id, data)
         return "ok"
 
+    @logged
     def service_path(self, service):
         with self._storage_broker_instance_access_lock:
             return self._listener.storage_broker_instance \
                 .get_service_path(service)
 
+    @logged
     def notify(self, event_type, detail, options):
         if notifications.notify(event_type, detail, options):
             return "sent"
