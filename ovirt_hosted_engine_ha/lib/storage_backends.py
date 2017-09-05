@@ -2,7 +2,6 @@ import os
 import errno
 from abc import ABCMeta, abstractmethod
 import subprocess
-from ..env import constants
 from . import util
 import logging
 import re
@@ -10,6 +9,11 @@ from collections import namedtuple
 import math
 import time
 import uuid
+
+from ..env import config
+from ..env import constants
+from ..lib import image
+from ..lib import storage_server
 
 logger = logging.getLogger(__name__)
 
@@ -174,6 +178,7 @@ class VdsmBackend(StorageBackend):
         self._sp_uuid = sp_uuid
         self._sd_uuid = sd_uuid
         self._dom_type = dom_type
+        self._config = config.Config(logger=self._logger)
 
     def _get_volume_path(self, connection, spUUID, sdUUID, imgUUID, volUUID):
         retval = namedtuple('retval', ['status_code', 'path', 'message'])
@@ -326,14 +331,27 @@ class VdsmBackend(StorageBackend):
 
     def connect(self):
         """Initialize the storage."""
+        # Connect to local VDSM
+        self._logger.debug("Connecting to VDSM")
+        connection = util.connect_vdsm_json_rpc(logger=self._logger)
+
+        self._logger.info("Connecting the storage")
+        sserver = storage_server.StorageServer()
+        img = image.Image(
+            self._config.get(config.ENGINE, config.DOMAIN_TYPE),
+            self._config.get(config.ENGINE, config.SD_UUID)
+        )
+
+        sserver.connect_storage_server()
+
+        self._logger.info("Preparing images")
+        img.prepare_images()
+
         base_path, self._lv_based = self.get_domain_path(self._sd_uuid,
                                                          self._dom_type)
         self._storage_path = os.path.join(base_path,
                                           constants.SD_METADATA_DIR)
 
-        # Connect to local VDSM
-        self._logger.debug("Connecting to VDSM")
-        connection = util.connect_vdsm_json_rpc(logger=self._logger)
         for service, volume in self._services.iteritems():
             # Activate volumes and set the volume.path to proper path
             response = self._get_volume_path(
