@@ -405,6 +405,7 @@ class HostedEngine(object):
         # to decide)
         self._initialize_vdsm()
         self._initialize_storage_images()
+        self._initialize_domain_monitor()
         self._initialize_broker()
         self._initialize_sanlock()
 
