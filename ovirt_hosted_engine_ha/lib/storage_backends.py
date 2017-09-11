@@ -10,7 +10,6 @@ import math
 import time
 import uuid
 
-from ..env import config
 from ..env import constants
 from ..lib import image
 from ..lib import storage_server
@@ -178,7 +177,6 @@ class VdsmBackend(StorageBackend):
         self._sp_uuid = sp_uuid
         self._sd_uuid = sd_uuid
         self._dom_type = dom_type
-        self._config = config.Config(logger=self._logger)
 
     def _get_volume_path(self, connection, spUUID, sdUUID, imgUUID, volUUID):
         retval = namedtuple('retval', ['status_code', 'path', 'message'])
@@ -329,23 +327,24 @@ class VdsmBackend(StorageBackend):
 
         return new_set
 
-    def connect(self):
+    def connect(self, initialize=True):
         """Initialize the storage."""
         # Connect to local VDSM
         self._logger.debug("Connecting to VDSM")
         connection = util.connect_vdsm_json_rpc(logger=self._logger)
 
-        self._logger.info("Connecting the storage")
-        sserver = storage_server.StorageServer()
-        img = image.Image(
-            self._config.get(config.ENGINE, config.DOMAIN_TYPE),
-            self._config.get(config.ENGINE, config.SD_UUID)
-        )
+        if initialize:
+            self._logger.info("Connecting the storage")
+            sserver = storage_server.StorageServer()
+            img = image.Image(
+                self._dom_type,
+                self._sd_uuid
+            )
 
-        sserver.connect_storage_server()
+            sserver.connect_storage_server()
 
-        self._logger.info("Preparing images")
-        img.prepare_images()
+            self._logger.info("Preparing images")
+            img.prepare_images()
 
         base_path, self._lv_based = self.get_domain_path(self._sd_uuid,
                                                          self._dom_type)
