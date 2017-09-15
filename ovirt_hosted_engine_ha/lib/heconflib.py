@@ -256,6 +256,9 @@ def _create_temp_archive(logger,
                          heconf_content,
                          broker_conf_content,
                          vm_conf_content):
+    # TODO: fix the engine to handle actual archive size from the tar header
+    # see: https://bugzilla.redhat.com/show_bug.cgi?id=1336655#c12
+    EXPECTED_SIZE = 20480
     tempdir = tempfile.gettempdir()
     fd, _tmp_tar = tempfile.mkstemp(
         suffix='.tar',
@@ -264,7 +267,30 @@ def _create_temp_archive(logger,
     os.close(fd)
     if logger:
         logger.debug('temp tar file: ' + _tmp_tar)
-    tar = tarfile.TarFile(name=_tmp_tar, mode='w')
+
+    # python tarfile seams to ignore bufsize value creating new archive
+    # let's create one with system tar and a custom record_size
+    # see: https://bugzilla.redhat.com/show_bug.cgi?id=1492157
+    cmd_list = [
+        'tar',
+        '--record-size={record_size}'.format(record_size=EXPECTED_SIZE),
+        '-cf',
+        '{dest}'.format(dest=_tmp_tar),
+        '-T',
+        '/dev/null',
+    ]
+    pipe = subprocess.Popen(
+        cmd_list,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    pipe.wait()
+    if pipe.returncode != 0:
+        raise RuntimeError('Unable to create temporary archive')
+    # and open it in append mode
+    tar = tarfile.open(name=_tmp_tar, mode='a')
+
     _add_to_tar(
         tar,
         envconst.HEConfFiles.HECONFD_VERSION,
@@ -291,6 +317,15 @@ def _create_temp_archive(logger,
         vm_conf_content,
     )
     tar.close()
+    statinfo = os.stat(_tmp_tar)
+    if statinfo.st_size != EXPECTED_SIZE:
+        raise RuntimeError((
+            'Archive size doens\'t match expected size: '
+            'actual {a} - expected {e}'
+        ).format(
+            a=statinfo.st_size,
+            e=EXPECTED_SIZE,
+        ))
     os.chown(
         _tmp_tar,
         pwd.getpwnam(agentconst.VDSM_USER).pw_uid,
