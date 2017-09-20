@@ -181,6 +181,9 @@ fi
 
 
 %changelog
+* Wed Sep 20 2017 Simone Tiraboschi <stirabos@redhat.com> - 2.1.7-0.0.master
+- 2.1.7-0.0.master
+
 * Wed Sep 20 2017 Simone Tiraboschi <stirabos@redhat.com> - 2.1.6-1
 - 2.1.6-1
 
