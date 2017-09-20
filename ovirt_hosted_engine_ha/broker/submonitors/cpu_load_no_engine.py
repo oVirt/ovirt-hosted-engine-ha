@@ -18,6 +18,7 @@
 #
 
 import logging
+import multiprocessing
 import time
 from collections import namedtuple
 
@@ -45,12 +46,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
             raise Exception("cpu-load-no-engine requires vm_uuid")
         self._log.debug("vm_uuid=%s", self._vm_uuid)
 
-        self.engine_pid = None
-        self.engine_pid_start_time = None
-        self.proc_stat = None
-
         self.system = {'prev': None, 'cur': None}
-        self.vm = {'prev': None, 'cur': None}
         self.latest_report_ts = None
         self.load = 0.0
 
@@ -72,41 +68,49 @@ class Submonitor(submonitor_base.SubmonitorBase):
         self.latest_report_ts = time.time()
 
     def refresh_ticks(self):
-        self.update_stat_file()
-        self.vm['prev'] = self.vm['cur']
-        self.vm['cur'] = self.get_vm_busy_ticks()
         self.system['prev'] = self.system['cur']
         self.system['cur'] = self.get_system_ticks()
-        self._log.debug("Ticks: total={0}, busy={1}, vm={2}"
+        self._log.debug("Ticks: total={0}, busy={1}"
                         .format(self.system['cur'].total,
-                                self.system['cur'].busy,
-                                self.vm['cur']))
+                                self.system['cur'].busy))
 
     def get_system_ticks(self):
         with open('/proc/stat', 'r') as f:
             cpu = f.readline()
         fields = [int(x) for x in cpu.split()[1:]]
-        total = sum(fields)
-        busy = sum(fields[:3])
-        return Ticks(total, busy)
 
-    def get_vm_busy_ticks(self):
-        if self.proc_stat is None:
-            return None
-        return int(self.proc_stat[13]) + int(self.proc_stat[14])
+        # Ignore the last fields, 'guest' and 'guest_nice',
+        # because they are already counted in 'user' and 'nice' time
+        total = sum(fields[:8])
+
+        idle = sum(fields[3:5])
+        busy = total - idle
+
+        return Ticks(total, busy)
 
     def calculate_load(self):
         dtotal = self.system['cur'].total - self.system['prev'].total
         dbusy = self.system['cur'].busy - self.system['prev'].busy
         load = dbusy / float(dtotal)
 
-        if self.vm['cur'] is not None and self.vm['prev'] is not None:
-            dvm = self.vm['cur'] - self.vm['prev']
-            # The total jiffie delta is a good-enough approximation
-            engine_load = dvm / float(dtotal)
-            engine_load = max(engine_load, 0.0)
-        else:
-            engine_load = 0.0
+        cli = util.connect_vdsm_json_rpc_new(
+            logger=self._log
+        )
+
+        engine_load = 0.0
+        try:
+            stats = cli.VM.getStats(vmID=self._vm_uuid)[0]
+            vm_cpu_total = float(stats["cpuUser"]) + float(stats["cpuSys"])
+            cpu_count = multiprocessing.cpu_count()
+            engine_load = (vm_cpu_total / cpu_count) / 100.0
+        except ServerError as e:
+            if e.code == 1:
+                self._log.info("VM not on this host",
+                               extra=log_filter.lf_args('vm', 60))
+            else:
+                self._log.error(e, extra=log_filter.lf_args('vm', 60))
+        except ValueError as e:
+            self._log.error("Error getting cpuUser: %s", str(e))
 
         load_no_engine = load - engine_load
         load_no_engine = max(load_no_engine, 0.0)
@@ -115,55 +119,3 @@ class Submonitor(submonitor_base.SubmonitorBase):
                        " total={0:.4f}, engine={1:.4f}, non-engine={2:.4f}"
                        .format(load, engine_load, load_no_engine))
         self.load = load_no_engine
-
-    def update_stat_file(self):
-        if self.engine_pid:
-            # Try the known pid and verify it's the same process
-            fname = '/proc/{0}/stat'.format(self.engine_pid)
-            try:
-                with open(fname, 'r') as f:
-                    self.proc_stat = f.readline().split()
-            except Exception:
-                self.proc_stat = None
-            else:
-                if int(self.proc_stat[21]) == self.engine_pid_start_time:
-                    self._log.debug("VM on this host, pid %d", self.engine_pid,
-                                    extra=log_filter.lf_args('vm', 60))
-                else:
-                    # This isn't the engine qemu process...
-                    self.proc_stat = None
-
-        if self.proc_stat is None:
-            # Look for the engine vm pid and try to get the stats
-            self.engine_pid = None
-            self.engine_pid_start_time = None
-            cli = util.connect_vdsm_json_rpc_new(
-                logger=self._log
-            )
-
-            stats = {}
-            try:
-                stats = cli.VM.getStats(vmID=self._vm_uuid)[0]
-            except ServerError as e:
-                if e.code == 1:
-                    self._log.info("VM not on this host",
-                                   extra=log_filter.lf_args('vm', 60))
-                else:
-                    self._log.error(e, extra=log_filter.lf_args('vm', 60))
-
-            if 'pid' not in stats:
-                self._log.error("PID not present in VM stats.",
-                                extra=log_filter.lf_args('vm', 60))
-                return
-
-            pid = int(stats['pid'])
-            fname = '/proc/{0}/stat'.format(pid)
-            try:
-                with open(fname, 'r') as f:
-                    self.proc_stat = f.readline().split()
-                self.engine_pid_start_time = int(self.proc_stat[21])
-                self.engine_pid = pid
-            except Exception as e:
-                # Try again next time
-                self._log.error("Failed to read vm stats: %s", str(e),
-                                extra=log_filter.lf_args('vm', 60))
