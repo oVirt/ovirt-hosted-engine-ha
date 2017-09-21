@@ -60,7 +60,6 @@ ISCSI_PORTAL = 'portal'
 ISCSI_USER = 'user'
 ISCSI_PASSWORD = 'password'
 ISCSI_PORT = 'port'
-ISCSI_TPGT = 'tpgt'
 
 # constants for vm.conf options
 VM = 'vm'

@@ -50,12 +50,6 @@ class StorageServer(object):
         self._user = self._config.get(config.ENGINE, config.ISCSI_USER)
         self._password = self._config.get(config.ENGINE, config.ISCSI_PASSWORD)
         self._port = self._config.get(config.ENGINE, config.ISCSI_PORT)
-        self._tpgt = None
-        try:
-            str_tpgt = self._config.get(config.ENGINE, config.ISCSI_TPGT)
-            self._tpgt = int(str_tpgt)
-        except (KeyError, ValueError):
-            pass
         self._mnt_options = None
         try:
             self._mnt_options = self._config.get(
@@ -145,18 +139,23 @@ class StorageServer(object):
 
     def _get_conlist_iscsi(self):
         storageType = constants.STORAGE_TYPE_ISCSI
-        conDict = {
-            'connection': self._storage,
-            'iqn': self._iqn,
-            'portal': self._portal,
-            'user': self._user,
-            'password': self._password,
-            'id': self._connectionUUID,
-            'port': self._port,
-        }
-        if self._tpgt:
-            conDict['tpgt'] = self._tpgt
-        conList = [conDict]
+        conList = []
+        ip_port_list = [
+            {'ip': x[0], 'port': x[1]} for x in zip(
+                self._storage.split(','),
+                self._port.split(',')
+            )
+        ]
+        for x in ip_port_list:
+            conList.append({
+                'connection': x['ip'],
+                'iqn': self._iqn,
+                'tpgt': self._portal,
+                'user': self._user,
+                'password': self._password,
+                'id': self._connectionUUID,
+                'port': x['port'],
+            })
         return conList, storageType
 
     def _get_conlist_fc(self):
