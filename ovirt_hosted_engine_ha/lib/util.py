@@ -406,7 +406,7 @@ def __vdsm_json_rpc_check(logger=None):
     while retry < VDSM_MAX_RETRY:
         retry += 1
         try:
-            _vdsm_json_rpc.Host.ping()
+            _vdsm_json_rpc.Host.ping2()
             # Successful ping
             return
 
