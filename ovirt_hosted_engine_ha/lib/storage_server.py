@@ -25,7 +25,10 @@ from ovirt_hosted_engine_ha.lib import exceptions as ex
 from ovirt_hosted_engine_ha.lib import util
 import logging
 import os
+import re
+import subprocess
 import uuid
+
 from . import log_filter
 
 from vdsm.client import ServerError
@@ -68,6 +71,20 @@ class StorageServer(object):
                 config.ENGINE,
                 const.NFS_VERSION
             )
+        except (KeyError, ValueError):
+            pass
+        self._iscsi_paths_blacklist = []
+        try:
+            iscsi_paths_blacklist_str = self._config.get(
+                config.ENGINE,
+                const.ISCSI_MPATHS_BLACKLIST
+            )
+            if iscsi_paths_blacklist_str is not None:
+                for t in iscsi_paths_blacklist_str.strip().split(','):
+                    iface_portal = t.split('<>')
+                    self._iscsi_paths_blacklist.append(
+                        (iface_portal[0], iface_portal[1])
+                    )
         except (KeyError, ValueError):
             pass
 
@@ -162,25 +179,102 @@ class StorageServer(object):
             self._log.error(msg)
             raise ex.DuplicateStorageConnectionException(msg)
 
+    def _get_iscsi_ifaces(self):
+        self._log.debug("Detecting iSCSI interface")
+        _RESERVED_INTERFACES = ("default", "iser")
+        iscsi_bond_ifaces = []
+
+        command = subprocess.Popen(
+            [
+                'sudo',
+                'iscsiadm',
+                '-m',
+                'iface'
+            ],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        stdout, stderr = command.communicate()
+        rc = command.wait()
+        self._log.debug('rc:\n' + str(rc))
+        self._log.debug('stdout:\n' + str(stdout))
+        self._log.debug('stderr:\n' + str(stderr))
+        if rc == 0:
+            # <iscsi_ifacename> <transport_name>,<hwaddress>,<ipaddress>,\
+            # <net_ifacename>,<initiatorname>
+            iscsiadm_re = re.compile(
+                "^(?P<iscsi_ifacename>.*) "
+                "tcp,"
+                "(?P<hwaddress>.*),"
+                "(?P<ipaddress>.*),"
+                "(?P<net_ifacename>.*),"
+                "(?P<initiatorname>.*)$"
+            )
+            for line in stdout.splitlines():
+                ifacematch = iscsiadm_re.match(line)
+                if ifacematch is not None:
+                    ifaceName = ifacematch.group('iscsi_ifacename')
+                    netIfaceName = ifacematch.group('net_ifacename')
+                    if (
+                        ifaceName not in _RESERVED_INTERFACES and
+                        netIfaceName != '<empty>'
+                    ):
+                        iscsi_bond_ifaces.append({
+                            'ifaceName': ifaceName,
+                            'netIfaceName': netIfaceName
+                        })
+        else:
+            self._log.warning(
+                'Failed fetching iSCSI interface list: {e}'.format(e=stderr)
+            )
+
+        if not iscsi_bond_ifaces:
+            self._log.info(
+                'Unable to get iSCSI multipath configuration, '
+                'please check it from the engine'
+            )
+            iscsi_bond_ifaces.append({
+                'ifaceName': None,
+                'netIfaceName': None
+            })
+        self._log.debug(
+            'iSCSI interfaces: {i}'.format(i=iscsi_bond_ifaces)
+        )
+        return iscsi_bond_ifaces
+
     def _get_conlist_iscsi(self):
         storageType = constants.STORAGE_TYPE_ISCSI
         conList = []
+        _iscsi_bond_ifaces = self._get_iscsi_ifaces()
         ip_port_list = [
             {'ip': x[0], 'port': x[1]} for x in zip(
                 self._storage.split(','),
                 self._port.split(',')
             )
         ]
-        for x in ip_port_list:
-            conList.append({
-                'connection': x['ip'],
-                'iqn': self._iqn,
-                'tpgt': self._portal,
-                'user': self._user,
-                'password': self._password,
-                'id': str(uuid.uuid4()),
-                'port': x['port'],
-            })
+        for i in _iscsi_bond_ifaces:
+            for x in ip_port_list:
+                con = {
+                    'connection': x['ip'],
+                    'iqn': self._iqn,
+                    'tpgt': self._portal,
+                    'user': self._user,
+                    'password': self._password,
+                    'id': str(uuid.uuid4()),
+                    'port': x['port'],
+                }
+                if (
+                    i['netIfaceName'] is not None and
+                    i['ifaceName'] is not None
+                ):
+                    con['netIfaceName'] = i['netIfaceName']
+                    con['ifaceName'] = i['ifaceName']
+                    if (
+                        con['ifaceName'], con['connection']
+                    ) in self._iscsi_paths_blacklist:
+                        continue
+                conList.append(con)
         return conList, storageType
 
     def _get_conlist_fc(self):
@@ -274,6 +368,7 @@ class StorageServer(object):
                 )
 
             connected = False
+            failed_paths = []
             for con in connections:
                 if con['status'] == 0:
                     connected = True
@@ -291,10 +386,29 @@ class StorageServer(object):
                                 con_details=con_details,
                             )
                         )
-                if not connected:
-                    raise RuntimeError(
-                        'Connection to storage server failed'
-                    )
+                        failed_paths.append(con_details)
+            if not connected:
+                raise RuntimeError(
+                    'Connection to storage server failed'
+                )
+            if len(
+                failed_paths
+            ) > 1 and storageType == constants.STORAGE_TYPE_ISCSI:
+                bl_example = ','.join([
+                    fp['ifaceName'] + '<>' + fp['connection']
+                    for fp in failed_paths
+                    if 'ifaceName' in fp and 'connection' in fp
+                ])
+                if bl_example:
+                    self._log.warning((
+                        'Many paths of your iSCSI multipath configurations '
+                        'are failing, if it\'s by design you can blacklist '
+                        'them setting "{k}={v}" in the hosted-engine '
+                        'configuration.'
+                    ).format(
+                        k=const.ISCSI_MPATHS_BLACKLIST,
+                        v=bl_example,
+                    ))
 
         self._log.info("Refreshing the storage domain")
         # calling getStorageDomainStats has the side effect of

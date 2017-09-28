@@ -33,8 +33,10 @@ ISCSI_PORTAL = 'portal'
 ISCSI_USER = 'user'
 ISCSI_PASSWORD = 'password'
 ISCSI_PORT = 'port'
+ISCSI_MPATHS_BLACKLIST = 'iscsi_paths_blacklist'
 
 ENGINE_OPTIONAL_KEYS = [
+    ISCSI_MPATHS_BLACKLIST,
 ]
 
 # constants for vm.conf options
