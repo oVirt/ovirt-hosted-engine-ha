@@ -1,4 +1,5 @@
 #!/bin/bash -e
 ./autogen.sh --system
-./configure
 make distcheck
+
+./automation/build-artifacts.sh
