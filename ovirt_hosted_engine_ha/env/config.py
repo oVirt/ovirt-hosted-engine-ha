@@ -418,17 +418,17 @@ class Config(object):
             )
 
         ovfs = ovf_store.OVFStore()
-        scan = False
 
-        try:
-            scan = ovfs.scan()
-        except (EnvironmentError, Exception) as err:
-            self._logger.error(
-                "Failed scanning for OVF_STORE due to %s",
-                err
-            )
+        if not ovfs.have_store_info():
+            try:
+                ovfs.scan()
+            except (EnvironmentError, Exception) as err:
+                self._logger.error(
+                    "Failed scanning for OVF_STORE due to %s",
+                    err
+                )
 
-        if scan:
+        if ovfs.have_store_info():
             heovf = ovfs.getEngineVMOVF()
             if heovf is not None:
                 self._logger.info(
@@ -449,6 +449,10 @@ class Config(object):
                     'Failed extracting VM OVF from the OVF_STORE '
                     'volume, falling back to initial vm.conf'
                 )
+                # This error might indicate the OVF location changed
+                # and clearing the cache will trigger a rescan
+                # next time we access the OVF.
+                ovfs.clear_store_info()
         else:
             self._logger.error(
                 'Unable to identify the OVF_STORE volume, '
