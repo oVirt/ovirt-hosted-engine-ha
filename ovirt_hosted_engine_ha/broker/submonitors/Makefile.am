@@ -35,6 +35,7 @@ dist_brokersubmonitors_PYTHON = \
 	mem_load.py \
 	mgmt_bridge.py \
 	ping.py \
+	storage_domain.py \
 	$(NULL)
 
 clean-local: \
