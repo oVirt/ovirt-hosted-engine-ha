@@ -34,7 +34,6 @@ from . import constants
 from ..env import config
 from ..lib import brokerlink
 from ..lib import exceptions as ex
-from ..lib import image
 from ..lib import log_filter
 from ..lib import metadata
 from ..lib import monotonic
@@ -406,7 +405,6 @@ class HostedEngine(object):
         # initialize it once the FSM is started (we need maintenance data
         # to decide)
         self._initialize_vdsm()
-        self._initialize_storage_images()
         self._initialize_domain_monitor()
         self._initialize_broker()
         self._initialize_sanlock()
@@ -455,6 +453,7 @@ class HostedEngine(object):
                     # make sure everything is still initialized
                     self._initialize_vdsm()
                     self._validate_storage_images()
+                    self._config.refresh_vm_conf()
                     self._initialize_sanlock()
 
                 # stop the VDSM domain monitor in local maintenance, but
@@ -548,46 +547,6 @@ class HostedEngine(object):
             self._log.warn("Hosted-engine storage domain is in invalid state")
             raise ex.StorageDisconnectedError(
                 "Hosted-engine storage domain is in invalid state")
-
-    def _initialize_storage_images(self):
-        self._log.info("Connecting the storage")
-        sserver = storage_server.StorageServer()
-        img = image.Image(
-            self._config.get(config.ENGINE, config.DOMAIN_TYPE),
-            self._config.get(config.ENGINE, config.SD_UUID)
-        )
-
-        try:
-            sserver.connect_storage_server()
-        except ex.DuplicateStorageConnectionException:
-            # Try to cleanup if needed/possible
-            self._release_sanlock()
-            self._stop_domain_monitor()
-
-            # Tearing down images
-            img.teardown_images()
-            # Disconnect storage server
-            self._log.warning("Disconnecting the storage")
-            sserver.disconnect_storage_server()
-            # Fix config file
-            upg = upgrade.Upgrade()
-            upg.fix_storage_path()
-            # Get a new instance to refresh the configuration
-            sserver = storage_server.StorageServer()
-            # Reconnect to be ready for the next attempt
-            sserver.connect_storage_server()
-
-        self._log.info("Preparing images")
-        img.prepare_images()
-
-        self._log.info("Refreshing vm.conf")
-        try:
-            self._config.refresh_vm_conf()
-        except KeyError:
-            self._log.error(
-                "Unable to refresh vm.conf from the shared storage. "
-                "Has this HE cluster correctly reached 3.6 level?"
-            )
 
     def _check_service(self, service_name):
         self._log.debug("Checking %s status", service_name)
