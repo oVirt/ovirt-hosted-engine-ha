@@ -33,6 +33,12 @@ logger = logging.getLogger(__name__)
 
 
 class OVFStore(object):
+    """
+    OVF location data cache
+    to avoid repeated rescans
+    """
+    _ovf_store_imgUUID = None
+    _ovf_store_volUUID = None
 
     def __init__(self):
         from ovirt_hosted_engine_ha.env import config
@@ -53,12 +59,16 @@ class OVFStore(object):
         )
         self._HEVMID = self._config.get(config.ENGINE, config.HEVMID)
 
-        self._ovf_store_imgUUID = None
-        self._ovf_store_volUUID = None
+    def have_store_info(self):
+        return OVFStore._ovf_store_imgUUID and OVFStore._ovf_store_volUUID
+
+    def clear_store_info(self):
+        OVFStore._ovf_store_imgUUID = None
+        OVFStore._ovf_store_volUUID = None
 
     def scan(self):
-        self._ovf_store_imgUUID = None
-        self._ovf_store_volUUID = None
+        self.clear_store_info()
+
         cli = util.connect_vdsm_json_rpc(
             logger=self._log,
             timeout=constants.VDSCLI_SSL_TIMEOUT
@@ -99,8 +109,8 @@ class OVFStore(object):
                     description_dict = json.loads(description)
                     self._log.debug(description_dict)
                     if description_dict['Disk Description'] == 'OVF_STORE':
-                        self._ovf_store_imgUUID = img_uuid
-                        self._ovf_store_volUUID = vol_uuid
+                        OVFStore._ovf_store_imgUUID = img_uuid
+                        OVFStore._ovf_store_volUUID = vol_uuid
                         self._log.info(
                             'Found OVF_STORE: '
                             'imgUUID:{img}, volUUID:{vol}'.format(
@@ -118,8 +128,8 @@ class OVFStore(object):
         volumepath = heconflib.get_volume_path(
             self._type,
             self._sdUUID,
-            self._ovf_store_imgUUID,
-            self._ovf_store_volUUID
+            OVFStore._ovf_store_imgUUID,
+            OVFStore._ovf_store_volUUID
         )
         self._log.info('OVF_STORE volume path: %s ' % volumepath)
         filename = self._HEVMID + '.ovf'
