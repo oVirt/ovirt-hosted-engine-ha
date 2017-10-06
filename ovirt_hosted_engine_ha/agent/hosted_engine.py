@@ -343,9 +343,9 @@ class HostedEngine(object):
         self._log.debug("Connecting to ha-broker")
         try:
             self._initialize_vdsm()
-            self._initialize_storage_images()
             self._initialize_domain_monitor()
             self._initialize_broker(monitors=[])
+            self._validate_storage_images()
             self._initialize_sanlock()
         except ServiceNotUpException as e:
             self._log.error("Required service %s is not up.", e.message)
