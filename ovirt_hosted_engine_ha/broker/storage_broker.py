@@ -77,10 +77,9 @@ class StorageBroker(object):
             self._backend = VdsmBackend(sp_uuid, sd_uuid, dom_type, **devices)
             self._backend.connect()
         except Exception as _ex:
-            self._log.warn("Can't read volume uuids from config "
-                           "-> assuming fs based storage: '{0}'"
+            self._log.warn("Can't connect vdsm storage: {0} "
                            .format(str(_ex)))
-            self._backend = FilesystemBackend(sd_uuid, dom_type)
+            raise
 
     def is_host_alive(self, service_type):
         timestamp, host_list = self._stats_cache.get(service_type, (0, ""))
