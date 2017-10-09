@@ -37,7 +37,6 @@ from ..lib import exceptions as ex
 from ..lib import log_filter
 from ..lib import metadata
 from ..lib import monotonic
-from ..lib import storage_server
 from ..lib import util
 from ovirt_hosted_engine_ha.lib import upgrade
 from .state_machine import EngineStateMachine
@@ -300,6 +299,14 @@ class HostedEngine(object):
                 'use_ssl': self._config.get(config.ENGINE, config.VDSM_SSL),
                 'vm_uuid': self._config.get(config.ENGINE, config.HEVMID)}
         })
+        req.append({
+            'field': 'storage-domain',
+            'monitor': 'storage-domain',
+            'type': bool,
+            'options': {
+                'sd_uuid': self._config.get(config.ENGINE, config.SD_UUID)
+            }
+        })
         return req
 
     @property
@@ -447,15 +454,17 @@ class HostedEngine(object):
                 if prev_delay > 0:
                     # make sure everything is still initialized
                     self._initialize_vdsm()
-                    self._validate_storage_images()
                     self._config.refresh_vm_conf()
                     self._initialize_sanlock()
 
                 # stop the VDSM domain monitor in local maintenance, but
-                # only when the VM is not running locally
+                # only when the VM is not running locally.
+                # Checking storage validity in LocalMaintenance is useless,
+                # due to lack of the storage monitoring.
                 st = state.data.stats
                 if st and not st.local.get("maintenance", False):
                     self._initialize_domain_monitor()
+                    self._validate_storage_images()
                 else:
                     self._stop_domain_monitor_if_possible(state)
 
@@ -537,8 +546,7 @@ class HostedEngine(object):
         )
 
     def _validate_storage_images(self):
-        sserver = storage_server.StorageServer()
-        if not sserver.validate_storage_server():
+        if not self._broker.get_monitor_status('storage-domain'):
             self._log.warn("Hosted-engine storage domain is in invalid state")
             raise ex.StorageDisconnectedError(
                 "Hosted-engine storage domain is in invalid state")
