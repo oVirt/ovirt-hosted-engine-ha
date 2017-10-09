@@ -148,3 +148,18 @@ class BrokerLink(object):
             ret[int(host_id)] = data.data
 
         return ret
+
+    def start_domain_monitor(self, host_id):
+        """
+        Starts domain monitoring
+        :param host_id: agent's host id
+        :return: "ok" in case of success
+        """
+        self._proxy.start_domain_monitor(host_id)
+
+    def stop_domain_monitor(self):
+        """
+        Stops domain monitoring
+        :return: "ok" in case of success
+        """
+        self._proxy.stop_domain_monitor()

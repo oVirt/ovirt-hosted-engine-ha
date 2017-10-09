@@ -20,15 +20,19 @@
 import logging
 import os
 import threading
+import time
 import xmlrpclib
 
+from ..broker import constants as broker_constants
 from ..env import config
 from ..env import constants
 from ..lib import monotonic
 from ..lib.exceptions import RequestError
 from ..lib.storage_backends import FilesystemBackend, VdsmBackend
 from ..lib.storage_backends import StorageBackendTypes
-from ..lib.util import aligned_buffer, uninterruptible
+from ..lib.util import aligned_buffer, connect_vdsm_json_rpc, uninterruptible
+
+from vdsm.client import ServerError
 
 
 class StorageBroker(object):
@@ -37,6 +41,11 @@ class StorageBroker(object):
         StorageBackendTypes.FilesystemBackend: FilesystemBackend,
         StorageBackendTypes.VdsmBackend: VdsmBackend,
     }
+
+    class DomainMonitorStatus(object):
+        NONE = 'NONE'
+        PENDING = 'PENDING'
+        ACQUIRED = 'ACQUIRED'
 
     def __init__(self):
         self._log = logging.getLogger("%s.StorageBroker" % __name__)
@@ -49,9 +58,9 @@ class StorageBroker(object):
         self._stats_cache = {}
 
         # register storage domain info
-        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
-        sp_uuid = self._config.get(config.ENGINE, config.SP_UUID)
-        dom_type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
+        self.sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
+        self.sp_uuid = self._config.get(config.ENGINE, config.SP_UUID)
+        self.dom_type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
 
         try:
             devices = {
@@ -74,7 +83,8 @@ class StorageBroker(object):
                                          raise_on_none=True),
                     )
             }
-            self._backend = VdsmBackend(sp_uuid, sd_uuid, dom_type, **devices)
+            self._backend = VdsmBackend(self.sp_uuid, self.sd_uuid,
+                                        self.dom_type, **devices)
             self._backend.connect()
         except Exception as _ex:
             self._log.warn("Can't connect vdsm storage: {0} "
@@ -210,3 +220,81 @@ class StorageBroker(object):
         Client ID is provided by the broker logic.
         """
         return self._backend.filename(service)[0]
+
+    def start_domain_monitor(self, host_id):
+        dm_status = self._get_domain_monitor_status()
+        if dm_status == self.DomainMonitorStatus.NONE:
+            cli = connect_vdsm_json_rpc(
+                logger=self._log
+            )
+            try:
+                cli.Host.startMonitoringDomain(
+                    sdUUID=self.sd_uuid,
+                    hostID=host_id,
+                )
+            except ServerError:
+                self._log.error("Failed to start monitoring domain",
+                                exc_info=True)
+                raise
+
+            self._log.info("Started VDSM domain monitor for %s", self.sd_uuid)
+            dm_status = self._get_domain_monitor_status()
+
+        waited = 0
+        while dm_status != self.DomainMonitorStatus.ACQUIRED \
+                and waited <= broker_constants.MAX_DOMAIN_MONITOR_WAIT_SECS:
+            waited += 5
+            time.sleep(5)
+            dm_status = self._get_domain_monitor_status()
+
+        if dm_status == self.DomainMonitorStatus.ACQUIRED:
+            self._log.debug("VDSM is monitoring domain %s", self.sd_uuid)
+        else:
+            msg = ("Failed to start monitoring domain"
+                   " (sd_uuid={0}, host_id={1}): {2}"
+                   .format(self.sd_uuid, host_id,
+                           "timeout during domain acquisition"))
+            self._log.error(msg)
+            raise Exception(msg)
+
+    def stop_domain_monitor(self):
+        status = self._get_domain_monitor_status()
+        if status != self.DomainMonitorStatus.NONE:
+            cli = connect_vdsm_json_rpc(
+                logger=self._log
+            )
+            try:
+                cli.Host.stopMonitoringDomain(
+                    sdUUID=self.sd_uuid,
+                )
+            except ServerError as e:
+                self._log.info("Failed to stop monitoring domain")
+                self._log.info(e)
+                return
+
+            self._log.info("Stopped VDSM domain monitor for %s", self.sd_uuid)
+
+    def _get_domain_monitor_status(self):
+        try:
+            cli = connect_vdsm_json_rpc(
+                logger=self._log
+            )
+            repo_stats = cli.Host.getStorageRepoStats(domains=[self.sd_uuid])
+        except ServerError as e:
+            msg = ("Failed to get VDSM domain monitor status: {0}"
+                   .format(str(e)))
+            self._log.error(msg)
+            raise
+
+        if self.sd_uuid not in repo_stats:
+            status = self.DomainMonitorStatus.NONE
+            log_level = logging.INFO
+        elif repo_stats[self.sd_uuid]['acquired']:
+            status = self.DomainMonitorStatus.ACQUIRED
+            log_level = logging.DEBUG
+        else:
+            status = self.DomainMonitorStatus.PENDING
+            log_level = logging.INFO
+
+        self._log.log(log_level, "VDSM domain monitor status: %s", status)
+        return status

@@ -167,3 +167,17 @@ class ActionsHandler(object):
             return "sent"
         else:
             return "ignored"
+
+    @logged
+    def start_domain_monitor(self, host_id):
+        with self._storage_broker_instance_access_lock:
+            self._listener.storage_broker_instance \
+                .start_domain_monitor(host_id)
+        return "ok"
+
+    @logged
+    def stop_domain_monitor(self):
+        with self._storage_broker_instance_access_lock:
+            self._listener.storage_broker_instance \
+                .stop_domain_monitor()
+        return "ok"
