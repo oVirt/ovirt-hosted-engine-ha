@@ -130,11 +130,6 @@ class HostedEngine(object):
         DONE = 'DONE'
         FAILURE = 'FAILURE'
 
-    class DomainMonitorStatus(object):
-        NONE = 'NONE'
-        PENDING = 'PENDING'
-        ACQUIRED = 'ACQUIRED'
-
     class MaintenanceMode(object):
         NONE = 'NONE'
         GLOBAL = 'GLOBAL'
@@ -342,8 +337,8 @@ class HostedEngine(object):
         self._log.debug("Connecting to ha-broker")
         try:
             self._initialize_vdsm()
-            self._initialize_domain_monitor()
             self._initialize_broker(monitors=[])
+            self._initialize_domain_monitor()
             self._validate_storage_images()
             self._initialize_sanlock()
         except ServiceNotUpException as e:
@@ -405,8 +400,8 @@ class HostedEngine(object):
         # initialize it once the FSM is started (we need maintenance data
         # to decide)
         self._initialize_vdsm()
-        self._initialize_domain_monitor()
         self._initialize_broker()
+        self._initialize_domain_monitor()
         self._initialize_sanlock()
 
         # check if configuration is up to date, otherwise upgrade (3.5 -> 3.6)
@@ -640,89 +635,17 @@ class HostedEngine(object):
             self._stop_domain_monitor()
 
     def _stop_domain_monitor(self):
-        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
+        try:
+            self._broker.stop_domain_monitor()
+        except ServerError as e:
+            self._log.info("Failed to stop monitoring domain")
+            self._log.info(e)
+            return
 
-        status = self._get_domain_monitor_status()
-        if status != self.DomainMonitorStatus.NONE:
-            cli = util.connect_vdsm_json_rpc(
-                logger=self._log
-            )
-            try:
-                cli.Host.stopMonitoringDomain(
-                    sdUUID=sd_uuid,
-                )
-            except ServerError as e:
-                self._log.info("Failed to stop monitoring domain")
-                self._log.info(e)
-                return
-
-            self._log.info("Stopped VDSM domain monitor for %s", sd_uuid)
+        self._log.info("Stopped VDSM domain monitor",)
 
     def _initialize_domain_monitor(self):
-        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
-        host_id = self.host_id
-
-        dm_status = self._get_domain_monitor_status()
-        if dm_status == self.DomainMonitorStatus.NONE:
-            cli = util.connect_vdsm_json_rpc(
-                logger=self._log
-            )
-            try:
-                cli.Host.startMonitoringDomain(
-                    sdUUID=sd_uuid,
-                    hostID=host_id,
-                )
-            except ServerError:
-                self._log.error("Failed to start monitoring domain",
-                                exc_info=True)
-                raise
-
-            self._log.info("Started VDSM domain monitor for %s", sd_uuid)
-            dm_status = self._get_domain_monitor_status()
-
-        waited = 0
-        while dm_status != self.DomainMonitorStatus.ACQUIRED \
-                and waited <= constants.MAX_DOMAIN_MONITOR_WAIT_SECS:
-            waited += 5
-            time.sleep(5)
-            dm_status = self._get_domain_monitor_status()
-
-        if dm_status == self.DomainMonitorStatus.ACQUIRED:
-            self._log.debug("VDSM is monitoring domain %s", sd_uuid)
-        else:
-            msg = ("Failed to start monitoring domain"
-                   " (sd_uuid={0}, host_id={1}): {2}"
-                   .format(sd_uuid, host_id,
-                           "timeout during domain acquisition"))
-            self._log.error(msg)
-            raise Exception(msg)
-
-    def _get_domain_monitor_status(self):
-        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
-
-        cli = util.connect_vdsm_json_rpc(
-            logger=self._log
-        )
-        try:
-            repo_stats = cli.Host.getStorageRepoStats(domains=[sd_uuid])
-        except ServerError as e:
-            msg = ("Failed to get VDSM domain monitor status: {0}"
-                   .format(str(e)))
-            self._log.error(msg)
-            raise
-
-        if sd_uuid not in repo_stats:
-            status = self.DomainMonitorStatus.NONE
-            log_level = logging.INFO
-        elif repo_stats[sd_uuid]['acquired']:
-            status = self.DomainMonitorStatus.ACQUIRED
-            log_level = logging.DEBUG
-        else:
-            status = self.DomainMonitorStatus.PENDING
-            log_level = logging.INFO
-
-        self._log.log(log_level, "VDSM domain monitor status: %s", status)
-        return status
+        self._broker.start_domain_monitor(self.host_id)
 
     def _generate_local_blocks(self, state):
         """
