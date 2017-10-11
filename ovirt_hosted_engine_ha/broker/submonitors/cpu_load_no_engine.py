@@ -109,6 +109,11 @@ class Submonitor(submonitor_base.SubmonitorBase):
                                extra=log_filter.lf_args('vm', 60))
             else:
                 self._log.error(e, extra=log_filter.lf_args('vm', 60))
+        except KeyError:
+            self._log.info(
+                "VM stats do not contain cpu usage. VM might be down.",
+                extra=log_filter.lf_args('vm', 60)
+            )
         except ValueError as e:
             self._log.error("Error getting cpuUser: %s", str(e))
 
