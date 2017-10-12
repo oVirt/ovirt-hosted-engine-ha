@@ -1002,7 +1002,7 @@ class HostedEngine(object):
                 logger=self._log
             )
             try:
-                cli.destroy(vm_id)
+                cli.VM.destroy(vmID=vm_id)
             except ServerError as e:
                 if e.code == 1:
                     # NoSuchVM
