@@ -181,3 +181,17 @@ class ActionsHandler(object):
             self._listener.storage_broker_instance \
                 .stop_domain_monitor()
         return "ok"
+
+    @logged
+    def acquire_whiteboard_lock(self, host_id):
+        with self._storage_broker_instance_access_lock:
+            self._listener.storage_broker_instance \
+                .acquire_whiteboard_lock(host_id)
+            return "ok"
+
+    @logged
+    def release_whiteboard_lock(self, host_id):
+        with self._storage_broker_instance_access_lock:
+            self._listener.storage_broker_instance \
+                .release_whiteboard_lock(host_id)
+            return "ok"

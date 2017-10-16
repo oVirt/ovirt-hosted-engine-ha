@@ -18,7 +18,6 @@
 #
 
 import ConfigParser
-import errno
 import json
 import logging
 import os
@@ -383,7 +382,7 @@ class HostedEngine(object):
         # Free lockspace
         self._log.debug("Releasing sanlock")
         try:
-            self._release_sanlock()
+            self._broker.release_whiteboard_lock(self.host_id)
         except sanlock.SanlockException:
             # This could happen when force was in effect
             if not force:
@@ -433,7 +432,7 @@ class HostedEngine(object):
 
             # Free lockspace
             self._log.debug("Releasing sanlock")
-            self._release_sanlock()
+            self._broker.release_whiteboard_lock(self.host_id)
             self._stop_domain_monitor_if_possible(stopped)
 
             return 0
@@ -566,73 +565,9 @@ class HostedEngine(object):
                 # Wait for the service to start properly
                 raise ServiceNotUpException(service_name)
 
-    def _release_sanlock(self):
-        if self._broker:
-            lease_file = self._broker.get_service_path(
-                constants.SERVICE_TYPE + constants.LOCKSPACE_EXTENSION)
-            sanlock.rem_lockspace(constants.LOCKSPACE_NAME,
-                                  self.host_id, lease_file)
-
     def _initialize_sanlock(self):
         self._check_service('sanlock')
-        lease_file = self._broker.get_service_path(
-            constants.SERVICE_TYPE + constants.LOCKSPACE_EXTENSION)
-        if not self._sanlock_initialized:
-            lvl = logging.INFO
-        else:
-            lvl = logging.DEBUG
-        self._log.log(lvl, "Ensuring lease for lockspace %s, host id %d"
-                           " is acquired (file: %s)",
-                           constants.LOCKSPACE_NAME, self.host_id, lease_file)
-
-        for attempt in range(constants.WAIT_FOR_STORAGE_RETRY):
-            try:
-                sanlock.add_lockspace(constants.LOCKSPACE_NAME,
-                                      self.host_id, lease_file)
-            except sanlock.SanlockException as e:
-                if hasattr(e, 'errno'):
-                    if e.errno == errno.EEXIST:
-                        self._log.debug("Host already holds lock")
-                        break
-                    elif e.errno == errno.EINVAL:
-                        self._log.error(
-                            "cannot get lock on host id {0}: "
-                            "host already holds lock on a different"
-                            " host id"
-                            .format(self.host_id))
-                        raise  # this shouldn't happen, so throw the exception
-                    elif e.errno == errno.EINTR:
-                        self._log.warn("cannot get lock on host id {0}:"
-                                       " sanlock operation interrupted"
-                                       " (will retry)"
-                                       .format(self.host_id))
-                    elif e.errno == errno.EINPROGRESS:
-                        self._log.warn("cannot get lock on host id {0}:"
-                                       " sanlock operation in progress"
-                                       "(will retry)"
-                                       .format(self.host_id))
-                    elif e.errno == errno.ENOENT:
-                        self._log.warn("cannot get lock on host id {0}:"
-                                       " the lock file '{1}' is missing"
-                                       "(will retry)"
-                                       .format(self.host_id, lease_file))
-            else:  # no exception, we acquired the lock
-                self._log.info("Acquired lock on host id %d", self.host_id)
-                break
-
-            # some temporary problem has occurred (usually waiting for
-            # the storage), so wait a while and try again
-            self._log.info("Failed to acquire the lock. Waiting '{0}'s before"
-                           " the next attempt".
-                           format(constants.WAIT_FOR_STORAGE_DELAY))
-            time.sleep(constants.WAIT_FOR_STORAGE_DELAY)
-        else:  # happens only if all attempts are exhausted
-            raise ex.SanlockInitializationError(
-                "Failed to initialize sanlock, the number of errors has"
-                " exceeded the limit")
-
-        # we get here only if the the lock is acquired
-        self._sanlock_initialized = True
+        self._broker.acquire_whiteboard_lock(self.host_id)
 
     def _stop_domain_monitor_if_possible(self, state):
         # make sure the VM is not running locally, stopping the monitor
