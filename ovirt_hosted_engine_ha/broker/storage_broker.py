@@ -27,7 +27,7 @@ from ..broker import constants as broker_constants
 from ..env import config
 from ..env import constants
 from ..lib import monotonic
-from ..lib.exceptions import RequestError
+from ..lib import exceptions as ex
 from ..lib.storage_backends import FilesystemBackend, VdsmBackend
 from ..lib.storage_backends import StorageBackendTypes
 from ..lib.util import aligned_buffer, connect_vdsm_json_rpc, uninterruptible
@@ -154,8 +154,8 @@ class StorageBroker(object):
             except EnvironmentError as e:
                 self._log.error("Failed to read metadata from %s",
                                 path, exc_info=True)
-                raise RequestError("failed to read metadata: {0}"
-                                   .format(str(e)))
+                raise ex.RequestError("failed to read metadata: {0}"
+                                      .format(str(e)))
             finally:
                 # Cleanup
                 if fin:
@@ -204,8 +204,8 @@ class StorageBroker(object):
             except EnvironmentError as e:
                 self._log.error("Failed to write metadata for host %d to %s",
                                 host_id, path, exc_info=True)
-                raise RequestError("failed to write metadata: {0}"
-                                   .format(str(e)))
+                raise ex.RequestError("failed to write metadata: {0}"
+                                      .format(str(e)))
             finally:
                 if f:
                     os.close(f)
