@@ -29,6 +29,7 @@ import threading
 from . import constants
 from . import listener
 from . import monitor
+from . import status_broker
 from . import storage_broker
 
 
@@ -37,6 +38,7 @@ class Broker(object):
         self._listener = None
         self._monitor_instance = None
         self._storage_broker_instance = None
+        self._status_broker_instance = None
 
     def run(self):
         self._initialize_logging()
@@ -51,6 +53,7 @@ class Broker(object):
         self._log.debug("Running broker")
         self._monitor_instance = self._get_monitor()
         self._storage_broker_instance = self._get_storage_broker()
+        self._status_broker_instance = self._get_status_broker()
         self._listener = self._get_listener()
         self._listener.listen()
 
@@ -108,6 +111,10 @@ class Broker(object):
         """
         self._log.debug("Starting storage broker")
         return storage_broker.StorageBroker()
+
+    def _get_status_broker(self):
+        self._log.debug("Starting status broker")
+        return status_broker.StatusBroker()
 
     def _get_listener(self):
         """

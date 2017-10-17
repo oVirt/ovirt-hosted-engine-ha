@@ -76,3 +76,12 @@ class StorageDisconnectedError(Exception):
     The agent should exit.
     Systemd will restart the agent if needed.
     """
+
+
+class HostIdNotLockedError(Exception):
+    """
+    This exception is raised when host id is not set and locked.
+
+    The agent should exit.
+    Systemd will restart the agent if needed.
+    """

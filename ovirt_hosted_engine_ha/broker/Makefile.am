@@ -45,6 +45,7 @@ dist_broker_PYTHON = \
 	listener.py \
 	monitor.py \
 	notifications.py \
+	status_broker.py \
 	storage_broker.py \
 	submonitor_base.py \
 	$(NULL)
