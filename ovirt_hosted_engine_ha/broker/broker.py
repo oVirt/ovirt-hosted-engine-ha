@@ -122,4 +122,5 @@ class Broker(object):
         """
         self._log.debug("Starting listener")
         return listener.Listener(self._monitor_instance,
-                                 self._storage_broker_instance)
+                                 self._storage_broker_instance,
+                                 self._status_broker_instance)

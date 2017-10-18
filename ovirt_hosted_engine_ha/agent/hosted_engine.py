@@ -353,7 +353,7 @@ class HostedEngine(object):
             self._initialize_broker(monitors=[])
             self._initialize_domain_monitor()
             self._validate_storage_images()
-            self._initialize_sanlock()
+            self._lock_host_id()
         except ServiceNotUpException as e:
             self._log.error("Required service %s is not up.", e.message)
             return -2
@@ -386,7 +386,7 @@ class HostedEngine(object):
         # Free lockspace
         self._log.debug("Releasing sanlock")
         try:
-            self._broker.release_whiteboard_lock(self.host_id)
+            self._broker.release_host_id()
         except sanlock.SanlockException:
             # This could happen when force was in effect
             if not force:
@@ -415,7 +415,7 @@ class HostedEngine(object):
         self._initialize_vdsm()
         self._initialize_broker()
         self._initialize_domain_monitor()
-        self._initialize_sanlock()
+        self._lock_host_id()
 
         # check if configuration is up to date, otherwise upgrade (3.5 -> 3.6)
         upg = upgrade.Upgrade()
@@ -439,7 +439,7 @@ class HostedEngine(object):
 
             # Free lockspace
             self._log.debug("Releasing sanlock")
-            self._broker.release_whiteboard_lock(self.host_id)
+            self._broker.release_host_id()
             self._stop_domain_monitor_if_possible(stopped)
 
             return 0
@@ -475,7 +475,7 @@ class HostedEngine(object):
                     # make sure everything is still initialized
                     self._initialize_vdsm()
                     self._config.refresh_vm_conf()
-                    self._initialize_sanlock()
+                    self._lock_host_id()
 
                 # stop the VDSM domain monitor in local maintenance, but
                 # only when the VM is not running locally.
@@ -587,9 +587,9 @@ class HostedEngine(object):
                 # Wait for the service to start properly
                 raise ServiceNotUpException(service_name)
 
-    def _initialize_sanlock(self):
+    def _lock_host_id(self):
         self._check_service('sanlock')
-        self._broker.acquire_whiteboard_lock(self.host_id)
+        self._broker.lock_host_id(self.host_id)
 
     def _stop_domain_monitor_if_possible(self, state):
         # make sure the VM is not running locally, stopping the monitor

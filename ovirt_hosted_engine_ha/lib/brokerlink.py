@@ -164,17 +164,17 @@ class BrokerLink(object):
         """
         self._proxy.stop_domain_monitor()
 
-    def acquire_whiteboard_lock(self, host_id):
+    def lock_host_id(self, host_id):
         """
         Starts domain monitoring
         :param host_id: agent's host id
         :return: "ok" in case of success
         """
-        self._proxy.acquire_whiteboard_lock(host_id)
+        self._proxy.lock_host_id(host_id)
 
-    def release_whiteboard_lock(self, host_id):
+    def release_host_id(self):
         """
         Stops domain monitoring
         :return: "ok" in case of success
         """
-        self._proxy.release_whiteboard_lock(host_id)
+        self._proxy.release_host_id()

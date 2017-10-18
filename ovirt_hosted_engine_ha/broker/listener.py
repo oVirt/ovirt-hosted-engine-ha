@@ -29,7 +29,8 @@ from . import notifications
 
 
 class Listener(object):
-    def __init__(self, monitor_instance, storage_broker_instance):
+    def __init__(self, monitor_instance, storage_broker_instance,
+                 status_broker_instance):
         """
         Prepare the listener and associated locks
         """
@@ -40,6 +41,7 @@ class Listener(object):
         # Coordinate access to resources across connections
         self._monitor_instance = monitor_instance
         self._storage_broker_instance = storage_broker_instance
+        self._status_broker_instance = status_broker_instance
 
         self._actions = ActionsHandler(self)
 
@@ -56,6 +58,10 @@ class Listener(object):
     @property
     def storage_broker_instance(self):
         return self._storage_broker_instance
+
+    @property
+    def status_broker_instance(self):
+        return self._status_broker_instance
 
     def listen(self):
         """
@@ -105,6 +111,7 @@ class ActionsHandler(object):
         self._listener = listener
         self._monitor_instance_access_lock = threading.Lock()
         self._storage_broker_instance_access_lock = threading.Lock()
+        self._status_broker_instance_access_lock = threading.Lock()
 
     @logged
     def start_monitor(self, type, options):
@@ -183,15 +190,13 @@ class ActionsHandler(object):
         return "ok"
 
     @logged
-    def acquire_whiteboard_lock(self, host_id):
-        with self._storage_broker_instance_access_lock:
-            self._listener.storage_broker_instance \
-                .acquire_whiteboard_lock(host_id)
+    def lock_host_id(self, host_id):
+        with self._status_broker_instance_access_lock:
+            self._listener.status_broker_instance.lock_host_id(host_id)
             return "ok"
 
     @logged
-    def release_whiteboard_lock(self, host_id):
-        with self._storage_broker_instance_access_lock:
-            self._listener.storage_broker_instance \
-                .release_whiteboard_lock(host_id)
+    def release_host_id(self):
+        with self._status_broker_instance_access_lock:
+            self._listener.status_broker_instance.release_host_id()
             return "ok"
