@@ -114,7 +114,7 @@ class Broker(object):
 
     def _get_status_broker(self):
         self._log.debug("Starting status broker")
-        return status_broker.StatusBroker()
+        return status_broker.StatusBroker(self._storage_broker_instance)
 
     def _get_listener(self):
         """
