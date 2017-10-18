@@ -51,8 +51,7 @@ class Broker(object):
         self._log.debug("Running broker")
         self._monitor_instance = self._get_monitor()
         self._storage_broker_instance = self._get_storage_broker()
-        self._listener = self._get_listener(self._monitor_instance,
-                                            self._storage_broker_instance)
+        self._listener = self._get_listener()
         self._listener.listen()
 
         # Server shutdown...
@@ -110,9 +109,10 @@ class Broker(object):
         self._log.debug("Starting storage broker")
         return storage_broker.StorageBroker()
 
-    def _get_listener(self, monitor_instance, storage_broker_instance):
+    def _get_listener(self):
         """
         Returns request listener used in main loop to serve requests.
         """
         self._log.debug("Starting listener")
-        return listener.Listener(monitor_instance, storage_broker_instance)
+        return listener.Listener(self._monitor_instance,
+                                 self._storage_broker_instance)
