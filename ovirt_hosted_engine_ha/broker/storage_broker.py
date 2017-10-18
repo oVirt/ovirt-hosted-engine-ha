@@ -17,14 +17,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-import errno
 import logging
 import os
 import threading
 import time
 import xmlrpclib
-
-import sanlock
 
 from ..broker import constants as broker_constants
 from ..env import config
@@ -305,68 +302,3 @@ class StorageBroker(object):
 
         self._log.log(log_level, "VDSM domain monitor status: %s", status)
         return status
-
-    def acquire_whiteboard_lock(self, host_id):
-        lease_file = self.get_image_path(self._lock_space)
-        if not self._sanlock_acquired:
-            lvl = logging.INFO
-        else:
-            lvl = logging.DEBUG
-        self._log.log(lvl, "Ensuring lease for lockspace %s, host id %d"
-                           " is acquired (file: %s)",
-                      broker_constants.LOCKSPACE_NAME, host_id, lease_file)
-
-        for attempt in range(broker_constants.WAIT_FOR_STORAGE_RETRY):
-            try:
-                sanlock.add_lockspace(broker_constants.LOCKSPACE_NAME,
-                                      host_id, lease_file)
-            except sanlock.SanlockException as e:
-                if hasattr(e, 'errno'):
-                    if e.errno == errno.EEXIST:
-                        self._log.debug("Host already holds lock")
-                        break
-                    elif e.errno == errno.EINVAL:
-                        self._log.error(
-                            "cannot get lock on host id {0}: "
-                            "host already holds lock on a different"
-                            " host id"
-                            .format(host_id))
-                        raise  # this shouldn't happen, so throw the exception
-                    elif e.errno == errno.EINTR:
-                        self._log.warn("cannot get lock on host id {0}:"
-                                       " sanlock operation interrupted"
-                                       " (will retry)"
-                                       .format(host_id))
-                    elif e.errno == errno.EINPROGRESS:
-                        self._log.warn("cannot get lock on host id {0}:"
-                                       " sanlock operation in progress"
-                                       "(will retry)"
-                                       .format(host_id))
-                    elif e.errno == errno.ENOENT:
-                        self._log.warn("cannot get lock on host id {0}:"
-                                       " the lock file '{1}' is missing"
-                                       "(will retry)"
-                                       .format(host_id, lease_file))
-            else:  # no exception, we acquired the lock
-                self._log.info("Acquired lock on host id %d", host_id)
-                break
-
-            # some temporary problem has occurred (usually waiting for
-            # the storage), so wait a while and try again
-            self._log.info("Failed to acquire the lock. Waiting '{0}'s before"
-                           " the next attempt".
-                           format(broker_constants.WAIT_FOR_STORAGE_DELAY))
-            time.sleep(broker_constants.WAIT_FOR_STORAGE_DELAY)
-        else:  # happens only if all attempts are exhausted
-            raise ex.SanlockInitializationError(
-                "Failed to initialize sanlock, the number of errors has"
-                " exceeded the limit")
-
-        # we get here only if the the lock is acquired
-        self._sanlock_acquired = True
-
-    def release_whiteboard_lock(self, host_id):
-        lease_file = self.get_image_path(self._lock_space)
-        sanlock.rem_lockspace(broker_constants.LOCKSPACE_NAME,
-                              host_id, lease_file)
-        self._sanlock_acquired = False
