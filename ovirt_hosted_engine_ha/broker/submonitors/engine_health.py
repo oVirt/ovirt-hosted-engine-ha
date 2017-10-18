@@ -87,9 +87,12 @@ class Submonitor(submonitor_base.SubmonitorBase):
 
         # Check if another host was faster in acquiring the storage lock
         exit_message = stats['items'][0].get('exitMessage', "")
-        if vm_status == 'down' \
-                and exit_message.endswith(
-                    'Failed to acquire lock: error -243'):
+        if vm_status == 'down' and (
+            exit_message.endswith('Failed to acquire lock: error -243') or
+            exit_message.endswith(
+                'Failed to acquire lock: Lease is held by another host'
+            )
+        ):
             d = {'vm': engine.VMState.ALREADY_LOCKED,
                  'health': engine.Health.BAD,
                  'detail': vm_status,
