@@ -118,14 +118,23 @@ class Submonitor(submonitor_base.SubmonitorBase):
     def _update_stats(self, stats, vdsm_ts, local_ts):
         with self._lock:
             # Only update newer stats
+            if not self._newer_timestamp(vdsm_ts, local_ts):
+                self._log.debug(
+                    "Update has older timestamp: "
+                    "(vdsm: %s, local: %s) < (vdsm: %s, local: %s)",
+                    vdsm_ts,
+                    local_ts,
+                    self._stats_vdsm_timestamp,
+                    self._stats_local_timestamp
+                )
+                return
 
-            # Compare by VDSM timestamp if it exists
-            if vdsm_ts and self._stats_vdsm_timestamp:
-                is_newer = vdsm_ts > self._stats_vdsm_timestamp
-            else:
-                is_newer = local_ts > self._stats_local_timestamp
+        # Getting result can take a long time, because
+        # it communicates with the engine
+        res = self._result_from_stats(stats)
 
-            if not is_newer:
+        with self._lock:
+            if not self._newer_timestamp(vdsm_ts, local_ts):
                 self._log.debug(
                     "Update has older timestamp: "
                     "(vdsm: %s, local: %s) < (vdsm: %s, local: %s)",
@@ -139,9 +148,15 @@ class Submonitor(submonitor_base.SubmonitorBase):
             self._stats_vdsm_timestamp = vdsm_ts
             self._stats_local_timestamp = local_ts
 
-            res = self._result_from_stats(stats)
             self._log.debug("Result set to: %s", res)
             self.update_result(json.dumps(res))
+
+    def _newer_timestamp(self, vdsm_ts, local_ts):
+        # Compare by VDSM timestamp if it exists
+        if vdsm_ts and self._stats_vdsm_timestamp:
+            return vdsm_ts > self._stats_vdsm_timestamp
+
+        return local_ts > self._stats_local_timestamp
 
     def _result_from_stats(self, stats):
         vm_status = stats['status']
