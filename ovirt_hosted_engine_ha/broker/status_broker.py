@@ -17,9 +17,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
+import collections
 import errno
 import logging
 import os
+import threading
 import time
 
 import sanlock
@@ -29,6 +31,67 @@ from ..lib import exceptions as ex
 
 
 class StatusBroker(object):
+    StateEntry = collections.namedtuple("StateEntry", ["host_id", "data"])
+
+    class StatusStorageThread(threading.Thread):
+        def __init__(self, storage_broker, status_broker):
+            threading.Thread.__init__(self, name="StatusStorageThread")
+            self._log = logging.getLogger("%s.StatusBroker.Update" % __name__)
+            self._run = True
+
+            self._storage_broker = storage_broker
+            self._status_broker = status_broker
+
+            self._state_update = collections.deque([], 1)
+            self._state_update_event = threading.Event()
+
+            self._raw_state = collections.deque([], 1)
+
+        def stop(self):
+            self._run = False
+            self._state_update.clear()
+            self._state_update_event.set()
+
+        @property
+        def state(self):
+            try:
+                return self._raw_state.pop()
+            except IndexError:
+                return {}
+
+        def post(self, host_id, data):
+            self._state_update.append(
+                StatusBroker.StateEntry(host_id, data)
+            )
+            self._state_update_event.set()
+
+        def run(self):
+            while self._run:
+                self._state_update_event.clear()
+                if self._state_update:
+                    entry = self._state_update.pop()
+                    try:
+                        # Host with id 0 has special meaning - we store
+                        # global metadata here, so no one owns lock
+                        # on that id.
+                        if (self._status_broker._inquire_whiteboard_lock() or
+                                entry.host_id == 0):
+                            self._storage_broker.put_stats(
+                                entry.host_id,
+                                entry.data
+                            )
+                    except:
+                        self._log.error("Failed to update state.",
+                                        exc_info=True)
+                try:
+                    self._raw_state.append(
+                        self._storage_broker.get_raw_stats()
+                    )
+                except:
+                    self._log.error("Failed to read state.",
+                                    exc_info=True)
+                self._state_update_event.wait(broker_constants.STORAGE_DELAY)
+
     def __init__(self, storage_broker):
         self._log = logging.getLogger("%s.StatusBroker" % __name__)
 
@@ -38,6 +101,19 @@ class StatusBroker(object):
 
         self._host_id = None
         self._current_state = {}
+
+        self._log.info("Starting status updating thread")
+        self._state_update_thread = StatusBroker.StatusStorageThread(
+            self._storage_broker,
+            self
+        )
+        self._state_update_thread.start()
+
+        self._log.info("Status broker initialized.")
+
+    def clean_up(self):
+        self._state_update_thread.stop()
+        self.release_host_id()
 
     @property
     def host_id(self):
@@ -88,7 +164,7 @@ class StatusBroker(object):
         Returns a space-delimited string of "<host_id>=<hex data>"
         or each host.
         """
-        raw_state = self._storage_broker.get_raw_stats()
+        raw_state = self._state_update_thread.state
 
         for host_id in sorted(raw_state.keys()):
             self._current_state[str(host_id)] = raw_state.get(host_id)
@@ -100,7 +176,7 @@ class StatusBroker(object):
         if host_id is None:
             host_id = self.host_id
         self._current_state[str(host_id)] = data.data
-        self._storage_broker.put_stats(host_id, data)
+        self._state_update_thread.post(host_id, data)
 
     def _inquire_whiteboard_lock(self):
         return sanlock.inq_lockspace(broker_constants.LOCKSPACE_NAME,

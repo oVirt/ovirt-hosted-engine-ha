@@ -61,6 +61,7 @@ class Broker(object):
         self._log.info("Server shutting down")
         self._listener.clean_up()
         self._monitor_instance.stop_all_submonitors()
+        self._status_broker_instance.clean_up()
         sys.exit(0)
 
     def _initialize_logging(self):
