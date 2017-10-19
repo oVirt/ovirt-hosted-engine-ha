@@ -37,6 +37,7 @@ class StatusBroker(object):
             broker_constants.LOCKSPACE_IMAGE)
 
         self._host_id = None
+        self._current_state = {}
 
     @property
     def host_id(self):
@@ -83,14 +84,22 @@ class StatusBroker(object):
                                     offset=0)
 
     def get_stats(self):
-        return self._storage_broker \
-            .get_all_stats()
+        """
+        Returns a space-delimited string of "<host_id>=<hex data>"
+        or each host.
+        """
+        raw_state = self._storage_broker.get_raw_stats()
+
+        for host_id in sorted(raw_state.keys()):
+            self._current_state[str(host_id)] = raw_state.get(host_id)
+        return self._current_state
 
     def put_stats(self, data, host_id=None):
         # We need to send host id here, as Global Maintenance flag
         # is stored at block with host_id 0
         if host_id is None:
             host_id = self.host_id
+        self._current_state[str(host_id)] = data.data
         self._storage_broker.put_stats(host_id, data)
 
     def _inquire_whiteboard_lock(self):

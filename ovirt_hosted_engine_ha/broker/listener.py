@@ -19,7 +19,9 @@
 
 import logging
 import os
+import six
 import threading
+import xmlrpclib
 
 from functools import wraps
 
@@ -135,9 +137,15 @@ class ActionsHandler(object):
 
     @logged
     def get_stats(self):
+        result = {}
         with self._status_broker_instance_access_lock:
-            return self._listener.status_broker_instance \
-                .get_stats()
+            state = self._listener.status_broker_instance.get_stats()
+
+        # As raw binary data can not be transferred via xmlrpc link,
+        # we need to wrap state's contents into Binary wrapper.
+        for k, v in six.iteritems(state):
+            result[k] = xmlrpclib.Binary(v)
+        return result
 
     @logged
     def push_hosts_state(self, alive_hosts):
