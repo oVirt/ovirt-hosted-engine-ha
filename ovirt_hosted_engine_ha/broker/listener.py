@@ -135,14 +135,13 @@ class ActionsHandler(object):
 
     @logged
     def get_stats(self):
-        with self._storage_broker_instance_access_lock:
-            stats = self._listener.storage_broker_instance \
-                .get_all_stats()
-        return stats
+        with self._status_broker_instance_access_lock:
+            return self._listener.status_broker_instance \
+                .get_stats()
 
     @logged
     def push_hosts_state(self, alive_hosts):
-        with self._storage_broker_instance_access_lock:
+        with self._status_broker_instance_access_lock:
             self._listener.storage_broker_instance \
                 .push_hosts_state(alive_hosts)
         return "ok"
@@ -157,9 +156,9 @@ class ActionsHandler(object):
 
     @logged
     def put_stats(self, host_id, data):
-        with self._storage_broker_instance_access_lock:
-            self._listener.storage_broker_instance \
-                .put_stats(host_id, data)
+        with self._status_broker_instance_access_lock:
+            self._listener.status_broker_instance \
+                .put_stats(data, host_id=host_id)
         return "ok"
 
     @logged

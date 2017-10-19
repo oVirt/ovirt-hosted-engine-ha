@@ -31,6 +31,7 @@ class StatusBroker(object):
     def __init__(self, storage_broker):
         self._log = logging.getLogger("%s.StatusBroker" % __name__)
 
+        self._storage_broker = storage_broker
         self._lease_file = storage_broker.get_image_path(
             broker_constants.LOCKSPACE_IMAGE)
 
@@ -73,6 +74,17 @@ class StatusBroker(object):
     def release_host_id(self):
         self._release_whiteboard_lock()
         self.host_id = None
+
+    def get_stats(self):
+        return self._storage_broker \
+            .get_all_stats()
+
+    def put_stats(self, data, host_id=None):
+        # We need to send host id here, as Global Maintenance flag
+        # is stored at block with host_id 0
+        if host_id is None:
+            host_id = self.host_id
+        self._storage_broker.put_stats(host_id, data)
 
     def _inquire_whiteboard_lock(self):
         return sanlock.inq_lockspace(broker_constants.LOCKSPACE_NAME,
