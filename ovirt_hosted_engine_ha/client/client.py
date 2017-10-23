@@ -18,10 +18,7 @@
 #
 
 import logging
-import os.path
-import sanlock
 
-from ..broker import constants as constants
 from ..env import config
 from ..lib import brokerlink
 from ..lib import metadata
@@ -257,9 +254,6 @@ class HAClient(object):
         return self._config.get_all_shared_keys(config_type)
 
     def reset_lockspace(self, force=False):
-        # Lockspace file
-        lockspace_file = None
-
         if self._config is None:
             self._config = config.Config()
 
@@ -274,7 +268,6 @@ class HAClient(object):
         broker = brokerlink.BrokerLink()
 
         stats = broker.get_stats_from_storage()
-        lockspace_file = broker.get_image_path(constants.LOCKSPACE_IMAGE)
 
         # Process raw stats
         try:
@@ -296,10 +289,7 @@ class HAClient(object):
                     raise Exception("Lockfile reset cannot be performed with"
                                     " an active agent.")
 
-        if os.path.exists(lockspace_file):
-            sanlock.write_lockspace(lockspace=constants.LOCKSPACE_NAME,
-                                    path=lockspace_file,
-                                    offset=0)
+        broker.reset_lockspace()
 
     def connect_storage_server(self):
         sserver = storage_server.StorageServer()

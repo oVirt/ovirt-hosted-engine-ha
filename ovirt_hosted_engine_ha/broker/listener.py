@@ -162,12 +162,6 @@ class ActionsHandler(object):
         return "ok"
 
     @logged
-    def image_path(self, service):
-        with self._storage_broker_instance_access_lock:
-            return self._listener.storage_broker_instance \
-                .get_image_path(service)
-
-    @logged
     def notify(self, event_type, detail, options):
         if notifications.notify(event_type, detail, options):
             return "sent"
@@ -199,3 +193,9 @@ class ActionsHandler(object):
         with self._status_broker_instance_access_lock:
             self._listener.status_broker_instance.release_host_id()
             return "ok"
+
+    @logged
+    def reset_lockspace(self):
+        with self._status_broker_instance_access_lock:
+            self._listener.status_broker_instance.reset_lockspace()
+        return "ok"

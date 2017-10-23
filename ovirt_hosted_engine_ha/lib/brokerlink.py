@@ -95,16 +95,6 @@ class BrokerLink(object):
         self._log.debug("Success, status %s", response)
         return response
 
-    def get_image_path(self, service):
-        try:
-            response = self._proxy.image_path(service)
-        except Exception as e:
-            self._log.error("Exception getting service path: %s", str(e))
-            raise RequestError("Failed to get service path: {0}"
-                               .format(str(e)))
-        self._log.debug("Success, service path %s", response)
-        return response
-
     def put_stats_on_storage(self, host_id, data):
         """
         Puts data on the shared storage according to the parameters.
@@ -178,3 +168,10 @@ class BrokerLink(object):
         :return: "ok" in case of success
         """
         self._proxy.release_host_id()
+
+    def reset_lockspace(self):
+        """
+        Clears lockspace data
+        :return: "ok" in case of success
+        """
+        self._proxy.reset_lockspace()

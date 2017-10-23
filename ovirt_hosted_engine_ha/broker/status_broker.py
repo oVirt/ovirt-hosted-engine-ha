@@ -19,6 +19,7 @@
 
 import errno
 import logging
+import os
 import time
 
 import sanlock
@@ -74,6 +75,12 @@ class StatusBroker(object):
     def release_host_id(self):
         self._release_whiteboard_lock()
         self.host_id = None
+
+    def reset_lockspace(self):
+        if os.path.exists(self._lease_file):
+            sanlock.write_lockspace(lockspace=broker_constants.LOCKSPACE_NAME,
+                                    path=self._lease_file,
+                                    offset=0)
 
     def get_stats(self):
         return self._storage_broker \
