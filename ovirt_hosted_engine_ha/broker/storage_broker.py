@@ -55,13 +55,15 @@ class StorageBroker(object):
         self._config = config.Config(logger=self._log)
         self._storage_access_lock = threading.Lock()
 
+        self._service_space = broker_constants.MD_IMAGE
+        self._lock_space = broker_constants.LOCKSPACE_IMAGE
         self._sanlock_acquired = False
 
         """
         Hosts state (liveness) history as reported by agents:
-        format: {service_type: (timestamp, [<host_id>, <host_id>])}
+        format: (timestamp, [<host_id>, <host_id>])
         """
-        self._stats_cache = {}
+        self._stats_cache = (0, "")
 
         # register storage domain info
         self.sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
@@ -70,7 +72,7 @@ class StorageBroker(object):
 
         try:
             devices = {
-                constants.SERVICE_TYPE + constants.MD_EXTENSION:
+                self._service_space:
                     VdsmBackend.Device(
                         self._config.get(config.ENGINE,
                                          config.METADATA_IMAGE_UUID,
@@ -79,7 +81,7 @@ class StorageBroker(object):
                                          config.METADATA_VOLUME_UUID,
                                          raise_on_none=True),
                     ),
-                constants.SERVICE_TYPE + broker_constants.LOCKSPACE_EXTENSION:
+                self._lock_space:
                     VdsmBackend.Device(
                         self._config.get(config.ENGINE,
                                          config.LOCKSPACE_IMAGE_UUID,
@@ -97,32 +99,31 @@ class StorageBroker(object):
                            .format(str(_ex)))
             raise
 
-    def is_host_alive(self, service_type):
-        timestamp, host_list = self._stats_cache.get(service_type, (0, ""))
+    def is_host_alive(self):
+        timestamp, host_list = self._stats_cache
         # the last report from client is too old, so we don't know
         if monotonic.time() - timestamp > constants.HOST_ALIVE_TIMEOUT_SECS:
             return []  # the data is too old
 
         return host_list
 
-    def push_hosts_state(self, service_type, data):
+    def push_hosts_state(self, data):
         current_time = monotonic.time()
-        self._stats_cache[service_type] =\
-            (current_time, data)
+        self._stats_cache = (current_time, data)
 
-    def get_all_stats_for_service_type(self, service_type):
+    def get_all_stats(self):
         """
         Reads all files in storage_dir for the given service_type, returning a
         space-delimited string of "<host_id>=<hex data>" for each host.
         """
-        d = self.get_raw_stats_for_service_type(service_type)
+        d = self.get_raw_stats()
         result = {}
 
         for host_id in sorted(d.keys()):
             result[str(host_id)] = xmlrpclib.Binary(d.get(host_id))
         return result
 
-    def get_raw_stats_for_service_type(self, service_type):
+    def get_raw_stats(self):
         """
         Reads all files in storage_dir for the given service_type, returning a
         dict of "host_id: data" for each host
@@ -130,10 +131,10 @@ class StorageBroker(object):
         Note: this method is called from the client as well as from
         self.get_all_stats_for_service_type().
         """
-        path, offset = self._backend.filename(service_type)
+        path, offset = self._backend.filename(self._service_space)
         self._log.debug("Getting stats for service %s from %s with"
                         " offset %d",
-                        service_type, path, offset)
+                        self._service_space, path, offset)
 
         bs = constants.HOST_SEGMENT_BYTES
         # TODO it would be better if this was configurable
@@ -171,7 +172,7 @@ class StorageBroker(object):
                      for i in range(0, len(data), bs)
                      if data[i] != '\0'))
 
-    def put_stats(self, service_type, host_id, data):
+    def put_stats(self, host_id, data):
         """
         Writes to the storage in file <storage_dir>/<service-type>.metadata,
         storing the hex string data (e.g. 01bc4f[...]) in binary format.
@@ -184,11 +185,11 @@ class StorageBroker(object):
         the file after the write.
         """
         host_id = int(host_id)
-        path, offset = self._backend.filename(service_type)
+        path, offset = self._backend.filename(self._service_space)
         offset += host_id * constants.HOST_SEGMENT_BYTES
         self._log.debug("Writing stats for service %s, host id %d"
                         " to file %s, offset %d",
-                        service_type, host_id, path, offset)
+                        self._service_space, host_id, path, offset)
 
         byte_data = data.data
         byte_data = byte_data.ljust(constants.HOST_SEGMENT_BYTES, '\0')
@@ -218,7 +219,7 @@ class StorageBroker(object):
 
         self._log.debug("Finished")
 
-    def get_service_path(self, service):
+    def get_image_path(self, service):
         """
         Returns the full path to a file or device that holds the data
         for specified service.
@@ -306,8 +307,7 @@ class StorageBroker(object):
         return status
 
     def acquire_whiteboard_lock(self, host_id):
-        lease_file = self.get_service_path(
-            constants.SERVICE_TYPE + broker_constants.LOCKSPACE_EXTENSION)
+        lease_file = self.get_image_path(self._lock_space)
         if not self._sanlock_acquired:
             lvl = logging.INFO
         else:
@@ -366,8 +366,7 @@ class StorageBroker(object):
         self._sanlock_acquired = True
 
     def release_whiteboard_lock(self, host_id):
-        lease_file = self.get_service_path(
-            constants.SERVICE_TYPE + broker_constants.LOCKSPACE_EXTENSION)
+        lease_file = self.get_image_path(self._lock_space)
         sanlock.rem_lockspace(broker_constants.LOCKSPACE_NAME,
                               host_id, lease_file)
         self._sanlock_acquired = False

@@ -95,9 +95,9 @@ class BrokerLink(object):
         self._log.debug("Success, status %s", response)
         return response
 
-    def get_service_path(self, service):
+    def get_image_path(self, service):
         try:
-            response = self._proxy.service_path(service)
+            response = self._proxy.image_path(service)
         except Exception as e:
             self._log.error("Exception getting service path: %s", str(e))
             raise RequestError("Failed to get service path: {0}"
@@ -105,16 +105,16 @@ class BrokerLink(object):
         self._log.debug("Success, service path %s", response)
         return response
 
-    def put_stats_on_storage(self, service_type, host_id, data):
+    def put_stats_on_storage(self, host_id, data):
         """
         Puts data on the shared storage according to the parameters.
         Data should be passed in as a string.
         """
-        self._log.debug("Storing blocks on storage for %s", service_type)
+        self._log.debug("Storing blocks on storage")
         # broker expects blocks in hex format
-        self._proxy.put_stats(service_type, host_id, xmlrpclib.Binary(data))
+        self._proxy.put_stats(host_id, xmlrpclib.Binary(data))
 
-    def put_hosts_state_on_storage(self, service_type, host_id, alive_hosts):
+    def put_hosts_state_on_storage(self, host_id, alive_hosts):
         """
         Broker expects list of alive hosts in format:
         <host_id>|<host_id>
@@ -125,10 +125,10 @@ class BrokerLink(object):
         _alive_hosts = [host_id] + alive_hosts
 
         self._log.debug("Updating live hosts list")
-        self._proxy.push_hosts_state(service_type, _alive_hosts)
+        self._proxy.push_hosts_state(_alive_hosts)
 
-    def is_host_alive(self, service_type, host_id):
-        host_list = self._proxy.is_host_alive(service_type)
+    def is_host_alive(self, host_id):
+        host_list = self._proxy.is_host_alive()
         if not host_list:
             return False
 
@@ -137,12 +137,12 @@ class BrokerLink(object):
                         .format(host_id, host_id in host_list))
         return host_id in host_list
 
-    def get_stats_from_storage(self, service_type):
+    def get_stats_from_storage(self):
         """
         Returns data from the shared storage for all hosts of the specified
         service type.
         """
-        result = self._proxy.get_stats(service_type)
+        result = self._proxy.get_stats()
         ret = {}
         for host_id, data in six.iteritems(result):
             ret[int(host_id)] = data.data

@@ -21,9 +21,8 @@ import logging
 import os.path
 import sanlock
 
-from ..agent import constants as agent_constants
+from ..broker import constants as constants
 from ..env import config
-from ..env import constants
 from ..lib import brokerlink
 from ..lib import metadata
 from ..lib import storage_server
@@ -73,8 +72,7 @@ class HAClient(object):
         self._config = None
 
     def _check_liveness_metadata(self, md, broker):
-        service = constants.SERVICE_TYPE + agent_constants.MD_EXTENSION
-        md["live-data"] = broker.is_host_alive(service, md["host-id"])
+        md["live-data"] = broker.is_host_alive(md["host-id"])
         self._log.debug("Is host '{0}' alive? -> '{1}'"
                         .format(md["host-id"], md["live-data"]))
 
@@ -95,8 +93,7 @@ class HAClient(object):
         if self._config is None:
             self._config = config.Config()
         broker = brokerlink.BrokerLink()
-        service = constants.SERVICE_TYPE + agent_constants.MD_EXTENSION
-        stats = broker.get_stats_from_storage(service)
+        stats = broker.get_stats_from_storage()
 
         stats = self._parse_stats(stats, mode)
         self._check_liveness_for_stats(stats, broker)
@@ -113,7 +110,7 @@ class HAClient(object):
         sb = storage_broker.StorageBroker()
         sb.set_storage_domain("client", StorageBackendTypes.FilesystemBackend,
                               sd_uuid=sd_uuid, dom_type=dom_type)
-        stats = sb.get_raw_stats_for_service_type("client", service_type)
+        stats = sb.get_raw_stats("client", service_type)
 
         return self._parse_stats(stats, mode)
 
@@ -183,8 +180,7 @@ class HAClient(object):
             put_val = value
 
         broker = brokerlink.BrokerLink()
-        service = constants.SERVICE_TYPE + agent_constants.MD_EXTENSION
-        all_stats = broker.get_stats_from_storage(service)
+        all_stats = broker.get_stats_from_storage()
 
         global_stats = all_stats.get(0)
         if global_stats and len(global_stats):
@@ -199,10 +195,7 @@ class HAClient(object):
 
         md_dict[flag] = put_val
         block = metadata.create_global_metadata_from_dict(md_dict)
-        broker.put_stats_on_storage(
-            constants.SERVICE_TYPE + agent_constants.MD_EXTENSION,
-            0,
-            block)
+        broker.put_stats_on_storage(0, block)
 
     def get_local_host_id(self):
         if self._config is None:
@@ -217,8 +210,7 @@ class HAClient(object):
 
         host_id = int(self._config.get(config.ENGINE, config.HOST_ID))
         broker = brokerlink.BrokerLink()
-        service = constants.SERVICE_TYPE + agent_constants.MD_EXTENSION
-        stats = broker.get_stats_from_storage(service)
+        stats = broker.get_stats_from_storage()
 
         score = 0
         if host_id in stats:
@@ -268,12 +260,6 @@ class HAClient(object):
         # Lockspace file
         lockspace_file = None
 
-        # Service names
-        lockspace = (constants.SERVICE_TYPE +
-                     agent_constants.LOCKSPACE_EXTENSION)
-        service = (constants.SERVICE_TYPE +
-                   agent_constants.MD_EXTENSION)
-
         if self._config is None:
             self._config = config.Config()
 
@@ -287,8 +273,8 @@ class HAClient(object):
         # Connect to a broker and read all stats
         broker = brokerlink.BrokerLink()
 
-        stats = broker.get_stats_from_storage(service)
-        lockspace_file = broker.get_service_path(lockspace)
+        stats = broker.get_stats_from_storage()
+        lockspace_file = broker.get_image_path(constants.LOCKSPACE_IMAGE)
 
         # Process raw stats
         try:
@@ -311,7 +297,7 @@ class HAClient(object):
                                     " an active agent.")
 
         if os.path.exists(lockspace_file):
-            sanlock.write_lockspace(lockspace=constants.SERVICE_TYPE,
+            sanlock.write_lockspace(lockspace=constants.LOCKSPACE_NAME,
                                     path=lockspace_file,
                                     offset=0)
 

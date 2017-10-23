@@ -682,16 +682,11 @@ class HostedEngine(object):
         return out
 
     def _push_to_storage(self, blocks):
-        self._broker.put_stats_on_storage(
-            constants.SERVICE_TYPE + constants.MD_EXTENSION,
-            self.host_id,
-            blocks)
+        self._broker.put_stats_on_storage(self.host_id, blocks)
 
     def update_hosts_state(self, engine_state):
-        self._broker.put_hosts_state_on_storage(
-            constants.SERVICE_TYPE + constants.MD_EXTENSION,
-            self.host_id,
-            engine_state.data.alive_hosts)
+        self._broker.put_hosts_state_on_storage(self.host_id,
+                                                engine_state.data.alive_hosts)
 
     def collect_stats(self, get_local=False):
 
@@ -716,8 +711,7 @@ class HostedEngine(object):
             "maintenance": False,
         }
 
-        all_stats = self._broker.get_stats_from_storage(
-            constants.SERVICE_TYPE + constants.MD_EXTENSION)
+        all_stats = self._broker.get_stats_from_storage()
 
         # host_id 0 is a special case, representing global metadata
         if all_stats and 0 in all_stats:

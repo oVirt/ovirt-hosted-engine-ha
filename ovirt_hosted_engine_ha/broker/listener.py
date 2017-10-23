@@ -127,39 +127,39 @@ class ActionsHandler(object):
         return str(status)
 
     @logged
-    def get_stats(self, service_type):
+    def get_stats(self):
         with self._storage_broker_instance_access_lock:
             stats = self._listener.storage_broker_instance \
-                .get_all_stats_for_service_type(service_type)
+                .get_all_stats()
         return stats
 
     @logged
-    def push_hosts_state(self, service_type, alive_hosts):
+    def push_hosts_state(self, alive_hosts):
         with self._storage_broker_instance_access_lock:
             self._listener.storage_broker_instance \
-                .push_hosts_state(service_type, alive_hosts)
+                .push_hosts_state(alive_hosts)
         return "ok"
 
     @logged
-    def is_host_alive(self, service_type):
+    def is_host_alive(self):
         with self._storage_broker_instance_access_lock:
             alive_hosts = self._listener.storage_broker_instance \
-                .is_host_alive(service_type)
+                .is_host_alive()
         # list of alive hosts in format <host_id>|<host_id>
         return alive_hosts
 
     @logged
-    def put_stats(self, service_type, host_id, data):
+    def put_stats(self, host_id, data):
         with self._storage_broker_instance_access_lock:
             self._listener.storage_broker_instance \
-                .put_stats(service_type, host_id, data)
+                .put_stats(host_id, data)
         return "ok"
 
     @logged
-    def service_path(self, service):
+    def image_path(self, service):
         with self._storage_broker_instance_access_lock:
             return self._listener.storage_broker_instance \
-                .get_service_path(service)
+                .get_image_path(service)
 
     @logged
     def notify(self, event_type, detail, options):
