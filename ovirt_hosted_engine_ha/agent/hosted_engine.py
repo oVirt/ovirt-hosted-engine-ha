@@ -425,6 +425,9 @@ class HostedEngine(object):
 
         try:
             self._monitoring_loop()
+        except:
+            self._log.error("Unhandled monitoring loop exception",
+                            exc_info=True)
         finally:
             # Publish stopped status
             stopped = AgentStopped(self.fsm.state.data)
