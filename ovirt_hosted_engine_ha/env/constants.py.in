@@ -44,6 +44,7 @@ HA_AGENT_CONF_FILE = '@ENGINE_HA_STATEDIR@/ha.conf'
 OVIRT_HOSTED_ENGINE_LB_DIR = '@ENGINE_HA_STATEDIR@'
 
 SD_MOUNT_PARENT = '/rhev/data-center/mnt'
+SD_RUN_DIR = '/run/vdsm/storage'
 SD_METADATA_DIR = 'ha_agent'
 SD_GLUSTER_PREFIX = 'glusterSD'
 

@@ -22,7 +22,6 @@
 
 
 import getpass
-import glob
 import grp
 import os
 import pwd
@@ -345,29 +344,21 @@ def get_volume_path(type, sd_uuid, img_uuid, vol_uuid):
     :param vol_uuid: Volume UUID
     :returns: The local path of the required volume
     """
-    volume_path = envconst.SD_MOUNT_PARENT
-    if type == 'glusterfs':
-        volume_path = os.path.join(
-            volume_path,
-            'glusterSD',
-        )
     volume_path = os.path.join(
-        volume_path,
-        '*',
+        envconst.SD_RUN_DIR,
         sd_uuid,
-        'images',
         img_uuid,
-        vol_uuid,
+        vol_uuid
     )
-    volumes = glob.glob(volume_path)
-    if not volumes:
+
+    if not os.path.exists(volume_path):
         raise RuntimeError(
             'Path to volume {vol_uuid} not found in {root}'.format(
                 vol_uuid=vol_uuid,
-                root=envconst.SD_MOUNT_PARENT,
+                root=envconst.SD_RUN_DIR,
             )
         )
-    return volumes[0]
+    return volume_path
 
 
 def task_wait(cli, logger):
