@@ -107,6 +107,8 @@ class HostedEngine(object):
     LF_GLOBAL_MD_ERROR_INT = 900
     LF_MAINTENANCE = 'LF_MAINTENANCE'
     LF_MAINTENANCE_INT = 900
+    LF_NOTIFY_ERROR = 'LF_NOTIFY_ERROR'
+    LF_NOTIFY_ERROR_INT = 300
 
     engine_status_score_lookup = {
         'None': 0,
@@ -450,10 +452,21 @@ class HostedEngine(object):
 
             self._log.debug("Processing engine state %s", state)
             if old_state.__class__.__name__ != state.__class__.__name__:
-                self._broker.notify(brokerlink.NotifyEvents.STATE_TRANSITION,
-                                    "%s-%s" % (old_state.__class__.__name__,
-                                               state.__class__.__name__),
-                                    hostname=socket.gethostname())
+                try:
+                    event = brokerlink.NotifyEvents.STATE_TRANSITION
+                    self._broker.notify(event,
+                                        "%s-%s" % (
+                                            old_state.__class__.__name__,
+                                            state.__class__.__name__),
+                                        hostname=socket.gethostname())
+                except Exception as e:
+                    self._log.warning("Could not send notification. Ignoring"
+                                      "the error and continuing.",
+                                      extra=log_filter.lf_args(
+                                          self.LF_NOTIFY_ERROR,
+                                          self.LF_NOTIFY_ERROR_INT))
+                    self._log.debug("Detailed explanation of notification"
+                                    " failure", exc_info=True)
 
             try:
                 if prev_delay > 0:
