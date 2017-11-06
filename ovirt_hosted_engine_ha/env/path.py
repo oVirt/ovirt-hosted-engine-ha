@@ -28,6 +28,7 @@ from vdsm.client import ServerError
 
 
 MOUNT_DIR = {
+    "nfs": "",
     "nfs3": "",
     "nfs4": "",
     "glusterfs": "glusterSD"
@@ -62,6 +63,7 @@ def get_domain_path(config_):
     parent = constants.SD_MOUNT_PARENT
 
     if dom_type in (
+        constants.DOMAIN_TYPE_NFS,
         constants.DOMAIN_TYPE_NFS3,
         constants.DOMAIN_TYPE_NFS4,
         constants.DOMAIN_TYPE_GLUSTERFS,

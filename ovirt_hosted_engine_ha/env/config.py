@@ -53,6 +53,7 @@ CONF_FILE = 'conf'
 HEVMID = 'vmid'
 STORAGE = 'storage'
 MNT_OPTIONS = 'mnt_options'
+NFS_VERSION = 'nfs_version'
 CONNECTIONUUID = 'connectionUUID'
 # The following are used only for iSCSI storage
 ISCSI_IQN = 'iqn'

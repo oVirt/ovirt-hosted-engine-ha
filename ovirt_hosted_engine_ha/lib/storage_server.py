@@ -60,6 +60,14 @@ class StorageServer(object):
             )
         except (KeyError, ValueError):
             pass
+        self._nfs_version = None
+        try:
+            self._nfs_version = self._config.get(
+                config.ENGINE,
+                config.NFS_VERSION
+            )
+        except (KeyError, ValueError):
+            pass
 
     def _get_conlist_nfs_gluster(self):
         conDict = {
@@ -67,12 +75,22 @@ class StorageServer(object):
             'user': 'kvm',
             'id': self._connectionUUID,
         }
-        if self._domain_type == constants.DOMAIN_TYPE_NFS3:
+        if self._domain_type == constants.DOMAIN_TYPE_NFS:
             storageType = constants.STORAGE_TYPE_NFS
-            conDict['protocol_version'] = 3
+            if not self._nfs_version:
+                conDict['protocol_version'] = 'auto'
+            else:
+                conDict['protocol_version'] = self._nfs_version.replace(
+                    'v', ''
+                ).replace(
+                    '_', '.'
+                )
+        elif self._domain_type == constants.DOMAIN_TYPE_NFS3:
+            storageType = constants.STORAGE_TYPE_NFS
+            conDict['protocol_version'] = '3'
         elif self._domain_type == constants.DOMAIN_TYPE_NFS4:
             storageType = constants.STORAGE_TYPE_NFS
-            conDict['protocol_version'] = 4
+            conDict['protocol_version'] = '4'
         elif self._domain_type == constants.DOMAIN_TYPE_GLUSTERFS:
             storageType = constants.STORAGE_TYPE_GLUSTERFS
             conDict['vfs_type'] = 'glusterfs'
@@ -177,6 +195,7 @@ class StorageServer(object):
         conList = None
         storageType = None
         if self._domain_type in (
+                constants.DOMAIN_TYPE_NFS,
                 constants.DOMAIN_TYPE_NFS3,
                 constants.DOMAIN_TYPE_NFS4,
                 constants.DOMAIN_TYPE_GLUSTERFS,
