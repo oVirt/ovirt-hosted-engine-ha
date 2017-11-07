@@ -37,8 +37,7 @@ class OVFStore(object):
     OVF location data cache
     to avoid repeated rescans
     """
-    _ovf_store_imgUUID = None
-    _ovf_store_volUUID = None
+    _ovf_store_path = None
 
     def __init__(self):
         from ovirt_hosted_engine_ha.env import config
@@ -60,11 +59,10 @@ class OVFStore(object):
         self._HEVMID = self._config.get(config.ENGINE, config.HEVMID)
 
     def have_store_info(self):
-        return OVFStore._ovf_store_imgUUID and OVFStore._ovf_store_volUUID
+        return OVFStore._ovf_store_path
 
     def clear_store_info(self):
-        OVFStore._ovf_store_imgUUID = None
-        OVFStore._ovf_store_volUUID = None
+        OVFStore._ovf_store_path = None
 
     def scan(self):
         self.clear_store_info()
@@ -109,28 +107,34 @@ class OVFStore(object):
                     description_dict = json.loads(description)
                     self._log.debug(description_dict)
                     if description_dict['Disk Description'] == 'OVF_STORE':
-                        OVFStore._ovf_store_imgUUID = img_uuid
-                        OVFStore._ovf_store_volUUID = vol_uuid
                         self._log.info(
                             'Found OVF_STORE: '
                             'imgUUID:{img}, volUUID:{vol}'.format(
-                                img=self._ovf_store_imgUUID,
-                                vol=self._ovf_store_volUUID,
+                                img=img_uuid,
+                                vol=vol_uuid,
                             )
                         )
-        if self._ovf_store_imgUUID is None or self._ovf_store_imgUUID is None:
+
+                        # Prepare symlinks for the OVF store
+                        try:
+                            image_info = cli.Image.prepare(
+                                storagepoolID=self._spUUID,
+                                storagedomainID=self._sdUUID,
+                                imageID=img_uuid,
+                                volumeID=vol_uuid
+                            )
+                            OVFStore._ovf_store_path = image_info["path"]
+                        except ServerError as e:
+                            raise RuntimeError(str(e))
+
+        if self._ovf_store_path is None:
             self._log.warning('Unable to find OVF_STORE')
             return False
         return True
 
     def getEngineVMOVF(self):
         self._log.info('Extracting Engine VM OVF from the OVF_STORE')
-        volumepath = heconflib.get_volume_path(
-            self._type,
-            self._sdUUID,
-            OVFStore._ovf_store_imgUUID,
-            OVFStore._ovf_store_volUUID
-        )
+        volumepath = OVFStore._ovf_store_path
         self._log.info('OVF_STORE volume path: %s ' % volumepath)
         filename = self._HEVMID + '.ovf'
         ovf = heconflib.extractConfFile(self._log, volumepath, filename)
