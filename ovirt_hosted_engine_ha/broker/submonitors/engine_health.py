@@ -161,20 +161,6 @@ class Submonitor(submonitor_base.SubmonitorBase):
     def _result_from_stats(self, stats):
         vm_status = stats['status']
 
-        # Report states that are not really Up, but should be
-        # reported as such
-        if vm_status in (vmstatus.PAUSED,
-                         vmstatus.WAIT_FOR_LAUNCH,
-                         vmstatus.RESTORING_STATE,
-                         vmstatus.POWERING_UP):
-            self._log.info("VM status: %s", vm_status,
-                           extra=log_filter.lf_args('status', 60))
-            self._down_expected = False
-            return {'vm': engine.VMState.UP,
-                    'health': engine.Health.BAD,
-                    'detail': vm_status,
-                    'reason': 'bad vm status'}
-
         # Check if another host was faster in acquiring the storage lock
         exit_message = stats.get('exitMessage', "")
         if vm_status == vmstatus.DOWN and (
@@ -214,6 +200,20 @@ class Submonitor(submonitor_base.SubmonitorBase):
             self._log.info("VM not running on this host, status %s", vm_status,
                            extra=log_filter.lf_args('status', 60))
             return {'vm': self._down_vm_state(),
+                    'health': engine.Health.BAD,
+                    'detail': vm_status,
+                    'reason': 'bad vm status'}
+
+        # Report states that are not really Up, but should be
+        # reported as such
+        if vm_status in (vmstatus.PAUSED,
+                         vmstatus.WAIT_FOR_LAUNCH,
+                         vmstatus.RESTORING_STATE,
+                         vmstatus.POWERING_UP):
+            self._log.info("VM status: %s", vm_status,
+                           extra=log_filter.lf_args('status', 60))
+            self._down_expected = False
+            return {'vm': engine.VMState.UP,
                     'health': engine.Health.BAD,
                     'detail': vm_status,
                     'reason': 'bad vm status'}
