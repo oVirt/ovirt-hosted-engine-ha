@@ -31,6 +31,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+LF_OVF_STORE_NOT_FOUND = 'ovf-store-not-found'
+LF_OVF_STORE_PATH = 'ovf-store-path'
+LF_EXTRACTION_FAILED = 'ovf-extraction-failed'
+LF_OVF_LOG_DELAY = 300
 
 class OVFStore(object):
     """
@@ -128,19 +132,31 @@ class OVFStore(object):
                             raise RuntimeError(str(e))
 
         if self._ovf_store_path is None:
-            self._log.warning('Unable to find OVF_STORE')
+            self._log.warning('Unable to find OVF_STORE',
+                              extra=log_filter.lf_args(
+                                  LF_OVF_STORE_NOT_FOUND,
+                                  LF_OVF_LOG_DELAY
+                              ))
             return False
         return True
 
     def getEngineVMOVF(self):
-        self._log.info('Extracting Engine VM OVF from the OVF_STORE')
+        self._log.debug('Extracting Engine VM OVF from the OVF_STORE')
         volumepath = OVFStore._ovf_store_path
-        self._log.info('OVF_STORE volume path: %s ' % volumepath)
+        self._log.info('OVF_STORE volume path: %s ' % volumepath,
+                       extra=log_filter.lf_args(
+                           LF_OVF_STORE_PATH,
+                           LF_OVF_LOG_DELAY
+                       ))
         filename = self._HEVMID + '.ovf'
         ovf = heconflib.extractConfFile(self._log, volumepath, filename)
         self._log.debug('HEVM OVF: \n%s\n' % ovf)
         if ovf is None:
-            self._log.error('Unable to extract HEVM OVF')
+            self._log.error('Unable to extract HEVM OVF',
+                            extra=log_filter.lf_args(
+                                LF_EXTRACTION_FAILED,
+                                LF_OVF_LOG_DELAY
+                            ))
         return ovf
 
 # vim: expandtab tabstop=4 shiftwidth=4
