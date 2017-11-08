@@ -51,11 +51,8 @@ class Submonitor(submonitor_base.SubmonitorBase):
             raise Exception("engine-health requires vm_uuid")
         self._log.debug("vm_uuid=%s", self._vm_uuid)
 
-        # Signaling if the down state of the VM is expected or not
-        # Down is expected in these cases:
-        #  - the VM was migrated away successfully
-        #  - the VM is already running elsewhere and the storage is locked
-        self._down_expected = True
+        # Most recent VM state
+        self._vm_state = engine.VMState.DOWN
 
         self._lock = threading.Lock()
 
@@ -95,7 +92,11 @@ class Submonitor(submonitor_base.SubmonitorBase):
             if e.code == vdsm_exception.NoSuchVM.code:
                 self._log.info("VM not on this host",
                                extra=log_filter.lf_args('status', 60))
-                d = {'vm': self._down_vm_state(),
+
+                if self._vm_state == engine.VMState.UP:
+                    self._vm_state = engine.VMState.DOWN_MISSING
+
+                d = {'vm': self._vm_state,
                      'health': engine.Health.BAD,
                      'detail': 'unknown',
                      'reason': 'vm not running on this host'}
@@ -173,8 +174,8 @@ class Submonitor(submonitor_base.SubmonitorBase):
                 "VM storage is already locked.",
                 extra=log_filter.lf_args('status', 60)
             )
-            self._down_expected = True
-            return {'vm': self._down_vm_state(),
+            self._vm_state = engine.VMState.DOWN
+            return {'vm': self._vm_state,
                     'health': engine.Health.BAD,
                     'detail': vm_status,
                     'reason': 'Storage of VM is locked. '
@@ -189,8 +190,8 @@ class Submonitor(submonitor_base.SubmonitorBase):
                 "VM successfully migrated away from this host.",
                 extra=log_filter.lf_args('status', 60)
             )
-            self._down_expected = True
-            return {'vm': self._down_vm_state(),
+            self._vm_state = engine.VMState.DOWN
+            return {'vm': self._vm_state,
                     'health': engine.Health.BAD,
                     'detail': vm_status,
                     'reason': 'VM migrated away successfully'}
@@ -199,7 +200,11 @@ class Submonitor(submonitor_base.SubmonitorBase):
         if vm_status in (vmstatus.DOWN, vmstatus.MIGRATION_DESTINATION):
             self._log.info("VM not running on this host, status %s", vm_status,
                            extra=log_filter.lf_args('status', 60))
-            return {'vm': self._down_vm_state(),
+
+            if self._vm_state != engine.VMState.DOWN:
+                self._vm_state = engine.VMState.DOWN_UNEXPECTED
+
+            return {'vm': self._vm_state,
                     'health': engine.Health.BAD,
                     'detail': vm_status,
                     'reason': 'bad vm status'}
@@ -212,8 +217,8 @@ class Submonitor(submonitor_base.SubmonitorBase):
                          vmstatus.POWERING_UP):
             self._log.info("VM status: %s", vm_status,
                            extra=log_filter.lf_args('status', 60))
-            self._down_expected = False
-            return {'vm': engine.VMState.UP,
+            self._vm_state = engine.VMState.UP
+            return {'vm': self._vm_state,
                     'health': engine.Health.BAD,
                     'detail': vm_status,
                     'reason': 'bad vm status'}
@@ -226,24 +231,20 @@ class Submonitor(submonitor_base.SubmonitorBase):
         output = p.communicate()
         if p.returncode != 0:
             self._log.warning("bad health status: %s", output[0])
-            self._down_expected = False
-            return {'vm': engine.VMState.UP,
+            self._vm_state = engine.VMState.UP
+            return {'vm': self._vm_state,
                     'health': engine.Health.BAD,
                     'detail': vm_status,
                     'reason': 'failed liveliness check'}
 
         self._log.info("VM is up on this host with healthy engine",
                        extra=log_filter.lf_args('status', 60))
-        self._down_expected = False
-        return {'vm': engine.VMState.UP,
+        self._vm_state = engine.VMState.UP
+        return {'vm': self._vm_state,
                 'health': engine.Health.GOOD,
                 'detail': vm_status}
 
         # FIXME remote db down status
-
-    def _down_vm_state(self):
-        return engine.VMState.DOWN if self._down_expected \
-            else engine.VMState.DOWN_UNEXPECTED
 
     def _handle_events(self):
         while True:

@@ -404,10 +404,14 @@ class EngineUp(EngineState):
         :type logger: logging.Logger
         """
         if new_data.best_engine_status["vm"] != engine.VMState.UP:
-            local_health = new_data.stats.local["engine-health"]
-            if local_health["vm"] == engine.VMState.DOWN:
+            local_vm_state = new_data.stats.local["engine-health"]["vm"]
+            if local_vm_state == engine.VMState.DOWN:
                 logger.info("Engine vm is running on another host")
                 return EngineDown(new_data)
+
+            if local_vm_state == engine.VMState.DOWN_UNEXPECTED:
+                logger.info("Engine vm was unexpectedly shut down")
+                return EngineUnexpectedlyDown(new_data)
 
             logger.info("Engine vm may be running on another host")
             return EngineMaybeAway(new_data), fsm.NOWAIT
@@ -854,23 +858,31 @@ class EngineMaybeAway(EngineState):
         :type new_data: HostedEngineData
         :type logger: logging.Logger
         """
+
+        local_vm_state = new_data.stats.local["engine-health"]["vm"]
+        if local_vm_state == engine.VMState.DOWN:
+            logger.info("Engine vm is running on another host")
+            return EngineDown(new_data)
+
+        if local_vm_state == engine.VMState.DOWN_UNEXPECTED:
+            logger.info("Engine vm was unexpectedly shut down")
+            return EngineUnexpectedlyDown(new_data)
+
+        if local_vm_state == engine.VMState.UP:
+            logger.info("Engine vm unexpectedly running locally,"
+                        " monitoring vm")
+            return EngineUp(new_data)
+
         if new_data.best_engine_status["vm"] == engine.VMState.UP:
-            if (new_data.best_engine_host_id ==
-                    new_data.stats.host_id):
-                # The engine is unexpectedly running here, start monitoring it
-                logger.info("Engine vm unexpectedly running locally,"
-                            " monitoring vm")
-                return EngineUp(new_data)
-            else:
-                # The engine is running somewhere else
-                hostname = new_data.stats.hosts[
-                    new_data.best_engine_host_id]['hostname']
-                logger.info("Engine vm is running on host %s (id %d)",
-                            hostname,
-                            new_data.best_engine_host_id,
-                            extra=log_filter.lf_args(
-                                self.LF_ENGINE_HEALTH,
-                                self.LF_ENGINE_HEALTH_INT))
-                return EngineDown(new_data)
+            # The engine is running somewhere else
+            host_id = new_data.best_engine_host_id
+            hostname = new_data.stats.hosts[host_id]['hostname']
+            logger.info("Engine vm is running on host %s (id %d)",
+                        hostname,
+                        new_data.best_engine_host_id,
+                        extra=log_filter.lf_args(
+                            self.LF_ENGINE_HEALTH,
+                            self.LF_ENGINE_HEALTH_INT))
+            return EngineDown(new_data)
 
         return EngineMaybeAway(new_data)

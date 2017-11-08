@@ -30,6 +30,10 @@ class VMState(object):
     # The VM is down for any reason other than those mentioned in DOWN state.
     DOWN_UNEXPECTED = "down_unexpected"
 
+    # The VDSM RPC call returns that VM does not exist.
+    # This cannot happen with events.
+    DOWN_MISSING = "down_missing"
+
 
 class Health(object):
     GOOD = "good"
