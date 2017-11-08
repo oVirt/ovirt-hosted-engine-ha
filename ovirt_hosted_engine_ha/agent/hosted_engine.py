@@ -538,7 +538,7 @@ class HostedEngine(object):
         self._log.info("Broker initialized, all submonitors started")
 
     def _initialize_vdsm(self):
-        self._log.info("Initializing VDSM")
+        self._log.debug("Initializing VDSM")
         tries = 0
 
         while tries < constants.MAX_VDSM_START_RETRIES:

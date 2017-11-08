@@ -507,7 +507,7 @@ class Config(object):
             ' the manager UI\API\n\n'
         )
         if self._logger:
-            self._logger.info(
+            self._logger.debug(
                 "Reloading vm.conf from the shared storage domain"
             )
 
