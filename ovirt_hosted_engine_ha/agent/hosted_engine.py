@@ -109,6 +109,8 @@ class HostedEngine(object):
     LF_MAINTENANCE_INT = 900
     LF_NOTIFY_ERROR = 'LF_NOTIFY_ERROR'
     LF_NOTIFY_ERROR_INT = 300
+    LF_BEST_REMOTE_HOST = 'LF_BEST_REMOTE_HOST'
+    LF_BEST_REMOTE_HOST_INT = 300
 
     engine_status_score_lookup = {
         'None': 0,
@@ -494,7 +496,11 @@ class HostedEngine(object):
                     self._log.info("Best remote host %s (id: %d, score: %d)",
                                    state.data.best_score_host["hostname"],
                                    state.data.best_score_host["host-id"],
-                                   state.data.best_score_host["score"])
+                                   state.data.best_score_host["score"],
+                                   extra=log_filter.lf_args(
+                                       self.LF_BEST_REMOTE_HOST,
+                                       self.LF_BEST_REMOTE_HOST_INT,
+                                   ))
 
                 # publish the current state
                 self.publish(state)
@@ -504,8 +510,8 @@ class HostedEngine(object):
                 delay = max(delay, 30)
 
             loop_stop = monotonic.time()
-            self._log.info("Monitoring loop execution time %d sec",
-                           loop_stop - loop_start)
+            self._log.debug("Monitoring loop execution time %d sec",
+                            loop_stop - loop_start)
 
             prev_delay = delay
 
