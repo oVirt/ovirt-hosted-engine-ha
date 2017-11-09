@@ -75,6 +75,7 @@ class StorageServer(object):
             'user': 'kvm',
             'id': self._connectionUUID,
         }
+        storageType = None
         if self._domain_type == constants.DOMAIN_TYPE_NFS:
             storageType = constants.STORAGE_TYPE_NFS
             if not self._nfs_version:

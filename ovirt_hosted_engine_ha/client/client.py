@@ -25,7 +25,6 @@ from ..lib import metadata
 from ..lib import storage_server
 from ..lib import util
 from ..lib.exceptions import MetadataError
-from ..lib.storage_backends import StorageBackendTypes
 
 
 class HAClient(object):
@@ -96,8 +95,7 @@ class HAClient(object):
         self._check_liveness_for_stats(stats, broker)
         return stats
 
-    def get_all_stats_direct(self, sd_uuid, dom_type, service_type,
-                             mode=StatModes.ALL):
+    def get_all_stats_direct(self, mode=StatModes.ALL):
         """
         Like get_all_stats(), but bypasses broker by directly accessing
         storage.
@@ -105,9 +103,7 @@ class HAClient(object):
         from ..broker import storage_broker
 
         sb = storage_broker.StorageBroker()
-        sb.set_storage_domain("client", StorageBackendTypes.FilesystemBackend,
-                              sd_uuid=sd_uuid, dom_type=dom_type)
-        stats = sb.get_raw_stats("client", service_type)
+        stats = sb.get_raw_stats()
 
         return self._parse_stats(stats, mode)
 
@@ -147,16 +143,12 @@ class HAClient(object):
         """
         return self.get_all_stats(self.StatModes.HOST)
 
-    def get_all_host_stats_direct(self, sd_uuid, dom_type, service_type):
+    def get_all_host_stats_direct(self):
         """
         Like get_all_host_stats(), but bypasses broker by directly accessing
         storage.
         """
-        return self.get_all_stats_direct(
-            sd_uuid,
-            dom_type,
-            service_type,
-            self.StatModes.HOST)
+        return self.get_all_stats_direct(self.StatModes.HOST)
 
     def set_global_md_flag(self, flag, value):
         """
