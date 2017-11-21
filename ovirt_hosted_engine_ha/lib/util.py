@@ -410,12 +410,13 @@ def __vdsm_json_rpc_check(logger=None):
     while retry < VDSM_MAX_RETRY:
         retry += 1
         try:
-            _vdsm_json_rpc.Host.ping2()
+            _vdsm_json_rpc.Host.ping2(timeout=1)
             # Successful ping
             return
 
         except client.Error:
             __log_debug(logger, 'VDSM jsonrpc connection is not ready')
+            break
 
         except stomp.Disconnected:
             __log_debug(logger, 'VDSM has been disconnected')
