@@ -820,6 +820,37 @@ class HostedEngine(object):
             logger=self._log
         )
         try:
+            # Convergence schedule corresponding
+            # to the "Suspend workload if needed" migration policy
+            convergence_schedule = {
+                'init': [
+                    {"name": "setDowntime", "params": ["100"]}
+                ],
+                'stalling': [
+                    {"limit": 1, "action": {
+                        "name": "setDowntime", "params": ["150"]
+                    }},
+                    {"limit": 2, "action": {
+                        "name": "setDowntime", "params": ["200"]
+                    }},
+                    {"limit": 3, "action": {
+                        "name": "setDowntime", "params": ["300"]
+                    }},
+                    {"limit": 4, "action": {
+                        "name": "setDowntime", "params": ["400"]
+                    }},
+                    {"limit": 6, "action": {
+                        "name": "setDowntime", "params": ["500"]
+                    }},
+                    {"limit": -1, "action": {
+                        "name": "setDowntime", "params": ["5000"]
+                    }},
+                    {"limit": -1, "action": {
+                        "name": "abort", "params": []
+                    }},
+                ]
+            }
+
             cli.VM.migrate(
                 vmID=vm_id,
                 params={
@@ -831,8 +862,9 @@ class HostedEngine(object):
                     'dst': hostname,
                     'vmId': vm_id,
                     'abortOnError': True,
-                    'compressed': True,
-                    'method': 'online'
+                    'compressed': False,
+                    'method': 'online',
+                    'convergenceSchedule': convergence_schedule
                 }
             )
             return True
