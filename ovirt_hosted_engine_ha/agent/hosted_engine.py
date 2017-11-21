@@ -829,7 +829,7 @@ class HostedEngine(object):
                     'src': 'localhost',
                     'enableGuestEvents': True,
                     'dst': hostname,
-                    'vmID': vm_id,
+                    'vmId': vm_id,
                     'abortOnError': True,
                     'compressed': True,
                     'method': 'online'
