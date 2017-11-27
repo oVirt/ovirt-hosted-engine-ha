@@ -28,7 +28,7 @@
 
 %global         vdsm_user @VDSM_USER@
 %global         vdsm_group @VDSM_GROUP@
-%global         vdsm_version 4.20.3
+%global         vdsm_version 4.20.8
 
 Summary:        oVirt Hosted Engine High Availability Manager
 Name:           @PACKAGE_NAME@
@@ -36,7 +36,7 @@ Version:        @PACKAGE_RPM_VERSION@
 Release:        @PACKAGE_RPM_RELEASE@%{?release_suffix}%{?dist}
 License:        LGPLv2+
 URL:            http://www.ovirt.org
-Source:         http://resources.ovirt.org/pub/ovirt-master-snapshot/src/%{name}/%{name}-%{package_version}.tar.gz
+Source:         http://resources.ovirt.org/pub/src/%{name}/%{name}-%{package_version}.tar.gz
 Group:          Applications/System
 
 BuildArch:      noarch
@@ -54,7 +54,7 @@ Requires:       vdsm-client >= %{vdsm_version}
 Requires:       vdsm-python >= %{vdsm_version}
 
 # Otopi is needed for the cli client
-Requires:       otopi >= 1.5.1
+Requires:       otopi >= 1.7.3
 
 BuildRequires:  python
 BuildRequires:  python2-devel
@@ -171,6 +171,9 @@ fi
 
 
 %changelog
+* Mon Nov 27 2017 Sandro Bonazzola <sbonazzo@redhat.com> - 2.2.0-1
+- 2.2.0-1
+
 * Wed Dec 21 2016 Simone Tiraboschi <stirabos@redhat.com> - 2.2.0-0.0.master
 - 2.2.0-0.0.master
 
