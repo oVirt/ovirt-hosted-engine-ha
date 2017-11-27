@@ -171,6 +171,9 @@ fi
 
 
 %changelog
+* Mon Nov 27 2017 Sandro Bonazzola <sbonazzo@redhat.com> - 2.2.1-0.0.master
+- 2.2.1-0.0.master
+
 * Mon Nov 27 2017 Sandro Bonazzola <sbonazzo@redhat.com> - 2.2.0-1
 - 2.2.0-1
 
