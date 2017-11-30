@@ -205,7 +205,15 @@ def toDict(ovf):
     :return: dict to be used to create a new VM using vdsCli
              - See vdsCli#create
     """
+    global OVF_NS
     tree = ovfenvelope.etree_.fromstring(ovf)
+
+    # Detect the OVF namespace, it will never change as long
+    # as the engine is not upgraded
+    for attr in tree.attrib:
+        if (attr.endswith("}version") and
+                attr.startswith("{http://schemas.dmtf.org/ovf/envelope/1")):
+            OVF_NS = attr[:-7]
 
     vmParams = {}
 

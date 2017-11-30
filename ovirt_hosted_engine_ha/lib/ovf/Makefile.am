@@ -45,6 +45,7 @@ dist_noinst_PYTHON = \
 dist_noinst_DATA = \
 	ovf_test.xml \
 	ovf_test_max_vcpu.xml \
+	ovf_test_v4.2.xml \
 	$(NULL)
 
 clean-local: \

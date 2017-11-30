@@ -17,6 +17,13 @@ OVF_w_max_vcpu = open(
     )
 ).read()
 
+OVF_42 = open(
+    os.path.join(
+        os.path.dirname(__file__),
+        'ovf_test_v4.2.xml'
+    )
+).read()
+
 EXPECTED_VM_CONF_DICT = {
     'vmId': '50e59bbd-f829-4761-ba1b-6db1a6acc3b8',
     'memSize': '4096',
@@ -162,6 +169,131 @@ EXPECTED_VM_CONF_DICT = {
 EXPECTED_VM_CONF_DICT_W_MAX_VCPU = copy.deepcopy(EXPECTED_VM_CONF_DICT)
 EXPECTED_VM_CONF_DICT_W_MAX_VCPU['maxVCpus'] = '16'
 
+EXPECTED_VM_CONF_DICT_42 = {
+    'vmId': 'b4491372-8f8a-4e08-8524-f8fb986a548a',
+    'vmName': 'HostedEngine',
+    'cpuType': 'Haswell-noTSX',
+    'devices': [
+        {
+            'address': '{type:pci, slot:0x06, bus:0x00, domain:0x0000,'
+                       ' function:0x0}',
+            'bootOrder': '1',
+            'device': 'disk',
+            'deviceId': 'add49103-89de-4a7e-b22f-9768a324b8f9',
+            'domainID': '1f71b5f9-5cfa-459c-8ec2-ee48c9731f60',
+            'format': 'cow',
+            'iface': 'virtio',
+            'imageID': 'add49103-89de-4a7e-b22f-9768a324b8f9',
+            'index': '0',
+            'poolID': '00000000-0000-0000-0000-000000000000',
+            'propagateErrors': 'off',
+            'readonly': 'false',
+            'shared': 'exclusive',
+            'type': 'disk',
+            'volumeID': '81487a81-d27d-41b8-b3d1-139d38437f42'
+        },
+        {
+            'address': '{type:pci, slot:0x03, bus:0x00, domain:0x0000,'
+                       ' function:0x0}',
+            'device': 'bridge',
+            'deviceId': '542e02d2-b4fe-4241-8a27-1f7ba42dba7c',
+            'linkActive': 'true',
+            'macAddr': '00:16:3e:62:28:65',
+            'network': 'ovirtmgmt',
+            'nicModel': 'pv',
+            'type': 'interface'
+        },
+        {
+            'address': None,
+            'alias': 'video0',
+            'device': 'qxl',
+            'deviceId': '8644313b-fb30-44f5-b01a-5e0555a5d9ac',
+            'specParams': {
+                'heads': '1',
+                'ram': '65536',
+                'vgamem': '16384',
+                'vram': '32768'
+            },
+            'type': 'video'
+        },
+        {
+            'address': None,
+            'device': 'spice',
+            'deviceId': '7115e321-26af-4b2c-a0bf-d468561164a6',
+            'type': 'graphics'
+        },
+        {
+            'address': '{ controller:0, target:0,unit:0, bus:1, type:drive}',
+            'device': 'cdrom',
+            'deviceId': '8c3179ac-b322-4f5c-9449-c52e3665e0ae',
+            'iface': 'ide',
+            'index': '2',
+            'path': '',
+            'readonly': 'true',
+            'shared': 'false',
+            'type': 'disk'
+        },
+        {
+            'address': '{type:pci, slot:0x01, bus:0x00, domain:0x0000,'
+                       ' function:0x1}',
+            'device': 'ide',
+            'deviceId': '7ec1353f-1d5e-4327-9ce6-06848b83492a',
+            'specParams': {
+                'index': '0'
+            },
+            'type': 'controller'
+        },
+        {
+            'address': '{type:pci, slot:0x07, bus:0x00, domain:0x0000,'
+                       ' function:0x0}',
+            'alias': 'rng0',
+            'device': 'virtio',
+            'deviceId': '7f75c30c-7ece-48bc-8166-566809b543f9',
+            'model': 'virtio',
+            'specParams': {
+                'source': 'urandom'
+            },
+            'type': 'rng'
+        },
+        {
+            'address': '{type:pci, slot:0x01, bus:0x00, domain:0x0000,'
+                       ' function:0x2}',
+            'device': 'usb',
+            'deviceId': 'd7a1852f-621a-40e9-a617-ae9d98efa5b1',
+            'specParams': {
+                'index': '0',
+                'model': 'piix3-uhci'
+            },
+            'type': 'controller'
+        },
+        {
+            'address': '{type:pci, slot:0x05, bus:0x00, domain:0x0000,'
+                       ' function:0x0}',
+            'device': 'virtio-serial',
+            'deviceId': '5af61c67-0c82-4feb-a083-dcfcf670ad5a',
+            'type': 'controller'
+        },
+        {
+            'address': '{type:pci, slot:0x04, bus:0x00, domain:0x0000,'
+                       ' function:0x0}',
+            'device': 'scsi',
+            'deviceId': '7a856b05-598f-46ec-996a-3c71ebb19014',
+            'model': 'virtio-scsi',
+            'type': 'controller'
+        },
+        {
+            'device': 'console', 'type': 'console'
+        }
+    ],
+    'display': 'qxl',
+    'emulatedMachine': 'pc-i440fx-rhel7.3.0',
+    'maxVCpus': '64',
+    'memSize': '4',
+    'smp': '4',
+    'spiceSecureChannels': 'smain,sdisplay,sinputs,scursor,splayback,srecord,'
+                           'ssmartcard,susbredir'
+}
+
 
 class Ovf2vmConfTest(TestCase):
 
@@ -170,6 +302,12 @@ class Ovf2vmConfTest(TestCase):
         self.assertDictEqual(
             EXPECTED_VM_CONF_DICT,
             ovf2VmParams.toDict(OVF))
+
+    def test_convert_to_dict_42(self):
+        self.maxDiff = None
+        self.assertDictEqual(
+            EXPECTED_VM_CONF_DICT_42,
+            ovf2VmParams.toDict(OVF_42))
 
     def test_convert_to_dict_with_max_vcpu(self):
         self.maxDiff = None
