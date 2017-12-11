@@ -288,7 +288,7 @@ EXPECTED_VM_CONF_DICT_42 = {
     'display': 'qxl',
     'emulatedMachine': 'pc-i440fx-rhel7.3.0',
     'maxVCpus': '64',
-    'memSize': '4',
+    'memSize': '4096',
     'smp': '4',
     'spiceSecureChannels': 'smain,sdisplay,sinputs,scursor,splayback,srecord,'
                            'ssmartcard,susbredir'

@@ -3,10 +3,11 @@ from ovirt_hosted_engine_ha.env import constants
 import ovfenvelope
 import logging
 
+RES_ALLOCATION_ROOT_NS = 'http://schemas.dmtf.org/wbem/wscim/1/cim-schema' \
+                         '/2/CIM_ResourceAllocationSettingData'
 RES_ALLOCATION_NS = \
-    'Content/Section/Item/{' \
-    'http://schemas.dmtf.org/wbem/wscim/1/cim-schema' \
-    '/2/CIM_ResourceAllocationSettingData' \
+    'Content/Section/Item/{' + \
+    RES_ALLOCATION_ROOT_NS + \
     '}'
 
 OVF_NS = \
@@ -236,7 +237,10 @@ def toDict(ovf):
     # mem
     # TODO use it to convert memSize
     # unit = text(tree, RES_ALLOCATION_NS + 'AllocationUnits')
-    vmParams['memSize'] = text(tree, RES_ALLOCATION_NS + 'VirtualQuantity')
+    mem_items = tree.xpath("//Item[res:ResourceType[text()='4']]"
+                           "/res:VirtualQuantity/text()",
+                           namespaces={"res": RES_ALLOCATION_ROOT_NS})
+    vmParams['memSize'] = mem_items[0]
 
     # devices
     vmParams['devices'] = devices = []
