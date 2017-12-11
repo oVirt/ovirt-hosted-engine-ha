@@ -54,6 +54,12 @@ Requires:       vdsm >= %{vdsm_version}
 Requires:       vdsm-client >= %{vdsm_version}
 Requires:       vdsm-python >= %{vdsm_version}
 
+%if 0%{?rhel} > 0 && 0%{?rhel} <= 7
+Requires:       python-lxml
+%else
+Requires:       python2-lxml
+%endif
+
 # Otopi is needed for the cli client
 Requires:       otopi >= 1.6.0
 
@@ -66,6 +72,12 @@ BuildRequires:  python-nose
 BuildRequires:  vdsm >= %{vdsm_version}
 BuildRequires:  vdsm-client >= %{vdsm_version}
 BuildRequires:  vdsm-python >= %{vdsm_version}
+%endif
+
+%if 0%{?rhel} > 0 && 0%{?rhel} <= 7
+BuildRequires:  python-lxml
+%else
+BuildRequires:  python2-lxml
 %endif
 
 %{?systemd_requires}
