@@ -47,7 +47,7 @@ from vdsm import client
 _vdsm_json_rpc = None
 _vdsm_json_rpc_lock = threading.Lock()
 
-VDSM_MAX_RETRY = 15
+VDSM_MAX_RETRY = 20
 VDSM_DELAY = 1
 
 
@@ -384,13 +384,17 @@ def __vdsm_json_rpc_connect(logger=None,
         try:
             _vdsm_json_rpc = client.connect(host="localhost",
                                             timeout=timeout)
-            break
+            # we still have to validate the connection, also if fresh,
+            # because the auto re-connect logic will not work
+            # when vdsm certs got renewed at setup time by
+            # host-deploy
+            __vdsm_json_rpc_check(logger)
+            if _vdsm_json_rpc is not None:
+                break
         except client.ConnectionError:
             __log_debug(logger, 'Waiting for VDSM to connect')
 
         time.sleep(VDSM_DELAY)
-
-    __vdsm_json_rpc_check(logger)
 
     if _vdsm_json_rpc is None:
         raise RuntimeError(
