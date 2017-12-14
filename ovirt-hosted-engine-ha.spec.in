@@ -170,6 +170,13 @@ if [ "$1" -eq 1 ] ; then
     /usr/bin/systemctl --no-reload disable ovirt-ha-agent.service
     /usr/bin/systemctl --no-reload disable ovirt-ha-broker.service
 fi
+# Fix logfile ownership for upgrade purposes
+if [ -e %{engine_ha_logdir}/agent.log ] ; then
+    chown %{vdsm_user}:%{vdsm_group} %{engine_ha_logdir}/agent.log
+fi
+if [ -e %{engine_ha_logdir}/broker.log ] ; then
+    chown %{vdsm_user}:%{vdsm_group} %{engine_ha_logdir}/broker.log
+fi
 
 
 %preun
