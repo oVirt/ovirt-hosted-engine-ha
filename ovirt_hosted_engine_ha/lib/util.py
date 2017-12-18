@@ -47,7 +47,8 @@ from vdsm import client
 _vdsm_json_rpc = None
 _vdsm_json_rpc_lock = threading.Lock()
 
-VDSM_MAX_RETRY = 20
+# TODO we need to make this configurable
+VDSM_MAX_RETRY = 60
 VDSM_DELAY = 1
 
 
@@ -380,7 +381,6 @@ def __vdsm_json_rpc_connect(logger=None,
 
     retry = 0
     while retry < VDSM_MAX_RETRY:
-        retry += 1
         try:
             _vdsm_json_rpc = client.connect(host="localhost",
                                             timeout=timeout)
@@ -388,10 +388,14 @@ def __vdsm_json_rpc_connect(logger=None,
             # because the auto re-connect logic will not work
             # when vdsm certs got renewed at setup time by
             # host-deploy
-            __vdsm_json_rpc_check(logger)
+            #
+            # make sure we do not multiply the timeout by waiting
+            # both here and in the check method
+            retry += __vdsm_json_rpc_check(logger, VDSM_MAX_RETRY - retry)
             if _vdsm_json_rpc is not None:
                 break
         except client.ConnectionError:
+            retry += 1
             __log_debug(logger, 'Waiting for VDSM to connect')
 
         time.sleep(VDSM_DELAY)
@@ -404,19 +408,25 @@ def __vdsm_json_rpc_connect(logger=None,
         )
 
 
-def __vdsm_json_rpc_check(logger=None):
+def __vdsm_json_rpc_check(logger=None, timeout=VDSM_MAX_RETRY):
     global _vdsm_json_rpc
 
     if _vdsm_json_rpc is None:
         return
 
     retry = 0
-    while retry < VDSM_MAX_RETRY:
+    while retry < timeout:
         retry += 1
         try:
-            _vdsm_json_rpc.Host.ping2(_timeout=5)
-            # Successful ping
-            return
+            if _vdsm_json_rpc.Host.ping2(_timeout=5):
+                # Successful ping, VDSM up and ready
+                return retry
+
+        except client.ServerError as err:
+            # Wait until VDSM recovers (code 99)
+            if err.code != 99:
+                __log_debug(logger, 'VDSM jsonrpc connection is not ready')
+                break
 
         except client.Error:
             __log_debug(logger, 'VDSM jsonrpc connection is not ready')
@@ -431,6 +441,7 @@ def __vdsm_json_rpc_check(logger=None):
     # VDSM is not responding, setting client to None
     event_broadcaster().notify_connection_was_closed()
     _vdsm_json_rpc = None
+    return retry
 
 
 def connect_vdsm_json_rpc(logger=None,
