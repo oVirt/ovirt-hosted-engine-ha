@@ -290,7 +290,7 @@ class _EventBroadcaster(object):
         )
 
     def _unsubscribe(self):
-        cli = get_vdsm_json_rpc(self._log)
+        cli = get_vdsm_json_rpc_wo_reconnect(self._log)
         self._update_connection_check_time()
         if cli is not None:
             cli.unsubscribe(self._sub_id)
@@ -345,7 +345,7 @@ class _EventBroadcaster(object):
                 "No events received for a while, checking connection."
             )
             self._update_connection_check_time()
-            cli = get_vdsm_json_rpc(self._log)
+            cli = get_vdsm_json_rpc_wo_reconnect(self._log)
             if cli is None:
                 raise ConnectionClosed()
 
@@ -446,6 +446,12 @@ def __vdsm_json_rpc_check(logger=None, timeout=VDSM_MAX_RETRY):
 
 def connect_vdsm_json_rpc(logger=None,
                           timeout=envconst.VDSCLI_SSL_TIMEOUT):
+    """
+    Get a jsonrpc connection. This method can return an existing
+    connection, but validates it first.
+    A reconnect attempt is made if the connection is not valid.
+    """
+
     global _vdsm_json_rpc
     # Currently vdsm.client doesn't implement any keep-alive or
     # reconnection mechanism so the connection status has to be checked each
@@ -459,7 +465,11 @@ def connect_vdsm_json_rpc(logger=None,
         return _vdsm_json_rpc
 
 
-def get_vdsm_json_rpc(logger=None):
+def get_vdsm_json_rpc_wo_reconnect(logger=None):
+    """
+    Get the current jsonrpc connection or None if the connection
+    is not valid. This method does not try to reconnect.
+    """
     global _vdsm_json_rpc
 
     # Check if VDSM connection is ready

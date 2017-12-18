@@ -59,7 +59,8 @@ class BroadcasterTest(TestCase):
 
     @mock.patch('vdsm.config.config', _ConfigMock())
     @mock.patch('ovirt_hosted_engine_ha.lib.util.connect_vdsm_json_rpc')
-    @mock.patch('ovirt_hosted_engine_ha.lib.util.get_vdsm_json_rpc')
+    @mock.patch('ovirt_hosted_engine_ha.lib.util'
+                '.get_vdsm_json_rpc_wo_reconnect')
     def test_broadcast(self, mock_connect_vdsm, mock_get_vdsm):
         connection = _ConnectionMock()
         mock_connect_vdsm.return_value = connection
