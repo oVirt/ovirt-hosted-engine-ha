@@ -808,30 +808,32 @@ class EngineMigratingAway(EngineState):
         :type new_data: HostedEngineData
         :type logger: logging.Logger
         """
-        if (
-            new_data.migration_result and
-            'progress' in new_data.migration_result and
-            'downtime' not in new_data.migration_result and
-            new_data.migration_result['progress'] < 100
-        ):
+
+        local_status = new_data.stats.local["engine-health"]["detail"]
+
+        # If VM is not DOWN or MIGRATION_SOURCE, the migration failed
+        if (local_status not in (vmstatus.DOWN, vmstatus.MIGRATION_SOURCE) or
+                not new_data.migration_result or
+                'progress' not in new_data.migration_result):
+            logger.error("Migration failed: %s", new_data.migration_result)
+            return ReinitializeFSM(new_data), fsm.NOWAIT
+
+        if ('downtime' not in new_data.migration_result and
+                new_data.migration_result['progress'] < 100):
             logger.info("Continuing to monitor migration")
             return EngineMigratingAway(new_data), fsm.WAIT
 
-        elif (
-            new_data.migration_result and
-            'progress' in new_data.migration_result and
-            'downtime' in new_data.migration_result
-        ):
+        if 'downtime' in new_data.migration_result:
             logger.info("Migration to %s complete,"
                         " no longer monitoring vm",
                         new_data.migration_host_id)
             new_data = new_data._replace(migration_result=None,
                                          migration_host_id=None)
             return EngineDown(new_data)
-        else:
-            # Migration failed
-            logger.error("Migration failed: %s", new_data.migration_result)
-            return ReinitializeFSM(new_data)
+
+        # Migration failed
+        logger.error("Migration failed: %s", new_data.migration_result)
+        return ReinitializeFSM(new_data), fsm.NOWAIT
 
 
 class EngineMaybeAway(EngineState):
