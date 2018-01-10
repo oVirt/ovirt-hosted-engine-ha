@@ -171,8 +171,8 @@ class Config(object):
         self._config[config_type].update(conf)
 
     def _get_config_volume_path(self):
-        domain_type = self._config[ENGINE][DOMAIN_TYPE]
         sdUUID = self._config[ENGINE][SD_UUID]
+        spUUID = self._config[ENGINE][SP_UUID]
         try:
             conf_vol_uuid = self._config[ENGINE][CONF_VOLUME_UUID]
             conf_img_uuid = self._config[ENGINE][CONF_IMAGE_UUID]
@@ -182,7 +182,7 @@ class Config(object):
             return None
 
         volumepath = heconflib.get_volume_path(
-            domain_type,
+            spUUID,
             sdUUID,
             conf_img_uuid,
             conf_vol_uuid

@@ -405,7 +405,7 @@ class Upgrade(object):
             'on the shared storage domain'
         )
         dest = heconflib.get_volume_path(
-            self._type,
+            self._spUUID,
             self._sdUUID,
             self._conf_imgUUID,
             self._conf_volUUID

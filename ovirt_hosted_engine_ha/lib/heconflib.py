@@ -37,6 +37,7 @@ from ovirt_hosted_engine_ha.env import constants as envconst
 
 from vdsm.client import ServerError
 
+from ovirt_hosted_engine_ha.lib.util import connect_vdsm_json_rpc
 
 _CONF_FILES = [
     envconst.HEConfFiles.HECONFD_VERSION,
@@ -335,10 +336,10 @@ def _create_temp_archive(logger,
     return _tmp_tar
 
 
-def get_volume_path(type, sd_uuid, img_uuid, vol_uuid):
+def get_volume_path(sp_uuid, sd_uuid, img_uuid, vol_uuid):
     """
     Return path of the volume file inside the domain
-    :param type: storage type
+    :param sp_uuid: StoragePool UUID
     :param sd_uuid: StorageDomain UUID
     :param img_uuid: Image UUID
     :param vol_uuid: Volume UUID
@@ -351,14 +352,28 @@ def get_volume_path(type, sd_uuid, img_uuid, vol_uuid):
         vol_uuid
     )
 
-    if not os.path.exists(volume_path):
+    if os.path.exists(volume_path):
+        return volume_path
+
+    try:
+        cli = connect_vdsm_json_rpc()
+        volume_path = cli.Image.prepare(
+            storagepoolID=sp_uuid,
+            storagedomainID=sd_uuid,
+            imageID=img_uuid,
+            volumeID=vol_uuid
+        )
+
+        return volume_path
+
+    except ServerError as e:
         raise RuntimeError(
-            'Path to volume {vol_uuid} not found in {root}'.format(
+            'Path to volume {vol_uuid} not found in {root}.'
+            ' Caused by: {err}'.format(
                 vol_uuid=vol_uuid,
                 root=envconst.SD_RUN_DIR,
-            )
+                err=e)
         )
-    return volume_path
 
 
 def task_wait(cli, logger):
