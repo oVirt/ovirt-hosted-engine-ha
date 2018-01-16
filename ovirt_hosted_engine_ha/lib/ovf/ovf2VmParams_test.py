@@ -1,3 +1,4 @@
+import base64
 import copy
 import os
 from unittest import TestCase
@@ -23,6 +24,94 @@ OVF_42 = open(
         'ovf_test_v4.2.xml'
     )
 ).read()
+
+
+EXPECTED_LIBVIRT_XML = \
+    '<?xml version="1.0" encoding="UTF-8"?><domain type="kvm" ' \
+    'xmlns:ovirt-tune="http://ovirt.org/vm/tune/1.0" ' \
+    'xmlns:ovirt-vm="http://ovirt.org/vm/1.0"><name>vm</name><uuid>b36a34f1' \
+    '-d1c2-4585-ae8f-33e05e4d3c19</uuid><memory>1048576</memory>' \
+    '<currentMemory>1048576</currentMemory><maxMemory ' \
+    'slots="16">4194304</maxMemory><vcpu current="2">16</vcpu><sysinfo ' \
+    'type="smbios"><system><entry name="manufacturer">oVirt</entry><entry ' \
+    'name="product">OS-NAME:</entry><entry ' \
+    'name="version">OS-VERSION:</entry><entry ' \
+    'name="serial">HOST-SERIAL:</entry><entry ' \
+    'name="uuid">b36a34f1-d1c2-4585-ae8f-33e05e4d3c19</entry></system>' \
+    '</sysinfo><clock offset="variable" adjustment="0"><timer name="rtc" ' \
+    'tickpolicy="catchup"></timer><timer name="pit" ' \
+    'tickpolicy="delay"></timer><timer name="hpet" ' \
+    'present="no"></timer></clock><features><acpi></acpi>' \
+    '</features><cpu match="exact"><model>SandyBridge</model><topology ' \
+    'cores="1" threads="1" sockets="16"></topology><numa><cell cpus="0,' \
+    '1" memory="1048576"></cell></numa></cpu><cputune></cputune>' \
+    '<devices><input type="mouse" bus="ps2"></input><channel ' \
+    'type="unix"><target type="virtio" ' \
+    'name="ovirt-guest-agent.0"></target><source mode="bind" ' \
+    'path="/var/lib/libvirt/qemu/channels/' \
+    'b36a34f1-d1c2-4585-ae8f-33e05e4d3c19.ovirt-guest-agent.0' \
+    '"></source></channel><channel type="unix"><target type="virtio" ' \
+    'name="org.qemu.guest_agent.0"></target><source mode="bind" ' \
+    'path="/var/lib/libvirt/qemu/channels/b36a34f1-d1c2-4585-ae8f-' \
+    '33e05e4d3c19.org.qemu' \
+    '.guest_agent.0"></source></channel><video><model type="qxl" ' \
+    'vram="8192" heads="1" ram="65536" vgamem="16384"></model>' \
+    '<address bus="0x00" domain="0x0000" function="0x0" slot="0x02" ' \
+    'type="pci"></address></video><rng model="virtio"><backend ' \
+    'model="random">/dev/urandom</backend></rng>' \
+    '<controller type="virtio-serial" index="0" ports="16">' \
+    '<address bus="0x00" domain="0x0000" function="0x0" slot="0x05" ' \
+    'type="pci"></address></controller><graphics type="spice" port="-1" ' \
+    'autoport="yes" passwd="*****" passwdValidTo="1970-01-01T00:00:01"' \
+    ' tlsPort="-1"><listen type="network" network="vdsm-ovirtmgmt">' \
+    '</listen></graphics><controller type="scsi" model="virtio-scsi" ' \
+    'index="0"><address bus="0x00" domain="0x0000" ' \
+    'function="0x0" slot="0x04" type="pci"></address></controller>' \
+    '<controller type="ide" index="0"><address bus="0x00" domain="0x0000"' \
+    ' function="0x1" slot="0x01" type="pci"></address></controller>' \
+    '<controller type="usb" model="piix3-uhci" ' \
+    'index="0"><address bus="0x00" domain="0x0000" function="0x2" ' \
+    'slot="0x01" type="pci"></address></controller><memballoon ' \
+    'model="virtio"><stats period="5"></stats><address bus="0x00" ' \
+    'domain="0x0000" function="0x0" slot="0x06" ' \
+    'type="pci"></address></memballoon><channel type="spicevmc"><target ' \
+    'type="virtio" name="com.redhat.spice.0"></target></channel><interface ' \
+    'type="bridge"><model type="virtio"></model><link ' \
+    'state="up"></link><source bridge="ovirtmgmt"></source><address ' \
+    'bus="0x00" domain="0x0000" function="0x0" slot="0x03" type="pci">' \
+    '</address><mac address="00:1a:4a:16:01:01"></mac><filterref ' \
+    'filter="vdsm-no-mac-spoofing"></filterref><bandwidth></bandwidth>' \
+    '</interface><disk type="file" device="cdrom" snapshot="no">' \
+    '<driver name="qemu" type="raw" error_policy="report"></driver>' \
+    '<source file="" startupPolicy="optional"></source><target dev="hdc" ' \
+    'bus="ide"></target><readonly></readonly><address bus="1" ' \
+    'controller="0" unit="0" type="drive" target="0"></address></disk>' \
+    '<disk snapshot="no" type="file" device="disk"><target dev="sda" ' \
+    'bus="scsi"></target><source file="/rhev/data-center/' \
+    '5a38bfb2-00d2-02f9-0120-0000000002af/a2ec0146-37d4-4c1d-901e-' \
+    '7ed89cd009ff/images/73a433b7-2a84-49d0-a80f-207ff91930f3/596f868e' \
+    '-6519-456d-96a0-b78a1b2eea91"></source><driver name="qemu" ' \
+    'io="threads" type="raw" error_policy="stop" cache="none"></driver>' \
+    '<address bus="0" controller="0" unit="0" type="drive" target="0">' \
+    '</address><boot ' \
+    'order="1"></boot><serial>73a433b7-2a84-49d0-a80f-207ff91930f3</serial>' \
+    '</disk></devices><pm><suspend-to-disk ' \
+    'enabled="no"></suspend-to-disk><suspend-to-mem ' \
+    'enabled="no"></suspend-to-mem></pm><os><type arch="x86_64" ' \
+    'machine="pc-i440fx-2.6">hvm</type><smbios ' \
+    'mode="sysinfo"></smbios></os><metadata><ovirt-tune:qos></ovirt' \
+    '-tune:qos><ovirt-vm:vm><minGuaranteedMemoryMb ' \
+    'type="int">1024</minGuaranteedMemoryMb><clusterVersion>4.2' \
+    '</clusterVersion><ovirt-vm:custom></ovirt-vm:custom><ovirt-vm:device ' \
+    'mac_address="00:1a:4a:16:01:01"><ovirt-vm:custom></ovirt-vm:custom>' \
+    '</ovirt-vm:device><ovirt-vm:device devtype="disk" ' \
+    'name="sda"><ovirt-vm:imageID>73a433b7-2a84-49d0-a80f-207ff91930f3' \
+    '</ovirt-vm:imageID><ovirt-vm:poolID>5a38bfb2-00d2-02f9-0120-' \
+    '0000000002af</ovirt-vm:poolID><ovirt-vm:volumeID>596f868e-6519-456d-' \
+    '96a0-b78a1b2eea91</ovirt-vm:volumeID><ovirt-vm:domainID>a2ec0146-37d4-' \
+    '4c1d-901e-7ed89cd009ff</ovirt-vm:domainID>' \
+    '</ovirt-vm:device><launchPaused>false</launchPaused><resumeBehavior>' \
+    'auto_resume</resumeBehavior></ovirt-vm:vm></metadata></domain>'
 
 EXPECTED_VM_CONF_DICT = {
     'vmId': '50e59bbd-f829-4761-ba1b-6db1a6acc3b8',
@@ -291,7 +380,8 @@ EXPECTED_VM_CONF_DICT_42 = {
     'memSize': '4096',
     'smp': '4',
     'spiceSecureChannels': 'smain,sdisplay,sinputs,scursor,splayback,srecord,'
-                           'ssmartcard,susbredir'
+                           'ssmartcard,susbredir',
+    "xmlBase64": base64.standard_b64encode(EXPECTED_LIBVIRT_XML)
 }
 
 

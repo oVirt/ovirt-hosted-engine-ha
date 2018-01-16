@@ -1,3 +1,4 @@
+import base64
 import sys
 from ovirt_hosted_engine_ha.env import constants
 import ovfenvelope
@@ -218,6 +219,12 @@ def toDict(ovf):
 
     vmParams = {}
 
+    # use libvirt XML if present in OVF
+    engine_xml = tree.xpath("//EngineXml/text()")
+    if engine_xml:
+        # Encode XML string so it can contain newlines
+        vmParams['xmlBase64'] = base64.standard_b64encode(engine_xml[0])
+
     # general
     vmParams['vmId'] = tree.find('Content/Section').attrib[OVF_NS + 'id']
     vmParams['vmName'] = text(tree, 'Content/Name')
@@ -296,7 +303,7 @@ def confFromOvf(ovf):
               consumable as a conf file
     """
     vmConf = toDict(ovf)
-    devices = vmConf.pop('devices')
+    devices = vmConf.pop('devices', [])
     conf = \
         ''.join(
             [('%s=%s\n' % (key, value))
