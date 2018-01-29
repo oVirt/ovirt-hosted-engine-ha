@@ -392,10 +392,6 @@ class HostedEngine(object):
             if not force:
                 raise
 
-        self._log.debug("Disconnecting from ha-broker")
-        if self._broker and self._broker.is_connected():
-            self._broker.disconnect()
-
         return 0
 
     def start_monitoring(self):
