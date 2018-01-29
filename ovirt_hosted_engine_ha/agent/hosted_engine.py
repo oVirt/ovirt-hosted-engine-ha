@@ -522,7 +522,10 @@ class HostedEngine(object):
         if not self._broker:
             self._broker = brokerlink.BrokerLink()
 
-        required_monitors = monitors or self._required_monitors
+        if monitors is not None:
+            required_monitors = monitors
+        else:
+            required_monitors = self._required_monitors
 
         for m in required_monitors:
             try:
