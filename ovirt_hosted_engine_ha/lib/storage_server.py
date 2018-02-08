@@ -24,6 +24,7 @@ from ovirt_hosted_engine_ha.lib import exceptions as ex
 from ovirt_hosted_engine_ha.lib import util
 import logging
 import os
+import uuid
 from . import log_filter
 
 from vdsm.client import ServerError
@@ -176,7 +177,7 @@ class StorageServer(object):
                 'tpgt': self._portal,
                 'user': self._user,
                 'password': self._password,
-                'id': self._connectionUUID,
+                'id': str(uuid.uuid4()),
                 'port': x['port'],
             })
         return conList, storageType
@@ -271,8 +272,25 @@ class StorageServer(object):
                     str(e)
                 )
 
+            connected = False
             for con in connections:
-                if con['status'] != 0:
+                if con['status'] == 0:
+                    connected = True
+                else:
+                    if len(connections) > 1:
+                        con_details = {}
+                        for ce in conList:
+                            if con['id'] == ce['id']:
+                                con_details = ce
+                        self._log.warning(
+                            (
+                                'A connection path to the storage server is '
+                                'not active, details: {con_details}'
+                            ).format(
+                                con_details=con_details,
+                            )
+                        )
+                if not connected:
                     raise RuntimeError(
                         'Connection to storage server failed'
                     )
