@@ -13,7 +13,6 @@ import uuid
 from vdsm.client import ServerError
 
 from ..env import constants
-from ..lib import image
 from ..lib import storage_server
 
 logger = logging.getLogger(__name__)
@@ -345,15 +344,7 @@ class VdsmBackend(StorageBackend):
         if initialize:
             self._logger.info("Connecting the storage")
             sserver = storage_server.StorageServer()
-            img = image.Image(
-                self._dom_type,
-                self._sd_uuid
-            )
-
             sserver.connect_storage_server()
-
-            self._logger.info("Preparing images")
-            img.prepare_images()
 
         base_path, self._lv_based = self.get_domain_path(self._sd_uuid,
                                                          self._dom_type)
