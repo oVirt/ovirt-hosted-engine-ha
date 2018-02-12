@@ -18,6 +18,7 @@
 #
 
 from ..env import config
+from ..env import config_constants as const
 from ..env import constants
 from ..env import path as env_path
 from ovirt_hosted_engine_ha.lib import exceptions as ex
@@ -39,25 +40,25 @@ class StorageServer(object):
         self._log = logging.getLogger("%s.StorageServer" % __name__)
         self._log.addFilter(log_filter.IntermittentFilter())
         self._config = config.Config(logger=self._log)
-        self._domain_type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
-        self._spUUID = self._config.get(config.ENGINE, config.SP_UUID)
-        self._sdUUID = self._config.get(config.ENGINE, config.SD_UUID)
-        self._storage = self._config.get(config.ENGINE, config.STORAGE)
+        self._domain_type = self._config.get(config.ENGINE, const.DOMAIN_TYPE)
+        self._spUUID = self._config.get(config.ENGINE, const.SP_UUID)
+        self._sdUUID = self._config.get(config.ENGINE, const.SD_UUID)
+        self._storage = self._config.get(config.ENGINE, const.STORAGE)
         self._connectionUUID = self._config.get(
             config.ENGINE,
-            config.CONNECTIONUUID
+            const.CONNECTIONUUID
         )
 
-        self._iqn = self._config.get(config.ENGINE, config.ISCSI_IQN)
-        self._portal = self._config.get(config.ENGINE, config.ISCSI_PORTAL)
-        self._user = self._config.get(config.ENGINE, config.ISCSI_USER)
-        self._password = self._config.get(config.ENGINE, config.ISCSI_PASSWORD)
-        self._port = self._config.get(config.ENGINE, config.ISCSI_PORT)
+        self._iqn = self._config.get(config.ENGINE, const.ISCSI_IQN)
+        self._portal = self._config.get(config.ENGINE, const.ISCSI_PORTAL)
+        self._user = self._config.get(config.ENGINE, const.ISCSI_USER)
+        self._password = self._config.get(config.ENGINE, const.ISCSI_PASSWORD)
+        self._port = self._config.get(config.ENGINE, const.ISCSI_PORT)
         self._mnt_options = None
         try:
             self._mnt_options = self._config.get(
                 config.ENGINE,
-                config.MNT_OPTIONS
+                const.MNT_OPTIONS
             )
         except (KeyError, ValueError):
             pass
@@ -65,7 +66,7 @@ class StorageServer(object):
         try:
             self._nfs_version = self._config.get(
                 config.ENGINE,
-                config.NFS_VERSION
+                const.NFS_VERSION
             )
         except (KeyError, ValueError):
             pass

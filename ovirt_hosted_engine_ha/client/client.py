@@ -19,7 +19,7 @@
 
 import logging
 
-from ..env import config
+from ..env import config, config_constants
 from ..lib import brokerlink
 from ..lib import metadata
 from ..lib import storage_server
@@ -190,14 +190,15 @@ class HAClient(object):
         if self._config is None:
             self._config = config.Config()
 
-        host_id = self._config.get(config.ENGINE, config.HOST_ID)
+        host_id = self._config.get(config.ENGINE, config_constants.HOST_ID)
         return int(host_id) if host_id else None
 
     def get_local_host_score(self):
         if self._config is None:
             self._config = config.Config()
 
-        host_id = int(self._config.get(config.ENGINE, config.HOST_ID))
+        host_id = int(self._config.get(config.ENGINE,
+                                       config_constants.HOST_ID))
         broker = brokerlink.BrokerLink()
         stats = broker.get_stats_from_storage()
 
@@ -224,7 +225,7 @@ class HAClient(object):
             if self._config is None:
                 self._config = config.Config()
             self._config.set(config.HA,
-                             config.LOCAL_MAINTENANCE,
+                             config_constants.LOCAL_MAINTENANCE,
                              str(util.to_bool(value)))
 
         else:
@@ -249,8 +250,9 @@ class HAClient(object):
         if self._config is None:
             self._config = config.Config()
 
-        host_id = self._config.get(config.ENGINE, config.HOST_ID)
-        is_configured = self._config.get(config.ENGINE, config.CONFIGURED)
+        host_id = self._config.get(config.ENGINE, config_constants.HOST_ID)
+        is_configured = self._config.get(config.ENGINE,
+                                         config_constants.CONFIGURED)
         if (not host_id or
                 (is_configured != "True" and is_configured is not None)):
             self._log.error("Hosted engine is not configured.")

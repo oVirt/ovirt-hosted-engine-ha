@@ -50,9 +50,9 @@ def notify(type, detail, options):
     logger.debug("nofity: %s" % (repr(options),))
 
     heconf = config.Config(logger=logger)
-    heconf.refresh_local_conf_file(config.BROKER)
+    path = heconf.refresh_local_conf_file(config.BROKER)
     cfg = ConfigParser.SafeConfigParser()
-    cfg.read(constants.NOTIFY_CONF_FILE)
+    cfg.read(path)
 
     try:
         rules = cfg.get("notify", type)
