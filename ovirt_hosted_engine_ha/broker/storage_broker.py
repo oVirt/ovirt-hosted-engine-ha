@@ -25,6 +25,7 @@ import xmlrpclib
 
 from ..broker import constants as broker_constants
 from ..env import config
+from ..env import config_constants as const
 from ..env import constants
 from ..lib import monotonic
 from ..lib import exceptions as ex
@@ -63,28 +64,28 @@ class StorageBroker(object):
         self._stats_cache = (0, "")
 
         # register storage domain info
-        self.sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
-        self.sp_uuid = self._config.get(config.ENGINE, config.SP_UUID)
-        self.dom_type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
+        self.sd_uuid = self._config.get(config.ENGINE, const.SD_UUID)
+        self.sp_uuid = self._config.get(config.ENGINE, const.SP_UUID)
+        self.dom_type = self._config.get(config.ENGINE, const.DOMAIN_TYPE)
 
         try:
             devices = {
                 self._service_space:
                     VdsmBackend.Device(
                         self._config.get(config.ENGINE,
-                                         config.METADATA_IMAGE_UUID,
+                                         const.METADATA_IMAGE_UUID,
                                          raise_on_none=True),
                         self._config.get(config.ENGINE,
-                                         config.METADATA_VOLUME_UUID,
+                                         const.METADATA_VOLUME_UUID,
                                          raise_on_none=True),
                     ),
                 self._lock_space:
                     VdsmBackend.Device(
                         self._config.get(config.ENGINE,
-                                         config.LOCKSPACE_IMAGE_UUID,
+                                         const.LOCKSPACE_IMAGE_UUID,
                                          raise_on_none=True),
                         self._config.get(config.ENGINE,
-                                         config.LOCKSPACE_VOLUME_UUID,
+                                         const.LOCKSPACE_VOLUME_UUID,
                                          raise_on_none=True),
                     )
             }

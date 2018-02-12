@@ -20,6 +20,7 @@
 import os
 
 from . import config
+from . import config_constants
 from . import constants
 
 from ovirt_hosted_engine_ha.lib import util
@@ -58,8 +59,8 @@ def get_domain_path(config_):
         logger=None,
         timeout=constants.VDSCLI_SSL_TIMEOUT
     )
-    sd_uuid = config_.get(config.ENGINE, config.SD_UUID)
-    dom_type = config_.get(config.ENGINE, config.DOMAIN_TYPE)
+    sd_uuid = config_.get(config.ENGINE, config_constants.SD_UUID)
+    dom_type = config_.get(config.ENGINE, config_constants.DOMAIN_TYPE)
     parent = constants.SD_MOUNT_PARENT
 
     if dom_type in (

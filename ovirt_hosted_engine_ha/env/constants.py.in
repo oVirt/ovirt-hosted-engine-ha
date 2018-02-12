@@ -32,12 +32,16 @@ MESSAGE_READ_TIMEOUT_SEC = 30.0
 BROKER_SOCKET_FILE = '@ENGINE_HA_RUNDIR@/broker.socket'
 
 ENGINE_SETUP_CONF_FILE = '/etc/ovirt-hosted-engine/hosted-engine.conf'
+CACHED_ENGINE_SETUP_CONF_FILE = \
+    '@ENGINE_HA_STATEDIR@/hosted-engine.conf'
 NOTIFY_CONF_FILE_35 = '@ENGINE_HA_CONFDIR@/broker.conf'
 NOTIFY_CONF_FILE = '@ENGINE_HA_STATEDIR@/broker.conf'
 ANSWER_FILE_35 = '/etc/ovirt-hosted-engine/answers.conf'
 VM_CONF_FILE_35 = '/etc/ovirt-hosted-engine/vm.conf'
 
 LOCAL_VM_CONF_PATH = '@ENGINE_HA_RUNDIR@/vm.conf'
+LOCAL_VM_CONF_PATH_FALLBACK = \
+    '@ENGINE_HA_RUNDIR@/vm.conf.fallback'
 
 HA_AGENT_CONF_FILE = '@ENGINE_HA_STATEDIR@/ha.conf'
 
