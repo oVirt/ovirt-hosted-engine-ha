@@ -24,6 +24,7 @@ import sanlock
 from ..agent import constants as agent_constants
 from ..env import config
 from ..env import constants
+from ..env import config_constants as const
 from ..lib import brokerlink
 from ..lib import metadata
 from ..lib import storage_server
@@ -173,8 +174,8 @@ class HAClient(object):
     def _configure_broker_conn(self, broker):
         if self._config is None:
             self._config = config.Config()
-        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
-        dom_type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
+        sd_uuid = self._config.get(config.ENGINE, const.SD_UUID)
+        dom_type = self._config.get(config.ENGINE, const.DOMAIN_TYPE)
         broker.set_storage_domain(StorageBackendTypes.FilesystemBackend,
                                   sd_uuid=sd_uuid,
                                   dom_type=dom_type)
@@ -225,14 +226,15 @@ class HAClient(object):
         if self._config is None:
             self._config = config.Config()
 
-        host_id = self._config.get(config.ENGINE, config.HOST_ID)
+        host_id = self._config.get(config.ENGINE, const.HOST_ID)
         return int(host_id) if host_id else None
 
     def get_local_host_score(self):
         if self._config is None:
             self._config = config.Config()
 
-        host_id = int(self._config.get(config.ENGINE, config.HOST_ID))
+        host_id = int(self._config.get(config.ENGINE,
+                                       const.HOST_ID))
         broker = brokerlink.BrokerLink()
         with broker.connection(self._retries, self._wait):
             self._configure_broker_conn(broker)
@@ -262,7 +264,7 @@ class HAClient(object):
             if self._config is None:
                 self._config = config.Config()
             self._config.set(config.HA,
-                             config.LOCAL_MAINTENANCE,
+                             const.LOCAL_MAINTENANCE,
                              str(util.to_bool(value)))
 
         else:
@@ -296,8 +298,9 @@ class HAClient(object):
         if self._config is None:
             self._config = config.Config()
 
-        host_id = self._config.get(config.ENGINE, config.HOST_ID)
-        is_configured = self._config.get(config.ENGINE, config.CONFIGURED)
+        host_id = self._config.get(config.ENGINE, const.HOST_ID)
+        is_configured = self._config.get(config.ENGINE,
+                                         const.CONFIGURED)
         if (not host_id or
                 (is_configured != "True" and is_configured is not None)):
             self._log.error("Hosted engine is not configured.")

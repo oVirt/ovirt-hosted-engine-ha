@@ -33,6 +33,10 @@ haenvdir = $(engine_ha_libdir)/env
 dist_haenv_PYTHON = \
 	__init__.py \
 	config.py \
+	config_constants.py \
+	config_file.py \
+	config_shared.py \
+	config_ovf.py \
 	path.py \
 	$(NULL)
 

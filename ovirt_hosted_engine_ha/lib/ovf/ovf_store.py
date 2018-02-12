@@ -39,22 +39,24 @@ class OVFStore(object):
 
     def __init__(self):
         from ovirt_hosted_engine_ha.env import config
+        from ovirt_hosted_engine_ha.env import config_constants as const
+
         self._log = logging.getLogger("%s.OVFStore" % __name__)
         self._log.addFilter(log_filter.IntermittentFilter())
         self._config = config.Config(logger=self._log)
 
-        self._type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
-        self._spUUID = self._config.get(config.ENGINE, config.SP_UUID)
-        self._sdUUID = self._config.get(config.ENGINE, config.SD_UUID)
+        self._type = self._config.get(config.ENGINE, const.DOMAIN_TYPE)
+        self._spUUID = self._config.get(config.ENGINE, const.SP_UUID)
+        self._sdUUID = self._config.get(config.ENGINE, const.SD_UUID)
         self._conf_vol_uuid = self._config.get(
             config.ENGINE,
-            config.CONF_VOLUME_UUID
+            const.CONF_VOLUME_UUID
         )
         self._conf_img_uuid = self._config.get(
             config.ENGINE,
-            config.CONF_IMAGE_UUID
+            const.CONF_IMAGE_UUID
         )
-        self._HEVMID = self._config.get(config.ENGINE, config.HEVMID)
+        self._HEVMID = self._config.get(config.ENGINE, const.HEVMID)
 
     def have_store_info(self):
         return OVFStore._ovf_store_path

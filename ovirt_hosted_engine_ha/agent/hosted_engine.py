@@ -32,6 +32,7 @@ import sanlock
 
 from . import constants
 from ..env import config
+from ..env import config_constants as const
 from ..lib import brokerlink
 from ..lib import exceptions as ex
 from ..lib import image
@@ -180,7 +181,7 @@ class HostedEngine(object):
 
     @property
     def min_memory_threshold(self):
-        return int(self._config.get(config.VM, config.MEM_SIZE))
+        return int(self._config.get(config.VM, const.MEM_SIZE))
 
     def _get_score_config(self):
         score = {
@@ -265,7 +266,7 @@ class HostedEngine(object):
             'monitor': 'ping',
             'type': float,
             'options': {
-                'addr': self._config.get(config.ENGINE, config.GATEWAY_ADDR)}
+                'addr': self._config.get(config.ENGINE, const.GATEWAY_ADDR)}
         })
         req.append({
             'field': 'bridge',
@@ -273,9 +274,9 @@ class HostedEngine(object):
             'type': bool,
             'options': {
                 'address': '0',
-                'use_ssl': self._config.get(config.ENGINE, config.VDSM_SSL),
+                'use_ssl': self._config.get(config.ENGINE, const.VDSM_SSL),
                 'bridge_name': self._config.get(
-                    config.ENGINE, config.BRIDGE_NAME
+                    config.ENGINE, const.BRIDGE_NAME
                 )}
         })
         req.append({
@@ -284,7 +285,7 @@ class HostedEngine(object):
             'type': float_or_none,
             'options': {
                 'address': '0',
-                'use_ssl': self._config.get(config.ENGINE, config.VDSM_SSL)}
+                'use_ssl': self._config.get(config.ENGINE, const.VDSM_SSL)}
         })
         req.append({
             'field': 'cpu-load',
@@ -292,8 +293,8 @@ class HostedEngine(object):
             'type': float_or_none,
             'options': {
                 'address': '0',
-                'use_ssl': self._config.get(config.ENGINE, config.VDSM_SSL),
-                'vm_uuid': self._config.get(config.ENGINE, config.HEVMID)}
+                'use_ssl': self._config.get(config.ENGINE, const.VDSM_SSL),
+                'vm_uuid': self._config.get(config.ENGINE, const.HEVMID)}
         })
         req.append({
             'field': 'engine-health',
@@ -301,8 +302,8 @@ class HostedEngine(object):
             'type': engine_status,
             'options': {
                 'address': '0',
-                'use_ssl': self._config.get(config.ENGINE, config.VDSM_SSL),
-                'vm_uuid': self._config.get(config.ENGINE, config.HEVMID)}
+                'use_ssl': self._config.get(config.ENGINE, const.VDSM_SSL),
+                'vm_uuid': self._config.get(config.ENGINE, const.HEVMID)}
         })
         return req
 
@@ -311,7 +312,7 @@ class HostedEngine(object):
         if self._host_id is not None:
             return self._host_id
 
-        host_id = self._config.get(config.ENGINE, config.HOST_ID)
+        host_id = self._config.get(config.ENGINE, const.HOST_ID)
         return int(host_id) if host_id else None
 
     @property
@@ -319,7 +320,7 @@ class HostedEngine(object):
         """Hosted engine is configured when host id is present and the
            configured value is not explicitly set to False
         """
-        configured = self._config.get(config.ENGINE, config.CONFIGURED)
+        configured = self._config.get(config.ENGINE, const.CONFIGURED)
         return self.host_id and (configured is None or configured == "True")
 
     def publish(self, state):
@@ -534,9 +535,9 @@ class HostedEngine(object):
                 self._local_monitors[m['field']] = lm
 
         # register storage domain info
-        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
-        sp_uuid = self._config.get(config.ENGINE, config.SP_UUID)
-        dom_type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
+        sd_uuid = self._config.get(config.ENGINE, const.SD_UUID)
+        sp_uuid = self._config.get(config.ENGINE, const.SP_UUID)
+        dom_type = self._config.get(config.ENGINE, const.DOMAIN_TYPE)
 
         # use filesystem type as the default fallback
         storage_backend_type = StorageBackendTypes.FilesystemBackend
@@ -553,19 +554,19 @@ class HostedEngine(object):
                 constants.SERVICE_TYPE + constants.MD_EXTENSION:
                 VdsmBackend.Device(
                     self._config.get(config.ENGINE,
-                                     config.METADATA_IMAGE_UUID,
+                                     const.METADATA_IMAGE_UUID,
                                      raise_on_none=True),
                     self._config.get(config.ENGINE,
-                                     config.METADATA_VOLUME_UUID,
+                                     const.METADATA_VOLUME_UUID,
                                      raise_on_none=True),
                 ).dump(),
                 constants.SERVICE_TYPE + constants.LOCKSPACE_EXTENSION:
                 VdsmBackend.Device(
                     self._config.get(config.ENGINE,
-                                     config.LOCKSPACE_IMAGE_UUID,
+                                     const.LOCKSPACE_IMAGE_UUID,
                                      raise_on_none=True),
                     self._config.get(config.ENGINE,
-                                     config.LOCKSPACE_VOLUME_UUID,
+                                     const.LOCKSPACE_VOLUME_UUID,
                                      raise_on_none=True),
                 ).dump()
             }
@@ -630,8 +631,8 @@ class HostedEngine(object):
         self._log.info("Connecting the storage")
         sserver = storage_server.StorageServer()
         img = image.Image(
-            self._config.get(config.ENGINE, config.DOMAIN_TYPE),
-            self._config.get(config.ENGINE, config.SD_UUID)
+            self._config.get(config.ENGINE, const.DOMAIN_TYPE),
+            self._config.get(config.ENGINE, const.SD_UUID)
         )
 
         if sserver.validate_storage_server() and not force:
@@ -764,7 +765,7 @@ class HostedEngine(object):
             self._stop_domain_monitor()
 
     def _stop_domain_monitor(self):
-        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
+        sd_uuid = self._config.get(config.ENGINE, const.SD_UUID)
 
         status = self._get_domain_monitor_status()
         if status != self.DomainMonitorStatus.NONE:
@@ -785,7 +786,7 @@ class HostedEngine(object):
                 self._log.info("Stopped VDSM domain monitor for %s", sd_uuid)
 
     def _initialize_domain_monitor(self):
-        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
+        sd_uuid = self._config.get(config.ENGINE, const.SD_UUID)
         host_id = self.host_id
 
         dm_status = self._get_domain_monitor_status()
@@ -829,7 +830,7 @@ class HostedEngine(object):
             raise Exception(msg)
 
     def _get_domain_monitor_status(self):
-        sd_uuid = self._config.get(config.ENGINE, config.SD_UUID)
+        sd_uuid = self._config.get(config.ENGINE, const.SD_UUID)
 
         cli = util.connect_vdsm_json_rpc(
             logger=self._log
@@ -1008,7 +1009,7 @@ class HostedEngine(object):
         # check local maintenance
         data["local"]["maintenance"] = util.to_bool(self._config.get(
             config.HA,
-            config.LOCAL_MAINTENANCE))
+            const.LOCAL_MAINTENANCE))
 
         self._log.debug("Refresh complete")
 
@@ -1056,7 +1057,7 @@ class HostedEngine(object):
         return md
 
     def _start_migration(self, host_id, hostname):
-        vm_id = self._config.get(config.VM, config.VM_UUID)
+        vm_id = self._config.get(config.VM, const.VM_UUID)
         self._log.debug("Initiating online migration of"
                         " vm %s from localhost to %s",
                         vm_id, hostname)
@@ -1086,7 +1087,7 @@ class HostedEngine(object):
         return True
 
     def _monitor_migration(self):
-        vm_id = self._config.get(config.VM, config.VM_UUID)
+        vm_id = self._config.get(config.VM, const.VM_UUID)
         self._log.debug("Monitoring migration of vm %s", vm_id)
         cli = util.connect_vdsm_json_rpc(
             logger=self._log
@@ -1162,7 +1163,7 @@ class HostedEngine(object):
         an exception indicating the error.
         """
         self._log.info("Ensuring VDSM state is clear for engine VM")
-        vm_id = self._config.get(config.VM, config.VM_UUID)
+        vm_id = self._config.get(config.VM, const.VM_UUID)
 
         for i in range(0, 10):
             # Loop until state is clear or until timeout

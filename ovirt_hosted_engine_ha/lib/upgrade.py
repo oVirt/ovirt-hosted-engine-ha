@@ -19,6 +19,7 @@
 
 
 from ovirt_hosted_engine_ha.env import config
+from ovirt_hosted_engine_ha.env import config_constants as const
 from ovirt_hosted_engine_ha.env import constants
 from ovirt_hosted_engine_ha.lib import heconflib
 from ovirt_hosted_engine_ha.lib import image
@@ -51,24 +52,24 @@ class Upgrade(object):
             timeout=constants.VDSCLI_SSL_TIMEOUT
         )
 
-        self._type = self._config.get(config.ENGINE, config.DOMAIN_TYPE)
-        self._spUUID = self._config.get(config.ENGINE, config.SP_UUID)
-        self._sdUUID = self._config.get(config.ENGINE, config.SD_UUID)
-        self._storage = self._config.get(config.ENGINE, config.STORAGE)
-        self._HEVMID = self._config.get(config.ENGINE, config.HEVMID)
-        self._host_id = int(self._config.get(config.ENGINE, config.HOST_ID))
+        self._type = self._config.get(config.ENGINE, const.DOMAIN_TYPE)
+        self._spUUID = self._config.get(config.ENGINE, const.SP_UUID)
+        self._sdUUID = self._config.get(config.ENGINE, const.SD_UUID)
+        self._storage = self._config.get(config.ENGINE, const.STORAGE)
+        self._HEVMID = self._config.get(config.ENGINE, const.HEVMID)
+        self._host_id = int(self._config.get(config.ENGINE, const.HOST_ID))
         self._fake_sd_size = '2G'
         self._vfstype = 'ext3'
 
         self._vm_img_uuid = self._config.get(
             config.ENGINE,
-            config.VM_DISK_IMG_ID
+            const.VM_DISK_IMG_ID
         )
         vm_vol_uuid = None
         try:
             vm_vol_uuid = self._config.get(
                 config.ENGINE,
-                config.VM_DISK_VOL_ID
+                const.VM_DISK_VOL_ID
             )
         except (KeyError, ValueError):
             vm_vol_uuid_list = self._cli.getVolumesList(
@@ -87,19 +88,19 @@ class Upgrade(object):
         self._conf_volUUID = None
         self._metadata_imgUUID = self._config.get(
             config.ENGINE,
-            config.METADATA_IMAGE_UUID,
+            const.METADATA_IMAGE_UUID,
         )
         self._metadata_volUUID = self._config.get(
             config.ENGINE,
-            config.METADATA_VOLUME_UUID,
+            const.METADATA_VOLUME_UUID,
         )
         self._lockspace_imgUUID = self._config.get(
             config.ENGINE,
-            config.LOCKSPACE_IMAGE_UUID,
+            const.LOCKSPACE_IMAGE_UUID,
         )
         self._lockspace_volUUID = self._config.get(
             config.ENGINE,
-            config.LOCKSPACE_VOLUME_UUID,
+            const.LOCKSPACE_VOLUME_UUID,
         )
         self._fake_SD_path = None
         self._fake_file = None
@@ -134,11 +135,11 @@ class Upgrade(object):
     def is_conf_file_uptodate(self):
         uptodate = False
         try:
-            volume = self._config.get(config.ENGINE, config.CONF_VOLUME_UUID)
+            volume = self._config.get(config.ENGINE, const.CONF_VOLUME_UUID)
             self._log.debug('Conf volume: %s ' % volume)
-            _image = self._config.get(config.ENGINE, config.CONF_IMAGE_UUID)
+            _image = self._config.get(config.ENGINE, const.CONF_IMAGE_UUID)
             self._log.debug('Conf image: %s ' % _image)
-            spuuid = self._config.get(config.ENGINE, config.SP_UUID)
+            spuuid = self._config.get(config.ENGINE, const.SP_UUID)
             if spuuid == constants.BLANK_UUID:
                 uptodate = True
             else:
@@ -221,20 +222,20 @@ class Upgrade(object):
         modifiedlines = []
         for line in origlines:
             if not (
-                line.startswith(config.CONF_VOLUME_UUID) or
-                line.startswith(config.CONF_IMAGE_UUID) or
-                line.startswith(config.CONF_FILE) or
-                line.startswith(config.VM_DISK_VOL_ID) or
-                line.startswith(config.SP_UUID)
+                line.startswith(const.CONF_VOLUME_UUID) or
+                line.startswith(const.CONF_IMAGE_UUID) or
+                line.startswith(const.CONF_FILE) or
+                line.startswith(const.VM_DISK_VOL_ID) or
+                line.startswith(const.SP_UUID)
             ):
                 modifiedlines.append(line)
 
         for key, value in [
-            [config.CONF_VOLUME_UUID, self._conf_volUUID],
-            [config.CONF_IMAGE_UUID, self._conf_imgUUID],
+            [const.CONF_VOLUME_UUID, self._conf_volUUID],
+            [const.CONF_IMAGE_UUID, self._conf_imgUUID],
             [config.CONF_FILE, constants.LOCAL_VM_CONF_PATH],
-            [config.VM_DISK_VOL_ID, self._vm_vol_uuid],
-            [config.SP_UUID, constants.BLANK_UUID],
+            [const.VM_DISK_VOL_ID, self._vm_vol_uuid],
+            [const.SP_UUID, constants.BLANK_UUID],
         ]:
             modifiedlines.append(
                 "{key}={value}".format(
@@ -251,9 +252,9 @@ class Upgrade(object):
         origlines = orig.splitlines()
         modifiedlines = []
         for line in origlines:
-            if line.startswith(config.STORAGE):
+            if line.startswith(const.STORAGE):
                 fixed = "{key}={value}".format(
-                    key=config.STORAGE,
+                    key=const.STORAGE,
                     value=os.path.normpath(self._storage),
                 )
                 modifiedlines.append(fixed)

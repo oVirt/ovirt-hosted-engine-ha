@@ -53,9 +53,9 @@ def notify(**kwargs):
     type = kwargs["type"]
 
     heconf = config.Config(logger=logger)
-    heconf.refresh_local_conf_file(config.BROKER)
+    path = heconf.refresh_local_conf_file(config.BROKER)
     cfg = ConfigParser.SafeConfigParser()
-    cfg.read(constants.NOTIFY_CONF_FILE)
+    cfg.read(path)
 
     detail = kwargs.get("detail", "")
 
