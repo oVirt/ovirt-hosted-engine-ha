@@ -18,6 +18,7 @@ RASD_NS = \
     '{http://schemas.dmtf.org/wbem/wscim/1/cim-schema' \
     '/2/CIM_ResourceAllocationSettingData}'
 
+XSI_NS = "http://www.w3.org/2001/XMLSchema-instance"
 
 # mimic the ovirt engine enum of DisplayType
 # better solution is to let the engine embed
@@ -226,7 +227,13 @@ def toDict(ovf):
         vmParams['xmlBase64'] = base64.standard_b64encode(engine_xml[0])
 
     # general
-    vmParams['vmId'] = tree.find('Content/Section').attrib[OVF_NS + 'id']
+    vmParams['vmId'] = tree.xpath(
+        "//Content/"
+        "Section[@xsi:type='ovf:OperatingSystemSection_Type']/"
+        "@ovf:id",
+        namespaces={'xsi': XSI_NS, 'ovf': OVF_NS[1:-1]}
+    )[0]
+
     vmParams['vmName'] = text(tree, 'Content/Name')
     vmParams['display'] = DISPLAY_TYPES.get(
         int(text(tree, 'Content/DefaultDisplayType'))
