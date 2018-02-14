@@ -1,6 +1,6 @@
 #
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-# Copyright (C) 2013-2016 Red Hat, Inc.
+# Copyright (C) 2013-2018 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -193,6 +193,9 @@ fi
 
 
 %changelog
+* Wed Feb 14 2018 Sandro Bonazzola <sbonazzo@redhat.com> - 2.1.9-1
+- 2.1.9-1
+
 * Wed Nov 15 2017 Simone Tiraboschi <stirabos@redhat.com> - 2.1.9-0.0.master
 - 2.1.9-0.0.master
 
