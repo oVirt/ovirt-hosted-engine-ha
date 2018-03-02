@@ -89,8 +89,11 @@ class OvfConfigFile(SharedConfigFile):
     def download(self, logger=None):
         header_comment = (
             '# Editing the hosted engine VM is only possible via'
-            ' the manager UI\API\n\n'
-        )
+            ' the manager UI\API\n'
+            '# This file was generated at %s\n'
+            '\n'
+        ) % time.asctime()
+
         if self._logger:
             self._logger.debug(
                 "Reloading vm.conf from the shared storage domain"
