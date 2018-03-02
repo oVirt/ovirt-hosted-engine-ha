@@ -13,6 +13,10 @@ class ConfigFile(object):
         self.mandatory = mandatory
         self._parent_logger = logger
 
+    def __str__(self):
+        return "<%s id:%s path:%s ro:%s>" %\
+               (type(self), self.id, self.path, self.readonly)
+
     @property
     def _logger(self):
         if self._parent_logger is None:
