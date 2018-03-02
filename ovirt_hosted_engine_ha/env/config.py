@@ -19,6 +19,7 @@
 
 import logging
 
+from ovirt_hosted_engine_ha.env.config_ini import SharedIniFile
 from .config_file import ConfigFile
 from .config_ovf import OvfConfigFile
 from .config_shared import SharedConfigFile
@@ -57,10 +58,10 @@ class Config(object):
         # List of all "public" configuration sources
         self.config_files = [
             sd_config,
-            SharedConfigFile(BROKER, constants.NOTIFY_CONF_FILE,
-                             sd_config=sd_config,
-                             writable=False, rawonly=True,
-                             logger=self._logger),
+            SharedIniFile(BROKER, constants.NOTIFY_CONF_FILE,
+                          sd_config=sd_config,
+                          writable=True,
+                          logger=self._logger),
             SharedConfigFile(HE_CONF,
                              constants.CACHED_ENGINE_SETUP_CONF_FILE,
                              sd_config=sd_config,
@@ -99,7 +100,7 @@ class Config(object):
     def _determine_final_config_type(self, key, config_type=None):
         cfgs = [c for c in self.config_files
                 if key in c
-                if config_type is None or config_type == key]
+                if not config_type or c.id == config_type]
 
         if len(cfgs) == 0:
             raise KeyError(
@@ -161,7 +162,7 @@ class Config(object):
             cfg = self._config_map[config_type]
             cfg.download()
             cfg.load()
-            return cfg.keys()
+            return {config_type: cfg.keys()}
         else:
             self._refresh_config()
             return {

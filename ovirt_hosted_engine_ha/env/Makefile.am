@@ -35,6 +35,7 @@ dist_haenv_PYTHON = \
 	config.py \
 	config_constants.py \
 	config_file.py \
+	config_ini.py \
 	config_shared.py \
 	config_ovf.py \
 	path.py \
