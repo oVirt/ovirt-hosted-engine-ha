@@ -36,7 +36,8 @@ class Config(object):
 
         # Initialize the primary configuration
         sd_config = ConfigFile(ENGINE, constants.ENGINE_SETUP_CONF_FILE,
-                               mandatory=True, logger=self._logger)
+                               mandatory=True, logger=self._logger,
+                               writable=True)
         sd_config.download()
         sd_config.load()
 
