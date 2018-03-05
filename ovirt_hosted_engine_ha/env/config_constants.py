@@ -1,5 +1,8 @@
 # constants for hosted-engine.conf options
-ENGINE = 'engine'
+ENGINE = 'he_local'
+BROKER = 'broker'
+HE_CONF = 'he_shared'
+
 DOMAIN_TYPE = 'domainType'
 ENGINE_FQDN = 'fqdn'
 CONFIGURED = 'configured'
@@ -39,6 +42,3 @@ MEM_SIZE = 'memSize'
 # constants for ha.conf options
 HA = 'ha'
 LOCAL_MAINTENANCE = 'local_maintenance'
-
-BROKER = 'broker'
-HE_CONF = 'he_conf'
