@@ -47,6 +47,7 @@ class Config(object):
         legacy_vm_conf = SharedConfigFile(
             LEGACY_VM_CONF,
             constants.LOCAL_VM_CONF_PATH_FALLBACK,
+            remote_path="vm.conf",
             sd_config=sd_config,
             writable=False,
             logger=self._logger)
