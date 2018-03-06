@@ -24,7 +24,8 @@ from .config_file import ConfigFile
 from .config_ovf import OvfConfigFile
 from .config_shared import SharedConfigFile
 from . import constants
-from .config_constants import ENGINE, CONF_FILE, BROKER, HE_CONF, VM, HA
+from .config_constants import ENGINE, CONF_FILE, BROKER, HE_CONF, VM, HA,\
+    LEGACY_VM_CONF
 
 
 class Config(object):
@@ -44,7 +45,7 @@ class Config(object):
         # Prepare a configuration source for getting the VM details
         vm_conf_path = sd_config.get(CONF_FILE, constants.LOCAL_VM_CONF_PATH)
         legacy_vm_conf = SharedConfigFile(
-            None,
+            LEGACY_VM_CONF,
             constants.LOCAL_VM_CONF_PATH_FALLBACK,
             sd_config=sd_config,
             writable=False,
