@@ -26,10 +26,10 @@ class SharedConfigFile(ConfigFile):
         else:
             return super(SharedConfigFile, self).get(key, d)
 
-    def download(self, logger=None):
+    def download(self):
         content = self._get_file_content_from_shared_storage()
         if not content:
-            self._logger(logger).debug(
+            self._logger.debug(
                 "unable to get a valid content, "
                 "failing back to conf file from a previous release"
             )
