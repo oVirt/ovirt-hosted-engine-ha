@@ -103,6 +103,7 @@ class OvfConfigFile(SharedConfigFile):
         if content_from_ovf:
             content = content_from_ovf
         else:
+            self.legacy_vm_conf.download()
             content = self.legacy_vm_conf.raw()
 
         if content:
