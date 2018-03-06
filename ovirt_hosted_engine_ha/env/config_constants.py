@@ -2,6 +2,7 @@
 ENGINE = 'he_local'
 BROKER = 'broker'
 HE_CONF = 'he_shared'
+LEGACY_VM_CONF = 'legacyvmconf'
 
 DOMAIN_TYPE = 'domainType'
 ENGINE_FQDN = 'fqdn'
