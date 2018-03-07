@@ -763,9 +763,13 @@ class HostedEngine(object):
 
         # check local maintenance
         self._config.refresh_local_conf_file(config.HA)
-        data["local"]["maintenance"] = util.to_bool(self._config.get(
+        manual_maintenance = util.to_bool(self._config.get(
+            config.HA,
+            const.LOCAL_MAINTENANCE_MANUAL))
+        local_maintenance = util.to_bool(self._config.get(
             config.HA,
             const.LOCAL_MAINTENANCE))
+        data["local"]["maintenance"] = manual_maintenance or local_maintenance
 
         self._log.debug("Refresh complete")
 

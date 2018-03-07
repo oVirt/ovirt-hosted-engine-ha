@@ -55,6 +55,7 @@ class HAClient(object):
         """
         LOCAL = 'LOCAL'
         GLOBAL = 'GLOBAL'
+        LOCAL_MANUAL = 'LOCAL_MANUAL'
 
     def __init__(self, log=False, **kwargs):
         """
@@ -217,6 +218,14 @@ class HAClient(object):
         return score
 
     def set_maintenance_mode(self, mode, value):
+        """
+        Set maintenance to the specified mode.
+        global - Disable/Enable the agents from monitoring the state
+        of the engine virtual machine.
+        local - Set the host's local maintenance (true/false).
+        local maintenance manual - for manual setting of local maintenance
+        when set/unset, local mode should have the same value.
+        """
         if mode == self.MaintenanceMode.GLOBAL:
             self.set_global_md_flag(self.GlobalMdFlags.MAINTENANCE,
                                     str(value))
@@ -224,6 +233,15 @@ class HAClient(object):
         elif mode == self.MaintenanceMode.LOCAL:
             if self._config is None:
                 self._config = config.Config()
+            self._config.set(config.HA,
+                             config_constants.LOCAL_MAINTENANCE,
+                             str(util.to_bool(value)))
+        elif mode == self.MaintenanceMode.LOCAL_MANUAL:
+            if self._config is None:
+                self._config = config.Config()
+            self._config.set(config.HA,
+                             config_constants.LOCAL_MAINTENANCE_MANUAL,
+                             str(util.to_bool(value)))
             self._config.set(config.HA,
                              config_constants.LOCAL_MAINTENANCE,
                              str(util.to_bool(value)))
