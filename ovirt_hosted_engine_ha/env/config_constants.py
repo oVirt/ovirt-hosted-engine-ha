@@ -42,3 +42,4 @@ MEM_SIZE = 'memSize'
 # constants for ha.conf options
 HA = 'ha'
 LOCAL_MAINTENANCE = 'local_maintenance'
+LOCAL_MAINTENANCE_MANUAL = 'local_maintenance_manual'
