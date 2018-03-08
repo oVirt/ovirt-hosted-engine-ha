@@ -109,9 +109,11 @@ class Config(object):
             raise KeyError(
                 "Configuration key not found: key={0}".format(key))
         elif len(cfgs) > 1:
+            key_types = [c.id for c in cfgs]
             raise Exception("Duplicate key {0}, "
-                            "please specify the key type"
-                            .format(key))
+                            "please specify the key type. "
+                            "Available types are: {1}"
+                            .format(key, key_types))
         elif cfgs[0].readonly:
             allowed_types = [c.id for c in self.config_files]
             raise Exception("Invalid configuration type {0}, "
