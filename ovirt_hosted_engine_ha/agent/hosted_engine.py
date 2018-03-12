@@ -762,6 +762,7 @@ class HostedEngine(object):
             data["local"][field] = ret
 
         # check local maintenance
+        self._config.refresh_local_conf_file(config.HA)
         data["local"]["maintenance"] = util.to_bool(self._config.get(
             config.HA,
             const.LOCAL_MAINTENANCE))
