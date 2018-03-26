@@ -46,6 +46,7 @@ dist_noinst_DATA = \
 	ovf_test.xml \
 	ovf_test_max_vcpu.xml \
 	ovf_test_v4.2.xml \
+	ovf_test_v4.2_unsafe.xml \
 	$(NULL)
 
 clean-local: \
