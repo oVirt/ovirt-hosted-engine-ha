@@ -28,7 +28,7 @@
 
 %global         vdsm_user @VDSM_USER@
 %global         vdsm_group @VDSM_GROUP@
-%global         vdsm_version 4.20.8
+%global         vdsm_version 4.20.21
 
 Summary:        oVirt Hosted Engine High Availability Manager
 Name:           @PACKAGE_NAME@
@@ -191,6 +191,9 @@ fi
 
 
 %changelog
+* Mon Mar 26 2018 Simone Tiraboschi <stirabos@redhat.com> - 2.2.8-1
+- 2.2.8-1
+
 * Wed Mar 14 2018 Simone Tiraboschi <stirabos@redhat.com> - 2.2.8-0.0.master
 - 2.2.8-0.0.master
 
