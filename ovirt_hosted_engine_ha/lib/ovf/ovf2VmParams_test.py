@@ -18,100 +18,19 @@ OVF_w_max_vcpu = open(
     )
 ).read()
 
+OVF_42_UNSAFE = open(
+    os.path.join(
+        os.path.dirname(__file__),
+        'ovf_test_v4.2_unsafe.xml'
+    )
+).read()
+
 OVF_42 = open(
     os.path.join(
         os.path.dirname(__file__),
         'ovf_test_v4.2.xml'
     )
 ).read()
-
-
-EXPECTED_LIBVIRT_XML = \
-    '<?xml version="1.0" encoding="UTF-8"?><domain type="kvm" ' \
-    'xmlns:ovirt-tune="http://ovirt.org/vm/tune/1.0" ' \
-    'xmlns:ovirt-vm="http://ovirt.org/vm/1.0"><name>vm</name><uuid>b36a34f1' \
-    '-d1c2-4585-ae8f-33e05e4d3c19</uuid><memory>1048576</memory>' \
-    '<currentMemory>1048576</currentMemory><maxMemory ' \
-    'slots="16">4194304</maxMemory><vcpu current="2">16</vcpu><sysinfo ' \
-    'type="smbios"><system><entry name="manufacturer">oVirt</entry><entry ' \
-    'name="product">OS-NAME:</entry><entry ' \
-    'name="version">OS-VERSION:</entry><entry ' \
-    'name="serial">HOST-SERIAL:</entry><entry ' \
-    'name="uuid">b36a34f1-d1c2-4585-ae8f-33e05e4d3c19</entry></system>' \
-    '</sysinfo><clock offset="variable" adjustment="0"><timer name="rtc" ' \
-    'tickpolicy="catchup"></timer><timer name="pit" ' \
-    'tickpolicy="delay"></timer><timer name="hpet" ' \
-    'present="no"></timer></clock><features><acpi></acpi>' \
-    '</features><cpu match="exact"><model>SandyBridge</model><topology ' \
-    'cores="1" threads="1" sockets="16"></topology><numa><cell cpus="0,' \
-    '1" memory="1048576"></cell></numa></cpu><cputune></cputune>' \
-    '<devices><input type="mouse" bus="ps2"></input><channel ' \
-    'type="unix"><target type="virtio" ' \
-    'name="ovirt-guest-agent.0"></target><source mode="bind" ' \
-    'path="/var/lib/libvirt/qemu/channels/' \
-    'b36a34f1-d1c2-4585-ae8f-33e05e4d3c19.ovirt-guest-agent.0' \
-    '"></source></channel><channel type="unix"><target type="virtio" ' \
-    'name="org.qemu.guest_agent.0"></target><source mode="bind" ' \
-    'path="/var/lib/libvirt/qemu/channels/b36a34f1-d1c2-4585-ae8f-' \
-    '33e05e4d3c19.org.qemu' \
-    '.guest_agent.0"></source></channel><video><model type="qxl" ' \
-    'vram="8192" heads="1" ram="65536" vgamem="16384"></model>' \
-    '<address bus="0x00" domain="0x0000" function="0x0" slot="0x02" ' \
-    'type="pci"></address></video><rng model="virtio"><backend ' \
-    'model="random">/dev/urandom</backend></rng>' \
-    '<controller type="virtio-serial" index="0" ports="16">' \
-    '<address bus="0x00" domain="0x0000" function="0x0" slot="0x05" ' \
-    'type="pci"></address></controller><graphics type="spice" port="-1" ' \
-    'autoport="yes" passwd="*****" passwdValidTo="1970-01-01T00:00:01"' \
-    ' tlsPort="-1"><listen type="network" network="vdsm-ovirtmgmt">' \
-    '</listen></graphics><controller type="scsi" model="virtio-scsi" ' \
-    'index="0"><address bus="0x00" domain="0x0000" ' \
-    'function="0x0" slot="0x04" type="pci"></address></controller>' \
-    '<controller type="ide" index="0"><address bus="0x00" domain="0x0000"' \
-    ' function="0x1" slot="0x01" type="pci"></address></controller>' \
-    '<controller type="usb" model="piix3-uhci" ' \
-    'index="0"><address bus="0x00" domain="0x0000" function="0x2" ' \
-    'slot="0x01" type="pci"></address></controller><memballoon ' \
-    'model="virtio"><stats period="5"></stats><address bus="0x00" ' \
-    'domain="0x0000" function="0x0" slot="0x06" ' \
-    'type="pci"></address></memballoon><channel type="spicevmc"><target ' \
-    'type="virtio" name="com.redhat.spice.0"></target></channel><interface ' \
-    'type="bridge"><model type="virtio"></model><link ' \
-    'state="up"></link><source bridge="ovirtmgmt"></source><address ' \
-    'bus="0x00" domain="0x0000" function="0x0" slot="0x03" type="pci">' \
-    '</address><mac address="00:1a:4a:16:01:01"></mac><filterref ' \
-    'filter="vdsm-no-mac-spoofing"></filterref><bandwidth></bandwidth>' \
-    '</interface><disk type="file" device="cdrom" snapshot="no">' \
-    '<driver name="qemu" type="raw" error_policy="report"></driver>' \
-    '<source file="" startupPolicy="optional"></source><target dev="hdc" ' \
-    'bus="ide"></target><readonly></readonly><address bus="1" ' \
-    'controller="0" unit="0" type="drive" target="0"></address></disk>' \
-    '<disk snapshot="no" type="file" device="disk"><target dev="sda" ' \
-    'bus="scsi"></target><source file="/rhev/data-center/' \
-    '5a38bfb2-00d2-02f9-0120-0000000002af/a2ec0146-37d4-4c1d-901e-' \
-    '7ed89cd009ff/images/73a433b7-2a84-49d0-a80f-207ff91930f3/596f868e' \
-    '-6519-456d-96a0-b78a1b2eea91"></source><driver name="qemu" ' \
-    'io="threads" type="raw" error_policy="stop" cache="none"></driver>' \
-    '<address bus="0" controller="0" unit="0" type="drive" target="0">' \
-    '</address><boot ' \
-    'order="1"></boot><serial>73a433b7-2a84-49d0-a80f-207ff91930f3</serial>' \
-    '</disk></devices><pm><suspend-to-disk ' \
-    'enabled="no"></suspend-to-disk><suspend-to-mem ' \
-    'enabled="no"></suspend-to-mem></pm><os><type arch="x86_64" ' \
-    'machine="pc-i440fx-2.6">hvm</type><smbios ' \
-    'mode="sysinfo"></smbios></os><metadata><ovirt-tune:qos></ovirt' \
-    '-tune:qos><ovirt-vm:vm><minGuaranteedMemoryMb ' \
-    'type="int">1024</minGuaranteedMemoryMb><clusterVersion>4.2' \
-    '</clusterVersion><ovirt-vm:custom></ovirt-vm:custom><ovirt-vm:device ' \
-    'mac_address="00:1a:4a:16:01:01"><ovirt-vm:custom></ovirt-vm:custom>' \
-    '</ovirt-vm:device><ovirt-vm:device devtype="disk" ' \
-    'name="sda"><ovirt-vm:imageID>73a433b7-2a84-49d0-a80f-207ff91930f3' \
-    '</ovirt-vm:imageID><ovirt-vm:poolID>5a38bfb2-00d2-02f9-0120-' \
-    '0000000002af</ovirt-vm:poolID><ovirt-vm:volumeID>596f868e-6519-456d-' \
-    '96a0-b78a1b2eea91</ovirt-vm:volumeID><ovirt-vm:domainID>a2ec0146-37d4-' \
-    '4c1d-901e-7ed89cd009ff</ovirt-vm:domainID>' \
-    '</ovirt-vm:device><launchPaused>false</launchPaused><resumeBehavior>' \
-    'auto_resume</resumeBehavior></ovirt-vm:vm></metadata></domain>'
 
 EXPECTED_VM_CONF_DICT = {
     'vmId': '50e59bbd-f829-4761-ba1b-6db1a6acc3b8',
@@ -258,7 +177,7 @@ EXPECTED_VM_CONF_DICT = {
 EXPECTED_VM_CONF_DICT_W_MAX_VCPU = copy.deepcopy(EXPECTED_VM_CONF_DICT)
 EXPECTED_VM_CONF_DICT_W_MAX_VCPU['maxVCpus'] = '16'
 
-EXPECTED_VM_CONF_DICT_42 = {
+EXPECTED_VM_CONF_DICT_42_UNSAFE = {
     'vmId': 'b4491372-8f8a-4e08-8524-f8fb986a548a',
     'vmName': 'HostedEngine',
     'cpuType': 'Haswell-noTSX',
@@ -381,7 +300,221 @@ EXPECTED_VM_CONF_DICT_42 = {
     'smp': '4',
     'spiceSecureChannels': 'smain,sdisplay,sinputs,scursor,splayback,srecord,'
                            'ssmartcard,susbredir',
-    "xmlBase64": base64.standard_b64encode(EXPECTED_LIBVIRT_XML)
+}
+
+EXPECTED_LIBVIRT_XML = (
+    '<?xml version="1.0" encoding="UTF-8"?>'
+    '<domain type="kvm" xmlns:ovirt-tune="http://ovirt.org/vm/tune/1.0" '
+    'xmlns:ovirt-vm="http://ovirt.org/vm/1.0">'
+    '<name>HostedEngine</name>'
+    '<uuid>eccb9cb6-affd-4806-8200-708370581227</uuid>'
+    '<memory>16777216</memory><currentMemory>16777216</currentMemory>'
+    '<maxMemory slots="16">67108864</maxMemory><vcpu current="12">16</vcpu>'
+    '<sysinfo type="smbios"><system>'
+    '<entry name="manufacturer">oVirt</entry>'
+    '<entry name="product">OS-NAME:</entry>'
+    '<entry name="version">OS-VERSION:</entry>'
+    '<entry name="serial">HOST-SERIAL:</entry>'
+    '<entry name="uuid">eccb9cb6-affd-4806-8200-708370581227</entry>'
+    '</system></sysinfo>'
+    '<clock offset="variable" adjustment="0">'
+    '<timer name="rtc" tickpolicy="catchup"></timer>'
+    '<timer name="pit" tickpolicy="delay"></timer>'
+    '<timer name="hpet" present="no"></timer></clock>'
+    '<features><acpi></acpi></features>'
+    '<cpu match="exact"><model>Broadwell</model>'
+    '<topology cores="1" threads="1" sockets="16"></topology>'
+    '<numa><cell cpus="0,1,2,3,4,5,6,7,8,9,10,11" memory="16777216">'
+    '</cell></numa></cpu><cputune></cputune>'
+    '<devices><input type="tablet" bus="usb"></input>'
+    '<channel type="unix"><target type="virtio" name="ovirt-guest-agent.0">'
+    '</target><source mode="bind" '
+    'path="/var/lib/libvirt/qemu/channels/eccb9cb6-affd-4806-8200-708370581227'
+    '.ovirt-guest-agent.0"></source></channel><channel type="unix">'
+    '<target type="virtio" name="org.qemu.guest_agent.0"></target>'
+    '<source mode="bind" path="/var/lib/libvirt/qemu/channels/'
+    'eccb9cb6-affd-4806-8200-708370581227.org.qemu.guest_agent.0"></source>'
+    '</channel><controller type="usb" model="piix3-uhci" index="0">'
+    '<address bus="0x00" domain="0x0000" function="0x2" slot="0x01" '
+    'type="pci"></address></controller><controller type="ide" index="0">'
+    '<address bus="0x00" domain="0x0000" function="0x1" slot="0x01" '
+    'type="pci"></address></controller><controller type="virtio-serial" '
+    'index="0" ports="16"><address bus="0x00" domain="0x0000" function="0x0" '
+    'slot="0x05" type="pci"></address></controller><graphics type="vnc" '
+    'port="-1" autoport="yes" passwd="*****" '
+    'passwdValidTo="1970-01-01T00:00:01" keymap="en-us">'
+    '<listen type="network" network="vdsm-ovirtmgmt"></listen>'
+    '</graphics><controller type="scsi" model="virtio-scsi" index="0">'
+    '<address bus="0x00" domain="0x0000" function="0x0" slot="0x04" '
+    'type="pci"></address></controller><console type="pty"><target '
+    'type="virtio" port="0"></target><alias '
+    'name="ua-c60aba6e-b6d8-448b-ab6e-8c7b5c29f351"></alias></console>'
+    '<memballoon model="none"></memballoon><interface type="bridge">'
+    '<model type="virtio"></model><link state="up"></link>'
+    '<source bridge="ovirtmgmt"></source><alias '
+    'name="ua-a959b3de-a059-4634-abcc-eb256be6898d"></alias>'
+    '<address bus="0x00" domain="0x0000" function="0x0" slot="0x03" '
+    'type="pci"></address><mac address="00:16:3e:6a:7a:f9"></mac>'
+    '<bandwidth></bandwidth></interface><disk type="file" device="cdrom" '
+    'snapshot="no"><driver name="qemu" type="raw" error_policy="report">'
+    '</driver><source file="" startupPolicy="optional"></source>'
+    '<target dev="hdc" bus="ide"></target><readonly></readonly>'
+    '<alias name="ua-3c794eee-a64a-47db-87da-1e5fb060c412"></alias>'
+    '<address bus="1" controller="0" unit="0" type="drive" target="0">'
+    '</address></disk><disk snapshot="no" type="file" device="disk">'
+    '<target dev="vda" bus="virtio"></target><source '
+    'file="/rhev/data-center/00000000-0000-0000-0000-000000000000/'
+    'ce880525-a44b-4248-8b63-d9e11b2f123a/images/'
+    '69a2b8c2-8d1c-4014-8f75-a85c16bc5b71/'
+    '3ab9fff0-9aa1-4c2e-ad67-5e25d05cb86e"></source>'
+    '<driver name="qemu" io="threads" type="raw" error_policy="stop" '
+    'cache="none"></driver><alias '
+    'name="ua-69a2b8c2-8d1c-4014-8f75-a85c16bc5b71">'
+    '</alias><address bus="0x00" domain="0x0000" function="0x0" slot="0x06" '
+    'type="pci"></address><serial>69a2b8c2-8d1c-4014-8f75-a85c16bc5b71'
+    '</serial></disk><lease><key>3ab9fff0-9aa1-4c2e-ad67-5e25d05cb86e</key>'
+    '<lockspace>ce880525-a44b-4248-8b63-d9e11b2f123a</lockspace>'
+    '<target offset="LEASE-OFFSET:3ab9fff0-9aa1-4c2e-ad67-5e25d05cb86e:'
+    'ce880525-a44b-4248-8b63-d9e11b2f123a" '
+    'path="LEASE-PATH:3ab9fff0-9aa1-4c2e-ad67-5e25d05cb86e:'
+    'ce880525-a44b-4248-8b63-d9e11b2f123a"></target></lease></devices><pm>'
+    '<suspend-to-disk enabled="no"></suspend-to-disk><suspend-to-mem '
+    'enabled="no"></suspend-to-mem></pm><os><type arch="x86_64" '
+    'machine="pc-i440fx-rhel7.3.0">hvm</type><smbios mode="sysinfo">'
+    '</smbios></os><metadata><ovirt-tune:qos></ovirt-tune:qos>'
+    '<ovirt-vm:vm><minGuaranteedMemoryMb type="int">16384'
+    '</minGuaranteedMemoryMb><clusterVersion>4.2</clusterVersion>'
+    '<ovirt-vm:custom></ovirt-vm:custom><ovirt-vm:device '
+    'mac_address="00:16:3e:6a:7a:f9"><ovirt-vm:custom></ovirt-vm:custom>'
+    '</ovirt-vm:device><ovirt-vm:device devtype="disk" name="vda">'
+    '<ovirt-vm:poolID>00000000-0000-0000-0000-000000000000</ovirt-vm:poolID>'
+    '<ovirt-vm:volumeID>3ab9fff0-9aa1-4c2e-ad67-5e25d05cb86e'
+    '</ovirt-vm:volumeID><ovirt-vm:shared>exclusive'
+    '</ovirt-vm:shared><ovirt-vm:imageID>69a2b8c2-8d1c-4014-8f75-a85c16bc5b71'
+    '</ovirt-vm:imageID><ovirt-vm:domainID>'
+    'ce880525-a44b-4248-8b63-d9e11b2f123a</ovirt-vm:domainID>'
+    '</ovirt-vm:device><launchPaused>false</launchPaused>'
+    '<resumeBehavior>auto_resume</resumeBehavior></ovirt-vm:vm>'
+    '</metadata></domain>'
+)
+
+EXPECTED_VM_CONF_DICT_42 = {
+    'vmId': 'eccb9cb6-affd-4806-8200-708370581227',
+    'vmName': 'HostedEngine',
+    'cpuType': 'Broadwell',
+    'devices': [
+        {
+            'address': '{type:pci, slot:0x06, bus:0x00, domain:0x0000,'
+                       ' function:0x0}',
+            'bootOrder': '1',
+            'device': 'disk',
+            'deviceId': '69a2b8c2-8d1c-4014-8f75-a85c16bc5b71',
+            'domainID': 'ce880525-a44b-4248-8b63-d9e11b2f123a',
+            'format': 'raw',
+            'iface': 'virtio',
+            'imageID': '69a2b8c2-8d1c-4014-8f75-a85c16bc5b71',
+            'index': '0',
+            'poolID': '00000000-0000-0000-0000-000000000000',
+            'propagateErrors': 'off',
+            'readonly': 'false',
+            'shared': 'exclusive',
+            'type': 'disk',
+            'volumeID': '3ab9fff0-9aa1-4c2e-ad67-5e25d05cb86e'
+        },
+        {
+            'address': '{type:pci, slot:0x03, bus:0x00, domain:0x0000,'
+                       ' function:0x0}',
+            'device': 'bridge',
+            'deviceId': 'a959b3de-a059-4634-abcc-eb256be6898d',
+            'linkActive': 'true',
+            'macAddr': '00:16:3e:6a:7a:f9',
+            'network': 'ovirtmgmt',
+            'nicModel': 'pv',
+            'type': 'interface'
+        },
+        {
+            'address': None,
+            'device': 'vnc',
+            'deviceId': '569aff14-42ca-456e-ad7f-3d53ed512ed3',
+            'type': 'graphics'
+        },
+        {
+            'address': '{ controller:0, target:0,unit:0, bus:1, type:drive}',
+            'device': 'cdrom',
+            'deviceId': '8c3179ac-b322-4f5c-9449-c52e3665e0ae',
+            'iface': 'ide',
+            'index': '2',
+            'path': '',
+            'readonly': 'true',
+            'shared': 'false',
+            'type': 'disk'
+        },
+        {
+            'address': '{type:pci, slot:0x01, bus:0x00, domain:0x0000,'
+                       ' function:0x2}',
+            'device': 'usb',
+            'deviceId': '0473bfa4-604b-40d3-8ca4-b9ba55f4f8bd',
+            'specParams': {
+                'index': '0',
+                'model': 'piix3-uhci'
+            },
+            'type': 'controller'
+        },
+        {
+            'address': '{type:pci, slot:0x01, bus:0x00, domain:0x0000,'
+                       ' function:0x1}',
+            'device': 'ide',
+            'deviceId': '3443c210-d567-45b2-95f5-1812c1582e6c',
+            'specParams': {
+                'index': '0'
+            },
+            'type': 'controller'
+        },
+        {
+            'address': '{type:pci, slot:0x05, bus:0x00, domain:0x0000,'
+                       ' function:0x0}',
+            'device': 'virtio-serial',
+            'specParams': {
+                'index': '0',
+            },
+            'deviceId': '516eedee-53c2-4a85-bf12-54d41fd81f62',
+            'type': 'controller'
+        },
+        {
+            'address': '{type:pci, slot:0x04, bus:0x00, domain:0x0000,'
+                       ' function:0x0}',
+            'device': 'scsi',
+            'deviceId': '5fad56de-094c-4a08-8215-898df4d51b36',
+            'model': 'virtio-scsi',
+            'type': 'controller',
+            'specParams': {
+                'index': '0',
+                'model': 'virtio-scsi'
+            },
+        },
+        {
+            'device': 'console',
+            'type': 'console',
+            'deviceId': 'c60aba6e-b6d8-448b-ab6e-8c7b5c29f351',
+            'address': None,
+        },
+        {
+            'device': 'virtio',
+            'model': 'virtio',
+            'specParams': {
+                'source': 'urandom'
+            },
+            'type': 'rng'
+        },
+    ],
+    'display': 'vnc',
+    'emulatedMachine': 'pc-i440fx-rhel7.3.0',
+    'maxVCpus': '16',
+    'memSize': '16384',
+    'smp': '12',
+    'spiceSecureChannels': 'smain,sdisplay,sinputs,scursor,splayback,srecord,'
+                           'ssmartcard,susbredir',
+    "xmlBase64": base64.standard_b64encode(EXPECTED_LIBVIRT_XML),
 }
 
 
@@ -392,6 +525,12 @@ class Ovf2vmConfTest(TestCase):
         self.assertDictEqual(
             EXPECTED_VM_CONF_DICT,
             ovf2VmParams.toDict(OVF))
+
+    def test_convert_to_dict_42_unsafe(self):
+        self.maxDiff = None
+        self.assertDictEqual(
+            EXPECTED_VM_CONF_DICT_42_UNSAFE,
+            ovf2VmParams.toDict(OVF_42_UNSAFE))
 
     def test_convert_to_dict_42(self):
         self.maxDiff = None

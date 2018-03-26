@@ -20,6 +20,8 @@ RASD_NS = \
 
 XSI_NS = "http://www.w3.org/2001/XMLSchema-instance"
 
+OVIRT_VM_NS = "http://ovirt.org/vm/1.0"
+
 # mimic the ovirt engine enum of DisplayType
 # better solution is to let the engine embed
 # its enums in the OVF so we're always updated
@@ -223,8 +225,15 @@ def toDict(ovf):
     # use libvirt XML if present in OVF
     engine_xml = tree.xpath("//EngineXml/text()")
     if engine_xml:
-        # Encode XML string so it can contain newlines
-        vmParams['xmlBase64'] = base64.standard_b64encode(engine_xml[0])
+        engine_xml_tree = ovfenvelope.etree_.fromstring(engine_xml[0])
+        lease = engine_xml_tree.xpath("//devices/lease")
+        exclusive = engine_xml_tree.xpath(
+            "//ovirt-vm:device[@devtype='disk']/ovirt-vm:shared/text()",
+            namespaces={'ovirt-vm': OVIRT_VM_NS}
+        )
+        if exclusive and exclusive[0] == 'exclusive' and lease:
+            # Encode XML string so it can contain newlines
+            vmParams['xmlBase64'] = base64.standard_b64encode(engine_xml[0])
 
     # general
     vmParams['vmId'] = tree.xpath(
