@@ -222,9 +222,12 @@ def toDict(ovf):
 
     vmParams = {}
 
+    # TODO: revert this once https://bugzilla.redhat.com/1560666 got fixed
+    IGNORE_LIBVIRT_XML = True
+
     # use libvirt XML if present in OVF
     engine_xml = tree.xpath("//EngineXml/text()")
-    if engine_xml:
+    if not IGNORE_LIBVIRT_XML and engine_xml:
         engine_xml_tree = ovfenvelope.etree_.fromstring(engine_xml[0])
         lease = engine_xml_tree.xpath("//devices/lease")
         exclusive = engine_xml_tree.xpath(
