@@ -3,6 +3,7 @@ import copy
 import os
 from unittest import TestCase
 import ovf2VmParams
+import ovfenvelope
 
 OVF = open(
     os.path.join(
@@ -348,7 +349,9 @@ EXPECTED_LIBVIRT_XML = (
     '<address bus="0x00" domain="0x0000" function="0x0" slot="0x04" '
     'type="pci"></address></controller><console type="pty"><target '
     'type="virtio" port="0"></target><alias '
-    'name="ua-c60aba6e-b6d8-448b-ab6e-8c7b5c29f351"></alias></console>'
+    # TODO: revert this once https://bugzilla.redhat.com/1560666 got fixed
+    # 'name="ua-c60aba6e-b6d8-448b-ab6e-8c7b5c29f351"></alias></console>'
+    'name="ua-c60aba6e-b6d8-448b-ab"></alias></console>'
     '<memballoon model="none"></memballoon><interface type="bridge">'
     '<model type="virtio"></model><link state="up"></link>'
     '<source bridge="ovirtmgmt"></source><alias '
@@ -532,12 +535,29 @@ class Ovf2vmConfTest(TestCase):
             EXPECTED_VM_CONF_DICT_42_UNSAFE,
             ovf2VmParams.toDict(OVF_42_UNSAFE))
 
-    # TODO: revert this once https://bugzilla.redhat.com/1560666 got fixed
-    # def test_convert_to_dict_42(self):
-    #    self.maxDiff = None
-    #    self.assertDictEqual(
-    #        EXPECTED_VM_CONF_DICT_42,
-    #        ovf2VmParams.toDict(OVF_42))
+    def test_convert_to_dict_42(self):
+        def _xml_tostring(s):
+            return ovfenvelope.etree_.tostring(
+                ovfenvelope.etree_.fromstring(
+                    base64.standard_b64decode(s)
+                ),
+                xml_declaration=True,
+                encoding='UTF-8',
+                pretty_print=True,
+            )
+        self.maxDiff = None
+        key = "xmlBase64"
+        e = dict(EXPECTED_VM_CONF_DICT_42)
+        e_xml_base64 = e[key]
+        del e[key]
+        t = ovf2VmParams.toDict(OVF_42)
+        t_xml_base64 = t[key]
+        del t[key]
+        self.assertDictEqual(e, t)
+        self.assertEqual(
+            _xml_tostring(e_xml_base64),
+            _xml_tostring(t_xml_base64),
+        )
 
     def test_convert_to_dict_with_max_vcpu(self):
         self.maxDiff = None
