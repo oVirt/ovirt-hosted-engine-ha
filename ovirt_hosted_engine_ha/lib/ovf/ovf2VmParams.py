@@ -223,20 +223,34 @@ def toDict(ovf):
     vmParams = {}
 
     # TODO: revert this once https://bugzilla.redhat.com/1560666 got fixed
-    IGNORE_LIBVIRT_XML = True
+    TRUNCATE_CONSOLE_ALIAS = True
 
     # use libvirt XML if present in OVF
     engine_xml = tree.xpath("//EngineXml/text()")
-    if not IGNORE_LIBVIRT_XML and engine_xml:
+    if engine_xml:
         engine_xml_tree = ovfenvelope.etree_.fromstring(engine_xml[0])
         lease = engine_xml_tree.xpath("//devices/lease")
         exclusive = engine_xml_tree.xpath(
             "//ovirt-vm:device[@devtype='disk']/ovirt-vm:shared/text()",
             namespaces={'ovirt-vm': OVIRT_VM_NS}
         )
+        if TRUNCATE_CONSOLE_ALIAS:
+            console_pty_alias = engine_xml_tree.xpath(
+                "//devices/console[@type='pty']/alias"
+            )
+            if console_pty_alias:
+                alias_name = console_pty_alias[0].get("name")
+                if alias_name and len(alias_name) > 24:
+                    console_pty_alias[0].set("name", alias_name[:24])
         if exclusive and exclusive[0] == 'exclusive' and lease:
             # Encode XML string so it can contain newlines
-            vmParams['xmlBase64'] = base64.standard_b64encode(engine_xml[0])
+            vmParams['xmlBase64'] = base64.standard_b64encode(
+                ovfenvelope.etree_.tostring(
+                    engine_xml_tree,
+                    xml_declaration=True,
+                    encoding='UTF-8',
+                )
+            )
 
     # general
     vmParams['vmId'] = tree.xpath(
