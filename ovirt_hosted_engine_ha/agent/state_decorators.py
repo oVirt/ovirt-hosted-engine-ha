@@ -64,6 +64,10 @@ def check_timeout(destination, timeout, wait=BaseFSM.WAIT):
     This decorator monitors the time spent in the decorated state
     and if it exceeds timeout then a transition to a new state
     (destination) is initiated.
+
+    This decorator has to be the first when applied to a state.
+    Otherwise the timeout will not be cleared, when another
+    decorator changes the state.
     """
     def decorate(f):
         @wraps(f)
