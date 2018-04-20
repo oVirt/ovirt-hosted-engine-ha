@@ -557,11 +557,11 @@ class EngineStop(EngineState):
     :transition ReinitializeFSM:
     :transition EngineDown:
     """
+    @check_timeout(EngineForceStop, constants.ENGINE_BAD_HEALTH_TIMEOUT_SECS,
+                   BaseFSM.WAIT)
     @check_global_maintenance(GlobalMaintenance)
     @check_local_maintenance(LocalMaintenance)
     @check_local_vm_unknown(UnknownLocalVmState)
-    @check_timeout(EngineForceStop, constants.ENGINE_BAD_HEALTH_TIMEOUT_SECS,
-                   BaseFSM.WAIT)
     def consume(self, fsm, new_data, logger):
         """
         :type fsm: BaseFSM
@@ -643,11 +643,11 @@ class EngineUnexpectedlyDown(EngineState):
     :transition:
     """
 
+    @check_timeout(EngineDown,
+                   constants.VM_UNEXPECTED_SHUTDOWN_EXPIRATION_SECS)
     @check_global_maintenance(GlobalMaintenance)
     @check_local_vm_unknown(UnknownLocalVmState)
     @check_local_maintenance(LocalMaintenance)
-    @check_timeout(EngineDown,
-                   constants.VM_UNEXPECTED_SHUTDOWN_EXPIRATION_SECS)
     def consume(self, fsm, new_data, logger):
         """
         :type fsm: BaseFSM
@@ -750,11 +750,12 @@ class EngineStarting(EngineState):
     :transition EngineMaybeAway:
     :transition:
     """
+
+    @check_timeout(EngineStop, constants.ENGINE_STARTING_TIMEOUT,
+                   BaseFSM.WAIT)
     @check_global_maintenance(GlobalMaintenance)
     @check_local_vm_unknown(UnknownLocalVmState)
     @check_local_maintenance(LocalMaintenance)
-    @check_timeout(EngineStop, constants.ENGINE_STARTING_TIMEOUT,
-                   BaseFSM.WAIT)
     def consume(self, fsm, new_data, logger):
         """
         :type fsm: BaseFSM
@@ -849,11 +850,11 @@ class EngineMaybeAway(EngineState):
     :transition:
     """
 
+    @check_timeout(EngineUnexpectedlyDown,
+                   constants.ENGINE_AWAY_EXPIRATION_SECS, BaseFSM.NOWAIT)
     @check_global_maintenance(GlobalMaintenance)
     @check_local_vm_unknown(UnknownLocalVmState)
     @check_local_maintenance(LocalMaintenance)
-    @check_timeout(EngineUnexpectedlyDown,
-                   constants.ENGINE_AWAY_EXPIRATION_SECS, BaseFSM.NOWAIT)
     def consume(self, fsm, new_data, logger):
         """
         :type fsm: BaseFSM
