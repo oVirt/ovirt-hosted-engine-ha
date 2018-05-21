@@ -810,10 +810,12 @@ class EngineMigratingAway(EngineState):
         :type logger: logging.Logger
         """
 
-        local_status = new_data.stats.local["engine-health"]["detail"]
+        local_state = new_data.stats.local["engine-health"]["vm"]
+        local_detail = new_data.stats.local["engine-health"]["detail"]
 
-        # If VM is not DOWN or MIGRATION_SOURCE, the migration failed
-        if (local_status not in (vmstatus.DOWN, vmstatus.MIGRATION_SOURCE) or
+        # If VM is UP but not in MIGRATION_SOURCE state, the migration failed
+        if ((local_state == engine.VMState.UP and
+             local_detail != vmstatus.MIGRATION_SOURCE) or
                 not new_data.migration_result or
                 'progress' not in new_data.migration_result):
             logger.error("Migration failed: %s", new_data.migration_result)
