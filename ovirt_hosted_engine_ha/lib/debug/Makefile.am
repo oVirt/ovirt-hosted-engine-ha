@@ -1,6 +1,6 @@
 #
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-# Copyright (C) 2012-2013 Red Hat, Inc.
+# Copyright (C) 2018 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -23,31 +23,11 @@ MAINTAINERCLEANFILES = \
 	$(srcdir)/Makefile.in \
 	$(NULL)
 
-halibdir = $(engine_ha_libdir)/lib
+debuglibdir = $(engine_ha_libdir)/lib/debug
 
-dist_halib_PYTHON = \
+dist_debuglib_PYTHON = \
 	__init__.py \
-	brokerlink.py \
-	exceptions.py \
-	image.py \
-	log_filter.py \
-	metadata.py \
-	heconflib.py \
-	storage_backends.py \
-	storage_backends_test.py \
-	storage_server.py \
-	util.py \
-	util_test.py \
-	monotonic.py \
-	engine.py \
-	unixrpc.py \
-	upgrade.py \
-	$(NULL)
-
-SUBDIRS = \
-	debug \
-	fsm \
-	ovf \
+	memory_profiler.py \
 	$(NULL)
 
 clean-local: \
