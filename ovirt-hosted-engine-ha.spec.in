@@ -140,6 +140,8 @@ install -Dm 0440 sudoers/sudoers %{buildroot}%{_sysconfdir}/sudoers.d/60_ovirt-h
 
 %defattr(-, %{vdsm_user}, %{vdsm_group}, -)
 %dir %{engine_ha_logdir}
+%ghost %{engine_ha_logdir}/agent.log
+%ghost %{engine_ha_logdir}/broker.log
 %ghost %dir %{engine_ha_rundir}
 
 %dir %{engine_ha_statedir}
