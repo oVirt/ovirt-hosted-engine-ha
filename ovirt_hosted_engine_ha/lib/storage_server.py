@@ -248,14 +248,14 @@ class StorageServer(object):
             self._log.warn("Hosted-engine storage domain is in invalid state")
         return False
 
-    def connect_storage_server(self):
+    def connect_storage_server(self, timeout=constants.VDSCLI_SSL_TIMEOUT):
         """
         Connect the hosted-engine domain storage server
         """
         self._log.info("Connecting storage server")
         cli = util.connect_vdsm_json_rpc(
             logger=self._log,
-            timeout=constants.VDSCLI_SSL_TIMEOUT
+            timeout=timeout,
         )
         conList, storageType = self._get_conlist(cli, normalize_path=True)
         if conList:
@@ -305,14 +305,14 @@ class StorageServer(object):
         except ServerError as e:
             self._log.debug("Error refreshing storage domain: %s", str(e))
 
-    def disconnect_storage_server(self):
+    def disconnect_storage_server(self, timeout=constants.VDSCLI_SSL_TIMEOUT):
         """
         Disconnect the hosted-engine domain storage server
         """
         self._log.info("Disconnecting storage server")
         cli = util.connect_vdsm_json_rpc(
             logger=self._log,
-            timeout=constants.VDSCLI_SSL_TIMEOUT
+            timeout=timeout,
         )
         # normalize_path=False since we want to be sure we really disconnect
         # from where we were connected also if its path was wrong
