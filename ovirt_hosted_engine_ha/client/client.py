@@ -20,6 +20,7 @@
 import logging
 
 from ..env import config, config_constants
+from ..env import constants
 from ..lib import brokerlink
 from ..lib import metadata
 from ..lib import storage_server
@@ -303,13 +304,13 @@ class HAClient(object):
 
         broker.reset_lockspace()
 
-    def connect_storage_server(self):
+    def connect_storage_server(self, timeout=constants.VDSCLI_SSL_TIMEOUT):
         sserver = storage_server.StorageServer()
-        sserver.connect_storage_server()
+        sserver.connect_storage_server(timeout=timeout)
 
-    def disconnect_storage_server(self):
+    def disconnect_storage_server(self, timeout=constants.VDSCLI_SSL_TIMEOUT):
         sserver = storage_server.StorageServer()
-        sserver.disconnect_storage_server()
+        sserver.disconnect_storage_server(timeout=timeout)
 
     def is_deployed(self):
         """
