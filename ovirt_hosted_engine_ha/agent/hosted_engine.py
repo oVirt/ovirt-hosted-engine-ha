@@ -148,7 +148,7 @@ class HostedEngine(object):
         shutdown has been requested.
         """
         self._log = logging.getLogger("%s.HostedEngine" % __name__)
-        self._log.addFilter(log_filter.IntermittentFilter())
+        self._log.addFilter(log_filter.get_intermittent_filter())
 
         self._shutdown_requested_callback = shutdown_requested_callback
         self._config = config.Config(logger=self._log)

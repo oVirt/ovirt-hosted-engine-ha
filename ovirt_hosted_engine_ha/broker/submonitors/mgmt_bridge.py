@@ -33,7 +33,7 @@ def register():
 class Submonitor(submonitor_base.SubmonitorBase):
     def setup(self, options):
         self._log = logging.getLogger("%s.MgmtBridge" % __name__)
-        self._log.addFilter(log_filter.IntermittentFilter())
+        self._log.addFilter(log_filter.get_intermittent_filter())
         self._bridge = options.get('bridge_name')
         if self._bridge is None:
             raise Exception("mgmt-bridge requires bridge name")

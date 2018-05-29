@@ -33,7 +33,7 @@ def register():
 class Submonitor(submonitor_base.SubmonitorBase):
     def setup(self, options):
         self._log = logging.getLogger("%s.Ping" % __name__)
-        self._log.addFilter(log_filter.IntermittentFilter())
+        self._log.addFilter(log_filter.get_intermittent_filter())
         self._addr = options.get('addr')
         self._timeout = str(options.get('timeout', 2))
         self._total = options.get('count', 5)

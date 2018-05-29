@@ -54,3 +54,22 @@ class IntermittentFilter(logging.Filter):
 def lf_args(lf_class, lf_interval):
     return {'lf_class': lf_class,
             'lf_interval': lf_interval}
+
+
+__intermittent_filter = None
+
+
+def get_intermittent_filter():
+    """
+    Use this function when adding the filter to a logger,
+    do not instantiate it directly.
+
+    Otherwise one logger instance will have multiple
+    instances of the same filter.
+    """
+
+    global __intermittent_filter
+    if __intermittent_filter is None:
+        __intermittent_filter = IntermittentFilter()
+
+    return __intermittent_filter
