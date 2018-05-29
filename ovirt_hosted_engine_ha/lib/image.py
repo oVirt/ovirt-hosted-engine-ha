@@ -36,7 +36,7 @@ class Image(object):
             self._log = extLogger
         else:
             self._log = logging.getLogger("%s.Image" % __name__)
-            self._log.addFilter(log_filter.IntermittentFilter())
+            self._log.addFilter(log_filter.get_intermittent_filter())
         # We are not connected to any SP so we must pass a blank UUID
         self._spUUID = constants.BLANK_UUID
         self._sdUUID = sdUUID

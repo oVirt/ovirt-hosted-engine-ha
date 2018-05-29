@@ -48,7 +48,7 @@ class OVFStore(object):
         from ovirt_hosted_engine_ha.env import config_constants as const
 
         self._log = logging.getLogger("%s.OVFStore" % __name__)
-        self._log.addFilter(log_filter.IntermittentFilter())
+        self._log.addFilter(log_filter.get_intermittent_filter())
         self._config = config.Config(logger=self._log)
 
         self._type = self._config.get(config.ENGINE, const.DOMAIN_TYPE)

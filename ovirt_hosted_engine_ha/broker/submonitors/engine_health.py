@@ -44,7 +44,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
 
     def setup(self, options):
         self._log = logging.getLogger("%s.EngineHealth" % __name__)
-        self._log.addFilter(log_filter.IntermittentFilter())
+        self._log.addFilter(log_filter.get_intermittent_filter())
 
         self._vm_uuid = options.get('vm_uuid')
         if self._vm_uuid is None:

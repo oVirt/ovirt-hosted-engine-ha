@@ -48,7 +48,7 @@ class Upgrade(object):
 
     def __init__(self):
         self._log = logging.getLogger("%s.StorageServer" % __name__)
-        self._log.addFilter(log_filter.IntermittentFilter())
+        self._log.addFilter(log_filter.get_intermittent_filter())
         self._config = config.Config(logger=self._log)
         self._cli = util.connect_vdsm_json_rpc(
             logger=self._log,
