@@ -116,8 +116,7 @@ class EngineState(BaseState):
 
         score = score_cfg['base-score']
 
-        upgrademgr = upgrade.Upgrade()
-        if not upgrademgr.is_conf_file_uptodate():
+        if not upgrade.is_conf_file_uptodate():
             logger.info("Penalizing score by %d due to "
                         "not up-to-date VM configuration",
                         score_cfg['not-uptodate-config-penalty'])

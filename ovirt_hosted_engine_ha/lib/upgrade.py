@@ -142,22 +142,6 @@ class Upgrade(object):
             )
         return rc, stdout, stderr
 
-    def is_conf_file_uptodate(self):
-        uptodate = False
-        try:
-            volume = self._config.get(config.ENGINE, const.CONF_VOLUME_UUID)
-            self._log.debug('Conf volume: %s ' % volume)
-            _image = self._config.get(config.ENGINE, const.CONF_IMAGE_UUID)
-            self._log.debug('Conf image: %s ' % _image)
-            spuuid = self._config.get(config.ENGINE, const.SP_UUID)
-            if spuuid == constants.BLANK_UUID:
-                uptodate = True
-            else:
-                self._log.debug("Storage domain UUID is not blank")
-        except (KeyError, ValueError):
-            uptodate = False
-        return uptodate
-
     def _is_conf_volume_there(self):
         """
         It tries to detect the configuration volume since another host could
@@ -990,7 +974,7 @@ class Upgrade(object):
         self._log.info('Successfully fixed path in conf file')
 
     def upgrade_35_36(self):
-        uptodate = self.is_conf_file_uptodate()
+        uptodate = is_conf_file_uptodate(self._config)
         if uptodate:
             self._log.info('Host configuration is already up-to-date')
             return False
@@ -1031,3 +1015,24 @@ class Upgrade(object):
             self._wrote_updated_conf_file(content)
             self._log.info('Successfully upgraded')
             return True
+
+
+def is_conf_file_uptodate(conf=None):
+    if conf is None:
+        conf = config.Config(logger)
+
+    try:
+        volume = conf.get(config.ENGINE, const.CONF_VOLUME_UUID)
+        logger.debug('Conf volume: %s ' % volume)
+        image = conf.get(config.ENGINE, const.CONF_IMAGE_UUID)
+        logger.debug('Conf image: %s ' % image)
+
+        spuuid = conf.get(config.ENGINE, const.SP_UUID)
+        if spuuid != constants.BLANK_UUID:
+            logger.debug("Storage domain UUID is not blank")
+            return False
+
+        return True
+
+    except (KeyError, ValueError):
+        return False

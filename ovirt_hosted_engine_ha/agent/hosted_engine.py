@@ -420,7 +420,9 @@ class HostedEngine(object):
         if upgraded:
             self._log.info("Reloading hosted-engine.conf after upgrade")
             self._config = config.Config(logger=self._log)
-        self._shared_configuration_supported = upg.is_conf_file_uptodate()
+
+        self._shared_configuration_supported = \
+            upgrade.is_conf_file_uptodate(self._config)
 
         self._config.refresh_vm_conf()
 
