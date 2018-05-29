@@ -21,6 +21,7 @@ import collections
 import errno
 import logging
 import os
+import signal
 import threading
 import time
 
@@ -65,6 +66,10 @@ class StatusBroker(object):
             )
             self._state_update_event.set()
 
+        def trigger_restart(self):
+            self._log.error("Trying to restart the broker")
+            os.kill(os.getpid(), signal.SIGTERM)
+
         def run(self):
             while self._run:
                 self._state_update_event.clear()
@@ -83,6 +88,7 @@ class StatusBroker(object):
                     except:
                         self._log.error("Failed to update state.",
                                         exc_info=True)
+                        self.trigger_restart()
                 try:
                     self._raw_state.append(
                         self._storage_broker.get_raw_stats()
@@ -90,6 +96,7 @@ class StatusBroker(object):
                 except:
                     self._log.error("Failed to read state.",
                                     exc_info=True)
+                    self.trigger_restart()
                 self._state_update_event.wait(broker_constants.STORAGE_DELAY)
 
     def __init__(self, storage_broker):
