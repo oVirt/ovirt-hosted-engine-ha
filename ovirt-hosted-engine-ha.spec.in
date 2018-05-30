@@ -193,6 +193,9 @@ fi
 
 
 %changelog
+* Wed May 30 2018 Simone Tiraboschi <stirabos@redhat.com> - 2.2.13-1
+- 2.2.13-1
+
 * Wed May 23 2018 Simone Tiraboschi <stirabos@redhat.com> - 2.2.13-0.0.master
 - 2.2.13-0.0.master
 
