@@ -149,7 +149,7 @@ class ActionsHandler(object):
 
     @logged
     def push_hosts_state(self, alive_hosts):
-        with self._status_broker_instance_access_lock:
+        with self._storage_broker_instance_access_lock:
             self._listener.storage_broker_instance \
                 .push_hosts_state(alive_hosts)
         return "ok"
