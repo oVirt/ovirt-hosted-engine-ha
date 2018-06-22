@@ -43,6 +43,7 @@ from . import engine
 
 from vdsm.config import config as vdsmconfig
 from vdsm import client
+from vdsm.virt import vmstatus
 
 _vdsm_json_rpc = None
 _vdsm_json_rpc_lock = threading.Lock()
@@ -156,11 +157,15 @@ def engine_status_score(status):
     if status['vm'] in (engine.VMState.DOWN, engine.VMState.DOWN_UNEXPECTED):
         return 1
 
-    if status['health'] == engine.Health.BAD:
+    if (status['vm'] == engine.VMState.UP and
+            status['detail'] == vmstatus.PAUSED):
         return 2
 
-    if status['health'] == engine.Health.GOOD:
+    if status['health'] == engine.Health.BAD:
         return 3
+
+    if status['health'] == engine.Health.GOOD:
+        return 4
 
     raise ValueError("Invalid engine status: %r" % status)
 
