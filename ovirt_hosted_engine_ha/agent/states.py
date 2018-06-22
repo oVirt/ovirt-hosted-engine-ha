@@ -423,7 +423,7 @@ class EngineUp(EngineState):
         if new_data.best_engine_host_id != new_data.host_id:
             logger.info("Engine vm unexpectedly running on host %d",
                         new_data.best_engine_host_id)
-            return EngineDown(new_data)
+            return EngineStop(new_data)
 
         if (new_data.best_score_host and
                 new_data.best_score_host["host-id"] != new_data.host_id and
@@ -569,11 +569,16 @@ class EngineStop(EngineState):
         :type new_data: HostedEngineData
         :type logger: logging.Logger
         """
-        if (new_data.best_engine_status["vm"] != engine.VMState.UP or
-                new_data.best_engine_host_id != new_data.host_id):
+        local_state = new_data.stats.local['engine-health']
+        if local_state['vm'] != engine.VMState.UP:
             logger.info("Engine vm not running on local host")
             return EngineDown(new_data)
-        elif new_data.timeout_start_time is None:
+
+        if local_state['detail'] == vmstatus.PAUSED:
+            logger.info("Engine VM is paused, forcefully stopping.")
+            return EngineForceStop(new_data), fsm.NOWAIT
+
+        if new_data.timeout_start_time is None:
             if fsm.actions.STOP_VM():
                 return EngineStop(new_data), fsm.WAIT
             else:
