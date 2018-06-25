@@ -402,38 +402,40 @@ class EngineUp(EngineState):
         :type new_data: HostedEngineData
         :type logger: logging.Logger
         """
+
+        local_status = new_data.stats.local["engine-health"]
+        if local_status["vm"] == engine.VMState.DOWN:
+            logger.info("Engine vm is running on another host")
+            return EngineDown(new_data)
+
+        if local_status["vm"] == engine.VMState.DOWN_UNEXPECTED:
+            logger.info("Engine vm was unexpectedly shut down")
+            return EngineUnexpectedlyDown(new_data)
+
         if new_data.best_engine_status["vm"] != engine.VMState.UP:
-            local_vm_state = new_data.stats.local["engine-health"]["vm"]
-            if local_vm_state == engine.VMState.DOWN:
-                logger.info("Engine vm is running on another host")
-                return EngineDown(new_data)
-
-            if local_vm_state == engine.VMState.DOWN_UNEXPECTED:
-                logger.info("Engine vm was unexpectedly shut down")
-                return EngineUnexpectedlyDown(new_data)
-
             logger.info("Engine vm may be running on another host")
             return EngineMaybeAway(new_data), fsm.NOWAIT
 
-        elif new_data.best_engine_host_id != new_data.host_id:
+        if local_status["detail"] == vmstatus.MIGRATION_SOURCE:
+            logger.info("Engine VM found migrating away")
+            return EngineMigratingAway(new_data)
+
+        if new_data.best_engine_host_id != new_data.host_id:
             logger.info("Engine vm unexpectedly running on host %d",
                         new_data.best_engine_host_id)
             return EngineDown(new_data)
-        elif new_data.best_engine_status["detail"] ==\
-                vmstatus.MIGRATION_SOURCE:
-            logger.info("Engine VM found migrating away")
-            return EngineMigratingAway(new_data)
-        elif (new_data.best_score_host and
-              new_data.best_score_host["host-id"] != new_data.host_id and
-              new_data.best_score_host["score"] >= self.score(logger) +
-              self.MIGRATION_THRESHOLD_SCORE):
+
+        if (new_data.best_score_host and
+                new_data.best_score_host["host-id"] != new_data.host_id and
+                new_data.best_score_host["score"] >= self.score(logger) +
+                self.MIGRATION_THRESHOLD_SCORE):
             logger.error("Host %s (id %d) score is significantly better"
                          " than local score, shutting down VM on this host",
                          new_data.best_score_host['hostname'],
                          new_data.best_score_host["host-id"])
             return EngineStop(new_data)
-        elif (new_data.best_engine_status["vm"] == engine.VMState.UP and
-              new_data.best_engine_status["health"] == engine.Health.BAD):
+
+        if local_status["health"] == engine.Health.BAD:
             return EngineUpBadHealth(new_data)
         else:
             logger.info("Engine vm running on localhost",
