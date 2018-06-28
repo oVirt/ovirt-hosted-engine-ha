@@ -196,6 +196,9 @@ fi
 
 
 %changelog
+* Thu Jun 28 2018 Simone Tiraboschi <stirabos@redhat.com> - 2.2.16-0.0.master
+- 2.2.16-0.0.master
+
 * Thu Jun 28 2018 Simone Tiraboschi <stirabos@redhat.com> - 2.2.15-1
 - 2.2.15-1
 
