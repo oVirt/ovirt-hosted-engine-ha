@@ -25,7 +25,7 @@ from .config_ovf import OvfConfigFile
 from .config_shared import SharedConfigFile
 from . import constants
 from .config_constants import ENGINE, CONF_FILE, BROKER, HE_CONF, VM, HA,\
-    LEGACY_VM_CONF
+    LEGACY_VM_CONF, ENGINE_OPTIONAL_KEYS
 
 
 class Config(object):
@@ -38,7 +38,8 @@ class Config(object):
         # Initialize the primary configuration
         sd_config = ConfigFile(ENGINE, constants.ENGINE_SETUP_CONF_FILE,
                                mandatory=True, logger=self._logger,
-                               writable=True)
+                               writable=True,
+                               optional_keys=ENGINE_OPTIONAL_KEYS)
         sd_config.download()
         sd_config.load()
 
@@ -68,7 +69,8 @@ class Config(object):
             SharedConfigFile(HE_CONF,
                              constants.CACHED_ENGINE_SETUP_CONF_FILE,
                              sd_config=sd_config,
-                             writable=True, logger=self._logger),
+                             writable=True, logger=self._logger,
+                             optional_keys=ENGINE_OPTIONAL_KEYS),
             ConfigFile(HA, constants.HA_AGENT_CONF_FILE,
                        writable=True, logger=self._logger),
             self._vm_config
@@ -167,11 +169,11 @@ class Config(object):
             cfg = self._config_map[config_type]
             cfg.download()
             cfg.load()
-            return {config_type: cfg.keys()}
+            return {config_type: sorted(set(cfg.keys() + cfg.optional_keys()))}
         else:
             self._refresh_config()
             return {
-                cfg.id: cfg.keys()
+                cfg.id: sorted(set(cfg.keys() + cfg.optional_keys()))
                 for cfg in self.config_files
                 if not cfg.readonly
             }

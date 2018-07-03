@@ -34,6 +34,9 @@ ISCSI_USER = 'user'
 ISCSI_PASSWORD = 'password'
 ISCSI_PORT = 'port'
 
+ENGINE_OPTIONAL_KEYS = [
+]
+
 # constants for vm.conf options
 VM = 'vm'
 VM_UUID = 'vmId'
