@@ -12,9 +12,10 @@ class SharedConfigFile(ConfigFile):
     def __init__(self, id, local_path,
                  sd_config,
                  remote_path=None, writable=False,
-                 rawonly=False, logger=None):
+                 rawonly=False, logger=None, optional_keys=None):
         super(SharedConfigFile, self).__init__(id, local_path, writable,
-                                               logger=logger)
+                                               logger=logger,
+                                               optional_keys=optional_keys)
         self.rawonly = rawonly
         self.sd = sd_config
         self.remote_path = remote_path if remote_path is not None \
@@ -106,6 +107,7 @@ class SharedConfigFile(ConfigFile):
         """
         text = ''
         file_content = self._get_file_content_from_shared_storage()
+        updated = False
 
         for line in file_content.splitlines():
             tokens = line.split('=', 1)
@@ -117,9 +119,16 @@ class SharedConfigFile(ConfigFile):
                 else:
                     new_line = '{key}={new_value}'. \
                         format(key=key_to_set, new_value=new_value)
+                    updated = True
             else:
                 new_line = line
             text += '{line}\n'.format(line=new_line)
+
+        if not updated:
+            text += '{key}={new_value}'.format(
+                key=key_to_set,
+                new_value=new_value
+            )
 
         return text
 

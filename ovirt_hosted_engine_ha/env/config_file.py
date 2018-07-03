@@ -5,13 +5,15 @@ import os.path
 
 class ConfigFile(object):
     def __init__(self, id, local_path, writable=False,
-                 mandatory=False, logger=None):
+                 mandatory=False, logger=None, optional_keys=None):
         self.id = id
         self.readonly = not writable
         self.path = local_path
         self._conf = {}
         self.mandatory = mandatory
         self._parent_logger = logger
+        self._optional_keys = optional_keys \
+            if optional_keys is not None else []
 
     def __str__(self):
         return "<%s id:%s path:%s ro:%s>" %\
@@ -100,8 +102,11 @@ class ConfigFile(object):
     def keys(self):
         return self._conf.keys()
 
+    def optional_keys(self):
+        return self._optional_keys
+
     def __contains__(self, item):
-        return item in self._conf
+        return item in self._conf or item in self._optional_keys
 
     def __getitem__(self, item):
         return self.get(item)
