@@ -45,9 +45,10 @@ class ConfigFile(object):
         try:
             with open(self.path, 'r') as f:
                 for line in f:
-                    tokens = line.split('=', 1)
-                    if len(tokens) > 1:
-                        self._conf[tokens[0].strip()] = tokens[1].strip()
+                    if not line.strip().startswith('#'):
+                        tokens = line.split('=', 1)
+                        if len(tokens) > 1:
+                            self._conf[tokens[0].strip()] = tokens[1].strip()
             return self._conf
         except (OSError, IOError) as ex:
             log = self._logger
