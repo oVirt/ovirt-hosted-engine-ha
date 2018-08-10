@@ -580,8 +580,7 @@ class HostedEngine(object):
     def _check_service(self, service_name):
         self._log.debug("Checking %s status", service_name)
         with open(os.devnull, "w") as devnull:
-            p = subprocess.Popen(['sudo',
-                                  'service', service_name, 'status'],
+            p = subprocess.Popen(['service', service_name, 'status'],
                                  stdout=devnull, stderr=devnull)
             if p.wait() == 0:
                 self._log.debug("%s running", service_name)
