@@ -168,7 +168,8 @@ class Submonitor(submonitor_base.SubmonitorBase):
             exit_message.endswith('Failed to acquire lock: error -243') or
             exit_message.endswith(
                 'Failed to acquire lock: Lease is held by another host'
-            )
+            ) or
+            exit_message.endswith('Is another process using the image?')
         ):
             self._log.info(
                 "VM storage is already locked.",
