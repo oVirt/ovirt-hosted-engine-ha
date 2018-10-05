@@ -192,8 +192,9 @@ class Config(object):
         of them are not found or are empty.
         """
         cfg_inst = cls()
-        all([cfg.present() for cfg in cfg_inst.config_files if cfg.mandatory])
-        return True
+        return all(
+            [cfg.present() for cfg in cfg_inst.config_files if cfg.mandatory]
+        )
 
     def refresh_vm_conf(self):
         self._vm_config.download()
