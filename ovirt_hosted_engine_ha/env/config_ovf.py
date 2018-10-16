@@ -90,9 +90,10 @@ class OvfConfigFile(SharedConfigFile):
         header_comment = (
             '# Editing the hosted engine VM is only possible via'
             ' the manager UI\API\n'
-            '# This file was generated at %s\n'
+            '# This file was generated at {}\n'
             '\n'
-        ) % time.asctime()
+        ).format(time.asctime())
+        print(header_comment)
 
         if self._logger:
             self._logger.debug(

@@ -17,7 +17,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-import ConfigParser
+try:
+    import configparser
+except ImportError:
+    import configparser as configparser
 import json
 import logging
 import os
@@ -39,7 +42,7 @@ from ..lib import log_filter
 from ..lib import metadata
 from ..lib import monotonic
 from ..lib import util
-from ovirt_hosted_engine_ha.lib import upgrade
+from ..lib import upgrade
 from .state_machine import EngineStateMachine
 from .states import AgentStopped
 
@@ -91,7 +94,7 @@ def engine_status(status):
         # it makes the output and logs much easier to read
         try:
             return dict([(str(k), str(v)) for (k, v)
-                        in json.loads(status).iteritems()])
+                        in json.loads(status).items()])
         except (ValueError, AttributeError):
             return {"vm": "unknown", "health": "unknown",
                     "detail": "serialization error"}
@@ -139,7 +142,7 @@ class HostedEngine(object):
         is a callback returning True/False depending on whether ha agent
         shutdown has been requested.
         """
-        self._log = logging.getLogger("%s.HostedEngine" % __name__)
+        self._log = logging.getLogger("{0}.HostedEngine".format(__name__))
         self._log.addFilter(log_filter.get_intermittent_filter())
 
         self._shutdown_requested_callback = shutdown_requested_callback
@@ -192,15 +195,15 @@ class HostedEngine(object):
             'cpu-load-penalty-max'
         ))
 
-        cfg = ConfigParser.SafeConfigParser()
+        cfg = configparser.SafeConfigParser()
         cfg.read(constants.AGENT_CONF_FILE)
         try:
             score.update(cfg.items('score'))
-        except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+        except (configparser.NoOptionError, configparser.NoSectionError):
             pass
 
         # When these are used they're expected to be numeric types
-        for k, v in score.iteritems():
+        for k, v in score.items():
             if k in float_keys:
                 score[k] = float(v)
             else:
@@ -375,7 +378,7 @@ class HostedEngine(object):
             self._validate_storage_images()
             self._lock_host_id()
         except ServiceNotUpException as e:
-            self._log.error("Required service %s is not up.", e.message)
+            self._log.error("Required service %s is not up.", str(e))
             return -2
         except sanlock.SanlockException:
             if not force:
@@ -475,7 +478,7 @@ class HostedEngine(object):
                 try:
                     event = brokerlink.NotifyEvents.STATE_TRANSITION
                     self._broker.notify(event,
-                                        "%s-%s" % (
+                                        "{0}-{1}".format(
                                             old_state.__class__.__name__,
                                             state.__class__.__name__),
                                         hostname=socket.gethostname())
@@ -524,7 +527,7 @@ class HostedEngine(object):
                 self.publish(state)
 
             except ServiceNotUpException as e:
-                self._log.info("Required service %s is not up." % e.message)
+                self._log.info("Required service {} is not up.".format(str(e)))
                 delay = max(delay, 30)
 
             loop_stop = monotonic.time()
@@ -679,8 +682,8 @@ class HostedEngine(object):
         # Timestamp of the latest vm.conf correct refresh
         tokens.append(self._config.vm_conf_refresh_time)
 
-        data = "|".join(str(t) for t in tokens)
-        crc32 = metadata.CRC32_FORMAT % (binascii.crc32(data) & 0xffffffff)
+        data = ("|".join(str(t) for t in tokens)).encode()
+        crc32 = metadata.CRC32_FORMAT.format(binascii.crc32(data) & 0xffffffff)
         tokens[9] = crc32
         data = "|".join(str(t) for t in tokens)
 
@@ -711,7 +714,7 @@ class HostedEngine(object):
                         if self._shared_configuration_supported else 'False'
                         ))
         # state | metadata
-        for (k, v) in sorted(md.iteritems()):
+        for (k, v) in sorted(md.items()):
             info += "{0}={1}\n".format(k, str(v))
 
         info_count = int((len(info) + constants.METADATA_BLOCK_BYTES - 1) /
@@ -760,7 +763,7 @@ class HostedEngine(object):
             data["cluster"] = self.process_global_metadata(all_stats.pop(0))
 
         # collect the last reported state for all hosts
-        for host_id, remote_data in all_stats.iteritems():
+        for host_id, remote_data in all_stats.items():
             try:
                 # we are not interested in stale data about local
                 # machine
@@ -773,7 +776,7 @@ class HostedEngine(object):
 
         # collect all local stats
         self._log.debug("Refreshing all submonitors")
-        for field, monitor in self._local_monitors.iteritems():
+        for field, monitor in self._local_monitors.items():
             ret = self._broker.get_monitor_status(monitor['id'])
             if ret == 'False':
                 ret = False
@@ -843,8 +846,10 @@ class HostedEngine(object):
             # Ensure there isn't any stale VDSM state from a prior VM lifecycle
             self._clean_vdsm_state()
 
-            self._log.info("Starting vm using `%s --vm-start`",
-                           constants.HOSTED_ENGINE_BINARY)
+            self._log.info(
+                "Starting vm using `%s --vm-start`",
+                constants.HOSTED_ENGINE_BINARY
+            )
             p = subprocess.Popen([constants.HOSTED_ENGINE_BINARY,
                                   '--vm-start'],
                                  stdout=subprocess.PIPE,

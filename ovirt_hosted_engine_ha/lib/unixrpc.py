@@ -1,20 +1,32 @@
 import os
-import SocketServer
-import SimpleXMLRPCServer
-from xmlrpclib import ServerProxy, Transport
-import httplib
+try:
+    import socketserver
+except ImportError:
+    import SocketServer as socketserver
+try:
+    import xmlrpc.server as xmlrpc_server
+except ImportError:
+    import SimpleXMLRPCServer as xmlrpc_server
+try:
+    from xmlrpc.client import ServerProxy, Transport
+except ImportError:
+    from xmlrpclib import ServerProxy, Transport
+try:
+    import http.client as http_client
+except ImportError:
+    import httplib as http_client
 import socket
 import base64
 
 
-class UnixXmlRpcHandler(SimpleXMLRPCServer.SimpleXMLRPCRequestHandler):
+class UnixXmlRpcHandler(xmlrpc_server.SimpleXMLRPCRequestHandler):
     disable_nagle_algorithm = False
 
 
 # This class implements a XML-RPC server that binds to a UNIX socket. The path
 # to the UNIX socket to create methods must be provided.
-class UnixXmlRpcServer(SocketServer.UnixStreamServer,
-                       SimpleXMLRPCServer.SimpleXMLRPCDispatcher):
+class UnixXmlRpcServer(socketserver.UnixStreamServer,
+                       xmlrpc_server.SimpleXMLRPCDispatcher):
     address_family = socket.AF_UNIX
     allow_address_reuse = True
 
@@ -23,10 +35,9 @@ class UnixXmlRpcServer(SocketServer.UnixStreamServer,
         if os.path.exists(sock_path):
             os.unlink(sock_path)
         self.logRequests = logRequests
-        SimpleXMLRPCServer.SimpleXMLRPCDispatcher.__init__(self,
-                                                           encoding=None,
-                                                           allow_none=1)
-        SocketServer.UnixStreamServer.__init__(self, sock_path,
+        xmlrpc_server.SimpleXMLRPCDispatcher.__init__(self, encoding=None,
+                                                      allow_none=1)
+        socketserver.UnixStreamServer.__init__(self, sock_path,
                                                request_handler)
 
 
@@ -46,7 +57,7 @@ class UnixXmlRpcTransport(Transport):
         return UnixXmlRpcHttpConnection(host)
 
 
-class UnixXmlRpcHttpConnection(httplib.HTTPConnection):
+class UnixXmlRpcHttpConnection(http_client.HTTPConnection):
     def connect(self):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.connect(base64.b16decode(self.host))

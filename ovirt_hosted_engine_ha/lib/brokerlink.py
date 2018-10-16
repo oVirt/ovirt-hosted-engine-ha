@@ -19,12 +19,15 @@
 
 import logging
 import six
-import xmlrpclib
-
+try:
+    import xmlrpc.client as xmlrpc_client
+    from xmlrpc.client import Marshaller
+except ImportError:
+    import xmlrpclib as xmlrpc_client
+    from xmlrpclib import Marshaller
 from ..env import constants
 from ..lib.exceptions import RequestError
 from ..lib import unixrpc
-from xmlrpclib import Marshaller
 from types import IntType, LongType
 
 
@@ -110,7 +113,7 @@ class BrokerLink(object):
         """
         self._log.debug("Storing blocks on storage")
         # broker expects blocks in hex format
-        self._proxy.put_stats(host_id, xmlrpclib.Binary(data))
+        self._proxy.put_stats(host_id, xmlrpc_client.Binary(data))
 
     def put_hosts_state_on_storage(self, host_id, alive_hosts):
         """

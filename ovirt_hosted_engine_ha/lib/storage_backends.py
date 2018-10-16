@@ -1,3 +1,4 @@
+from six import with_metaclass
 import os
 import errno
 from abc import ABCMeta, abstractmethod
@@ -28,11 +29,10 @@ StorageBackendTypes = _StorageBackendTypesTuple(
 )
 
 
-class StorageBackend(object):
+class StorageBackend(with_metaclass(ABCMeta, object)):
     """
     The base template for Storage backend classes.
     """
-    __metaclass__ = ABCMeta
 
     def __init__(self):
         # the atomic block size of the underlying storage
@@ -315,7 +315,7 @@ class VdsmBackend(StorageBackend):
         util.mkdir_recursive(self._storage_path)
 
         new_set = set()
-        for service, size in service_map.iteritems():
+        for service, size in service_map.items():
             # Generate new random UUIDs
             new_image_uuid = str(uuid.uuid4())
             new_volume_uuid = str(uuid.uuid4())
@@ -351,7 +351,7 @@ class VdsmBackend(StorageBackend):
         self._storage_path = os.path.join(base_path,
                                           constants.SD_METADATA_DIR)
 
-        for service, volume in self._services.iteritems():
+        for service, volume in self._services.items():
             # Activate volumes and set the volume.path to proper path
             response = self._get_volume_path(
                 connection,
@@ -584,7 +584,7 @@ class FilesystemBackend(StorageBackend):
         util.mkdir_recursive(self._storage_path)
 
         new_set = set()
-        for service, size in service_map.iteritems():
+        for service, size in service_map.items():
             service_path = os.path.join(self._storage_path, service)
             if self._lv_based:
                 isnew = self._create_block(service, size, force_new)

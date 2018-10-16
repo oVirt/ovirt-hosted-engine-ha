@@ -3,7 +3,10 @@ from email.utils import formatdate
 import socket
 
 import smtplib
-import ConfigParser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 import re
 import os
 import logging
@@ -36,7 +39,7 @@ def send_email(cfg, email_body):
         return True
     except (smtplib.SMTPException, socket.error,
             EnvironmentError, socket.timeout, ValueError) as e:
-        logging.getLogger("%s.Notifications" % __name__).exception(e)
+        logging.getLogger("{0}.Notifications".format(__name__)).exception(e)
         return False
 
 
@@ -46,12 +49,12 @@ def notify(type, detail, options):
 
     The configuration is refreshed with every call of this method.
     """
-    logger = logging.getLogger("%s.Notifications" % __name__)
-    logger.debug("nofity: %s" % (repr(options),))
+    logger = logging.getLogger("{}.Notifications".format(__name__))
+    logger.debug("nofity: {}".format(repr(options)))
 
     heconf = config.Config(logger=logger)
     path = heconf.refresh_local_conf_file(config.BROKER)
-    cfg = ConfigParser.SafeConfigParser()
+    cfg = configparser.SafeConfigParser()
     cfg.read(path)
 
     try:
@@ -59,14 +62,14 @@ def notify(type, detail, options):
         # only send emails for messages we want
         if not re.search(rules.lower(), detail.lower()):
             return False
-    except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+    except (configparser.NoOptionError, configparser.NoSectionError):
         return False
 
     try:
         template_path = os.path.join(constants.NOTIFY_TEMPLATES, type + ".txt")
         template = open(template_path).read()
     except (OSError, IOError) as e:
-        logging.getLogger("%s.Notifications" % __name__).exception(e)
+        logging.getLogger("{}.Notifications".format(__name__)).exception(e)
         return False
 
     # default SMTP configuration
@@ -81,20 +84,20 @@ def notify(type, detail, options):
     # read SMTP configuration from the notification config file
     try:
         smtp_config.update(cfg.items("email"))
-    except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+    except (configparser.NoOptionError, configparser.NoSectionError):
         pass
 
     options['detail'] = detail
     # pass SMTP configuration to the formatting dictionary
     # so we can use email addresses in the templates
-    for k, v in smtp_config.iteritems():
+    for k, v in smtp_config.items():
         options.setdefault(k, v)
 
     # fill in the values to the template
     try:
         email_body = template.format(**options)
     except KeyError as e:
-        logging.getLogger("%s.Notifications" % __name__).exception(e)
+        logging.getLogger("{}.Notifications".format(__name__)).exception(e)
         return False
 
     return send_email(smtp_config, email_body)

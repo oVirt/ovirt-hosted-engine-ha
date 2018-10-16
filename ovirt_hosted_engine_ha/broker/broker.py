@@ -15,11 +15,10 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
-#
-
-from __future__ import print_function
-
-import ConfigParser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 import logging
 import logging.config
 import os
@@ -45,7 +44,6 @@ class Broker(object):
     def run(self):
         self._initialize_logging()
         self._log.info("%s started", constants.FULL_PROG_NAME)
-
         self._initialize_signal_handlers()
 
         """
@@ -75,19 +73,19 @@ class Broker(object):
             handler.setFormatter(logging.Formatter(
                 "%(levelname)s:%(name)s:%(message)s"))
             logging.getLogger('').addHandler(handler)
-        except (ConfigParser.Error, ImportError, NameError, TypeError):
+        except (configparser.Error, ImportError, NameError, TypeError):
             logging.basicConfig(filename='/dev/stdout', filemode='w+',
                                 level=logging.DEBUG)
-            log = logging.getLogger("%s.Broker" % __name__)
+            log = logging.getLogger("{}.Broker".format(__name__))
             log.warn("Could not inititialize logging", exc_info=True)
-        self._log = logging.getLogger("%s.Broker" % __name__)
+        self._log = logging.getLogger("{}.Broker".format(__name__))
 
     def _get_signal_map(self):
         return {signal.SIGINT: self._handle_quit,
                 signal.SIGTERM: self._handle_quit}
 
     def _initialize_signal_handlers(self):
-        for signum, handler in self._get_signal_map().iteritems():
+        for signum, handler in self._get_signal_map().items():
             signal.signal(signum, handler)
 
     def _handle_quit(self, signum, frame):

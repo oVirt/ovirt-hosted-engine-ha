@@ -17,16 +17,20 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-import imp
+try:
+    from importlib import util as importlibutil
+    _use_importlib = True
+except ImportError:
+    import imp
 import logging
 import os
-
+import sys
 from ..lib.exceptions import RequestError
 
 
 class Monitor(object):
     def __init__(self):
-        self._log = logging.getLogger("%s.Monitor" % __name__)
+        self._log = logging.getLogger("{}.Monitor".format(__name__))
         self._active_submonitors = {}
         self._submonitors = {}
 
@@ -41,9 +45,17 @@ class Monitor(object):
         for filename in (f for f in os.listdir(smdir) if
                          (f.endswith('.py') or f.endswith('.pyc'))):
             name = filename[:filename.rindex('.')]
-            # TODO better error handling for __init__ and badly-written files
-            module = imp.find_module(name, [smdir])
-            sm = imp.load_module(name, *module)
+            if _use_importlib:
+                spec = importlibutil.spec_from_file_location(
+                    name, smdir + "/" + filename)
+                sm = importlibutil.module_from_spec(spec)
+                sys.modules[spec.name] = sm
+                spec.loader.exec_module(sm)
+            else:
+                # TODO better error handling for __init__
+                # and badly-written files
+                module = imp.find_module(name, [smdir])
+                sm = imp.load_module(name, *module)
             smname = sm.register()
             self._submonitors[smname] = sm
             self._log.info("Loaded submonitor %s", smname)

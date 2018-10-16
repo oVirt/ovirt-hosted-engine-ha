@@ -36,6 +36,7 @@ LF_OVF_STORE_PATH = 'ovf-store-path'
 LF_EXTRACTION_FAILED = 'ovf-extraction-failed'
 LF_OVF_LOG_DELAY = 300
 
+
 class OVFStore(object):
     """
     OVF location data cache

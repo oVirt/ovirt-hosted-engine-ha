@@ -3,8 +3,8 @@ from ..lib import util
 from ..lib.util import engine_status_score
 from . import constants
 import time
-from states import ReinitializeFSM
-from state_data import HostedEngineData, StatsData
+from .states import ReinitializeFSM
+from .state_data import HostedEngineData, StatsData
 from ..lib import monotonic
 
 __author__ = 'msivak'
@@ -102,12 +102,12 @@ class EngineStateMachine(BaseFSM):
         # 2) If a currently available host is not present in the historic
         # record or its timestamp is different then it is alive
         if historic:
-            for hid, st in stats.hosts.iteritems():
+            for hid, st in stats.hosts.items():
                 st["alive"] = (hid not in historic.hosts or
                                historic.hosts[hid].get("host-ts", None) !=
                                st.get("host-ts", None))
 
-            alive_hosts = [st for hid, st in stats.hosts.iteritems()
+            alive_hosts = [st for hid, st in stats.hosts.items()
                            if st["alive"] if "engine-status" in st]
         else:
             alive_hosts = []
@@ -148,11 +148,9 @@ class EngineStateMachine(BaseFSM):
         # Save the best score remote values
         # we can't compare them because we first need to fully initialize
         # the current state
-        new_data["best_score_host"] = (best_score
-                                       if alive_hosts
-                                       and best_score["score"] > 0
-                                       else None)
-
+        new_data["best_score_host"] = (
+            best_score if alive_hosts and best_score["score"] > 0 else None
+        )
         # Re-initialize retry status variables if the retry window
         # has expired.
         if util.has_elapsed(old_data.engine_vm_retry_time,
@@ -167,7 +165,7 @@ class EngineStateMachine(BaseFSM):
             new_data['last_metadata_log_time'] = int(time.time())
             self.logger.info('Global metadata: %s',
                              str(stats.cluster))
-            for host_id, attr in stats.hosts.iteritems():
+            for host_id, attr in stats.hosts.items():
                 info_str = "{0}".format(attr)
                 self.logger.info("Host %s (id %d): %s",
                                  attr.get('hostname', "<unknown hostname"),

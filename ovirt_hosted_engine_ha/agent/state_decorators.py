@@ -1,6 +1,6 @@
 from functools import wraps
 from ..lib.fsm import BaseFSM
-import state_data
+from . import state_data
 import time
 
 __author__ = 'msivak'

@@ -30,20 +30,20 @@ class IntermittentFilter(logging.Filter):
     lf_interval seconds or when the message text changes.
     """
     def filter(self, record):
-        if (not hasattr(record, 'lf_class')
-                or not hasattr(record, 'lf_interval')):
-            return True
+        if (not hasattr(record, 'lf_class') or not
+                hasattr(record, 'lf_interval')):
+                    return True
 
         log_class = record.lf_class
         if log_class not in self._classes:
             self._classes[record.lf_class] = {'time': None, 'message': None}
 
         now = time.time()
-        if (self._classes[record.lf_class]['time'] is None
-                or (self._classes[record.lf_class]['time']
-                    + record.lf_interval < now)
-                or (self._classes[record.lf_class]['message']
-                    != record.getMessage())):
+        if (self._classes[record.lf_class]['time'] is None or
+            (self._classes[record.lf_class]['time'] +
+                record.lf_interval < now) or
+                (self._classes[record.lf_class]['message'] !=
+                    record.getMessage())):
             self._classes[record.lf_class]['time'] = now
             self._classes[record.lf_class]['message'] = record.getMessage()
             return True

@@ -66,7 +66,7 @@ class HAClient(object):
         if not log:
             logging.basicConfig(filename='/dev/null', filemode='w+',
                                 level=logging.CRITICAL)
-        self._log = logging.getLogger("%s.HAClient" % __name__)
+        self._log = logging.getLogger("{}.HAClient".format(__name__))
         self._config = None
 
     def _check_liveness_metadata(self, md, broker):
@@ -122,7 +122,7 @@ class HAClient(object):
         callers to detect a parsing error.
         """
         output = {}
-        for host_id, data in stats.iteritems():
+        for host_id, data in stats.items():
             try:
                 if host_id == 0 and mode != self.StatModes.HOST:
                     md = metadata.parse_global_metadata_to_dict(self._log,
@@ -291,7 +291,7 @@ class HAClient(object):
             all_stats = {}
 
         # Check whether it is safe to perform lockfile reset
-        for id, stats in all_stats.iteritems():
+        for id, stats in all_stats.items():
             if id == 0:
                 if (not force and
                         not stats.get(self.GlobalMdFlags.MAINTENANCE, False)):

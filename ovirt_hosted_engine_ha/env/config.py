@@ -169,11 +169,12 @@ class Config(object):
             cfg = self._config_map[config_type]
             cfg.download()
             cfg.load()
-            return {config_type: sorted(set(cfg.keys() + cfg.optional_keys()))}
+            return {config_type: sorted(set(
+                list(cfg.keys()) + cfg.optional_keys()))}
         else:
             self._refresh_config()
             return {
-                cfg.id: sorted(set(cfg.keys() + cfg.optional_keys()))
+                cfg.id: sorted(set(list(cfg.keys()) + cfg.optional_keys()))
                 for cfg in self.config_files
                 if not cfg.readonly
             }

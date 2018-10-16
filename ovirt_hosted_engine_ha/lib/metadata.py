@@ -22,8 +22,8 @@ import binascii
 
 from ..env import constants
 from ..lib import util
-from exceptions import FatalMetadataError
-from exceptions import MetadataError
+from .exceptions import FatalMetadataError
+from .exceptions import MetadataError
 
 EMPTY_CRC32 = '00000000'
 CRC32_FORMAT = "%08x"
@@ -78,7 +78,7 @@ def create_global_metadata_from_dict(md_dict):
     lines which is padded to a total size of HOST_SEGMENT_BYTES (4KiB).
     """
     block = ''
-    for k, v in md_dict.iteritems():
+    for k, v in md_dict.items():
         block += '{k}={v}'.format(k=k, v=v)
     block = block.ljust(constants.HOST_SEGMENT_BYTES, '\0')
     return block
@@ -203,7 +203,7 @@ def parse_metadata_to_dict(host_str, data):
     if len(tokens) >= 10:
         ret['crc32'] = tokens[9]
         tokens[9] = EMPTY_CRC32
-        crc_data = "|".join(tokens)
+        crc_data = ("|".join(tokens)).encode()
         crc32 = CRC32_FORMAT % (binascii.crc32(crc_data) & 0xffffffff)
         if ret['crc32'] != crc32:
             raise MetadataError("Malformed metadata for host {0}:"

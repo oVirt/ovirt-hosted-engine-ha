@@ -21,7 +21,10 @@ import logging
 import os
 import six
 import threading
-import xmlrpclib
+try:
+    import xmlrpc.client as xmlrpc_client
+except ImportError:
+    import xmlrpclib as xmlrpc_client
 
 from functools import wraps
 
@@ -37,7 +40,7 @@ class Listener(object):
         Prepare the listener and associated locks
         """
         threading.current_thread().name = "Listener"
-        self._log = logging.getLogger("%s.Listener" % __name__)
+        self._log = logging.getLogger("{}.Listener".format(__name__))
         self._log.info("Initializing RPCServer")
 
         # Coordinate access to resources across connections
@@ -94,13 +97,13 @@ class Listener(object):
 def logged(f):
     @wraps(f)
     def wrapper(*args, **kwds):
-        _log = logging.getLogger("%s.Action.%s" % (__name__, f.__name__))
+        _log = logging.getLogger("{}.Action.{}".format(__name__, f.__name__))
         try:
             _log.debug("Executing RPC handler %s with params %s",
                        f.__name__, str(args))
             return f(*args, **kwds)
         except Exception as e:
-            _log.error("Error in RPC call: %s" % str(e))
+            _log.error("Error in RPC call: {}".format(str(e)))
             _log.debug("Traceback:", exc_info=1)
 
     return wrapper
@@ -108,7 +111,7 @@ def logged(f):
 
 class ActionsHandler(object):
     def __init__(self, listener):
-        self._log = logging.getLogger("%s.ActionsHandler" % __name__)
+        self._log = logging.getLogger("{}.ActionsHandler".format(__name__))
 
         self._listener = listener
         self._monitor_instance_access_lock = threading.Lock()
@@ -144,7 +147,7 @@ class ActionsHandler(object):
         # As raw binary data can not be transferred via xmlrpc link,
         # we need to wrap state's contents into Binary wrapper.
         for k, v in six.iteritems(state):
-            result[k] = xmlrpclib.Binary(v)
+            result[k] = xmlrpc_client.Binary(v)
         return result
 
     @logged

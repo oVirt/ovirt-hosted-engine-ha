@@ -16,8 +16,12 @@ class ConfigFile(object):
             if optional_keys is not None else []
 
     def __str__(self):
-        return "<%s id:%s path:%s ro:%s>" %\
-               (type(self), self.id, self.path, self.readonly)
+        return "<{0} id:{1} path:{2} ro:{3}>".format(
+            type(self),
+            self.id,
+            self.path,
+            self.readonly
+        )
 
     @property
     def _logger(self):
@@ -59,8 +63,12 @@ class ConfigFile(object):
     def write(self, logger=None):
         """Write the current configuration to local file."""
         if self.readonly:
-            raise Exception("Read only config file %s"
-                            " does not support writes." % self.path)
+            raise Exception(
+                (
+                    "Read only config file {} does "
+                    "not support writes."
+                ).format(self.path)
+            )
 
         if logger:
             logger.debug(
@@ -85,7 +93,7 @@ class ConfigFile(object):
             self._conf[key] = str(value)
 
             text = ''
-            for k, v in self._conf.iteritems():
+            for k, v in self._conf.items():
                 text += '{k}={v}\n'.format(k=k, v=v)
 
             f.write(text)
@@ -101,7 +109,7 @@ class ConfigFile(object):
         self._conf[key] = val
 
     def keys(self):
-        return self._conf.keys()
+        return list(self._conf.keys())
 
     def optional_keys(self):
         return self._optional_keys

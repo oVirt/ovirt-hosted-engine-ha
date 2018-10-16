@@ -21,7 +21,10 @@ import logging
 import os
 import threading
 import time
-import xmlrpclib
+try:
+    import xmlrpc.client as xmlrpc_client
+except ImportError:
+    import xmlrpclib as xmlrpc_client
 
 from ..broker import constants as broker_constants
 from ..env import config
@@ -49,7 +52,7 @@ class StorageBroker(object):
         ACQUIRED = 'ACQUIRED'
 
     def __init__(self):
-        self._log = logging.getLogger("%s.StorageBroker" % __name__)
+        self._log = logging.getLogger("{}.StorageBroker".format(__name__))
         self._config = config.Config(logger=self._log)
         self._storage_access_lock = threading.Lock()
 
@@ -118,7 +121,7 @@ class StorageBroker(object):
         result = {}
 
         for host_id in sorted(d.keys()):
-            result[str(host_id)] = xmlrpclib.Binary(d.get(host_id))
+            result[str(host_id)] = xmlrpc_client.Binary(d.get(host_id))
         return result
 
     def get_raw_stats(self):

@@ -1,3 +1,4 @@
+from six import with_metaclass
 import logging
 import abc
 from abc import abstractmethod
@@ -31,8 +32,7 @@ class FSMLoggerAdapter(logging.LoggerAdapter):
         return msg, kwargs
 
 
-class BaseState(object):
-    __metaclass__ = abc.ABCMeta
+class BaseState(with_metaclass(abc.ABCMeta, object)):
     __slots__ = ["_data"]
 
     def __init__(self, data):
@@ -115,7 +115,7 @@ class BaseFSM(object):
     def refresh(self, old_data):
         return old_data
 
-    def next(self):
+    def __next__(self):
         """
         This method returns the edge between states that was traversed and
         the requested sleep time as a tuple

@@ -2,8 +2,8 @@ import base64
 import copy
 import os
 from unittest import TestCase
-import ovf2VmParams
-import ovfenvelope
+from . import ovf2VmParams
+from . import ovfenvelope
 
 OVF = open(
     os.path.join(

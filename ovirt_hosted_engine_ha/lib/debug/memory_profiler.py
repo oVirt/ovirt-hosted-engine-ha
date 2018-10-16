@@ -23,11 +23,7 @@ import logging
 import os
 import threading
 import time
-
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+import pickle
 
 # Import tracemalloc lazily when profile is started
 tracemalloc = None

@@ -1,4 +1,4 @@
-import state_data
+from . import state_data
 import unittest
 
 __author__ = 'msivak'

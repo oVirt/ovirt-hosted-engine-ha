@@ -16,17 +16,17 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
-
 from __future__ import print_function
-
-import ConfigParser
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 import logging
 import logging.config
 from optparse import OptionParser
 import signal
 import sys
 import traceback
-
 from ..lib import exceptions as ex
 from . import constants
 from . import hosted_engine
@@ -98,19 +98,19 @@ class Agent(object):
             handler.setFormatter(logging.Formatter(
                 "%(levelname)s:%(name)s:%(message)s"))
             logging.getLogger('').addHandler(handler)
-        except (ConfigParser.Error, ImportError, NameError, TypeError):
+        except (configparser.Error, ImportError, NameError, TypeError):
             logging.basicConfig(filename='/dev/stdout', filemode='w+',
                                 level=logging.DEBUG)
-            log = logging.getLogger("%s.Agent" % __name__)
+            log = logging.getLogger("{0}.Agent".format(__name__))
             log.warn("Could not inititialize logging", exc_info=True)
-        self._log = logging.getLogger("%s.Agent" % __name__)
+        self._log = logging.getLogger("{0}.Agent".format(__name__))
 
     def _get_signal_map(self):
         return {signal.SIGINT: self._handle_quit,
                 signal.SIGTERM: self._handle_quit}
 
     def _initialize_signal_handlers(self):
-        for signum, handler in self._get_signal_map().iteritems():
+        for signum, handler in self._get_signal_map().items():
             signal.signal(signum, handler)
 
     def _handle_quit(self, signum, frame):
@@ -131,12 +131,11 @@ class Agent(object):
             return action(he)
 
         except hosted_engine.ServiceNotUpException as e:
-            self._log.error("Service %s is not running and the admin"
-                            " is responsible for starting it." % e.message)
+            self._log.error("Service {0} is not running and the admin"
+                            " is responsible for starting it.".format(str(e)))
         except ex.DisconnectionError as e:
             self._log.error("Disconnected from broker '{0}'".format(str(e)))
-        except (ex.BrokerInitializationError, ex.BrokerConnectionError)\
-                as e:
+        except (ex.BrokerInitializationError, ex.BrokerConnectionError) as e:
             self._log.error("Can't initialize brokerlink '{0}'".format(str(e)))
         except ex.StorageDisconnectedError as e:
             self._log.error("Storage disconnected '{0}'".format(str(e)))

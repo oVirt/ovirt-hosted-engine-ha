@@ -1,7 +1,7 @@
 import base64
 import sys
-from ovirt_hosted_engine_ha.env import constants
-import ovfenvelope
+from ...env import constants
+from . import ovfenvelope
 import logging
 
 RES_ALLOCATION_ROOT_NS = 'http://schemas.dmtf.org/wbem/wscim/1/cim-schema' \
@@ -324,7 +324,7 @@ def toDict(ovf):
     addStubs(vmParams)
 
     # filter out empty values
-    return {k: v for k, v in vmParams.iteritems() if v is not None}
+    return {k: v for k, v in list(vmParams.items()) if v is not None}
 
 
 def confFromOvf(ovf):
@@ -340,7 +340,7 @@ def confFromOvf(ovf):
     conf = \
         ''.join(
             [('%s=%s\n' % (key, value))
-             for key, value in vmConf.items()]
+             for key, value in list(vmConf.items())]
         ) + \
         ''.join(
             [('%s=%s\n' % ('devices',
@@ -353,7 +353,7 @@ def confFromOvf(ovf):
 
 if __name__ == '__main__':
     with open(sys.argv[1], 'r') as ovf_file:
-        print(confFromOvf(ovf_file.read()))
+        print((confFromOvf(ovf_file.read())))
 
 
 # vim: expandtab tabstop=4 shiftwidth=4
