@@ -52,6 +52,7 @@ Requires(post):  vdsm >= %{vdsm_version}
 Requires:       vdsm >= %{vdsm_version}
 Requires:       vdsm-client >= %{vdsm_version}
 Requires:       vdsm-python >= %{vdsm_version}
+Conflicts:      ovirt-hosted-engine-setup < 2.2
 
 %if 0%{?rhel} > 0 && 0%{?rhel} <= 7
 Requires:       python-lxml
