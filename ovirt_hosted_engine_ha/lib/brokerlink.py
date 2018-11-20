@@ -79,8 +79,12 @@ class BrokerLink(object):
         try:
             response = self._proxy.start_monitor(type, options)
         except Exception as e:
-            raise RequestError("Failed to start monitor {0}, options {1}: {2}"
-                               .format(type, options, e))
+            raise RequestError(
+                (
+                    "brokerlink - failed to start monitor via "
+                    "ovirt-ha-broker: {e}, [monitor: '{t}', options: {o}]"
+                ).format(t=type, o=options, e=e)
+            )
 
         self._log.info("Success, id %s", response)
         return response
@@ -90,8 +94,12 @@ class BrokerLink(object):
             response = self._proxy.status_monitor(id)
         except Exception as e:
             self._log.error("Exception getting monitor status: %s", str(e))
-            raise RequestError("Failed to get monitor status: {0}"
-                               .format(str(e)))
+            raise RequestError(
+                (
+                    "brokerlink - failed to get monitor status from "
+                    "ovirt-ha-broker: {e}"
+                ).format(e=e)
+            )
         self._log.debug("Success, status %s", response)
         return response
 
