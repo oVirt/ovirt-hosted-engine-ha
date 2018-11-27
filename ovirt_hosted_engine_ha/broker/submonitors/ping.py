@@ -65,9 +65,10 @@ class Submonitor(submonitor_base.SubmonitorBase):
         self.update_result(float(count) / float(self._total))
 
     def _ping(self):
+        ping_cmd = ['ping', '-c', '1', '-W', self._timeout]
+        if ':' in self._addr:
+            ping_cmd.append('-6')
+        ping_cmd.append(self._addr)
         with open(os.devnull, "w") as devnull:
-            p = subprocess.Popen(['ping', '-c', '1', '-W',
-                                  self._timeout, self._addr],
-                                 stdout=devnull, stderr=devnull)
-
+            p = subprocess.Popen(ping_cmd, stdout=devnull, stderr=devnull)
             return p.wait() == 0
