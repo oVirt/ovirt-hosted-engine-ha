@@ -22,9 +22,11 @@ from __future__ import print_function
 import ConfigParser
 import logging
 import logging.config
+import os
 import signal
 import sys
 import threading
+import time
 
 from . import constants
 from . import listener
@@ -95,7 +97,20 @@ class Broker(object):
         # and wait for it in the main thread, cause it will block singal
         # processing. Therefore, i had to start a new thread directly
         # in a signal handler and call shutdown from that thread.
-        threading.Thread(target=self._listener.close_connections).start()
+        down_thread = threading.Thread(target=self._listener.close_connections)
+        down_thread.daemon = True
+        down_thread.start()
+
+        # If the process doesn't finish in a reasonable time, exit
+        # unconditionally. Otherwise the listener may stop processing
+        # requests while still listening on its socket, resulting in
+        # hanging requests.
+        def wait_and_exit():
+            time.sleep(30)
+            os._exit(0)
+        exit_thread = threading.Thread(target=wait_and_exit)
+        exit_thread.daemon = True
+        exit_thread.start()
 
     def _get_monitor(self):
         """
