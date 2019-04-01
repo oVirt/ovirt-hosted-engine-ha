@@ -41,6 +41,8 @@ Group:          Applications/System
 
 BuildArch:      noarch
 
+Requires:       bind-utils
+Requires:       nmap-ncat
 Requires:       python
 Requires:       python-daemon
 Requires:       python-six

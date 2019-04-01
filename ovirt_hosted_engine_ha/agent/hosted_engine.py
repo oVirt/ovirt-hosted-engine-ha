@@ -1,6 +1,6 @@
 #
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-# Copyright (C) 2013 Red Hat, Inc.
+# Copyright (C) 2013-2019 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -187,7 +187,7 @@ class HostedEngine(object):
     def _get_score_config(self):
         score = {
             'base-score': constants.BASE_SCORE,
-            'gateway-score-penalty': constants.GATEWAY_SCORE_PENALTY,
+            'network-score-penalty': constants.NETWORK_SCORE_PENALTY,
             'mgmt-bridge-score-penalty': constants.MGMT_BRIDGE_SCORE_PENALTY,
             'free-memory-score-penalty': constants.FREE_MEMORY_SCORE_PENALTY,
             'cpu-load-score-penalty': constants.CPU_LOAD_SCORE_PENALTY,
@@ -261,13 +261,42 @@ class HostedEngine(object):
          'type'    - optional function that converts the value from string
                      to some better type
         """
+        network_test = 'ping'
+        try:
+            network_test = self._config.get(
+                config.ENGINE,
+                const.NETWORK_TEST
+            )
+        except (KeyError, ValueError):
+            pass
+        tcp_t_address = None
+        tcp_t_port = None
+        try:
+            tcp_t_address = self._config.get(
+                config.ENGINE,
+                const.TCP_T_ADDRESS
+            )
+        except (KeyError, ValueError):
+            pass
+        try:
+            tcp_t_port = self._config.get(
+                config.ENGINE,
+                const.TCP_T_PORT
+            )
+        except (KeyError, ValueError):
+            pass
+
         req = []
         req.append({
-            'field': 'gateway',
-            'monitor': 'ping',
+            'field': 'network',
+            'monitor': 'network',
             'type': float,
             'options': {
-                'addr': self._config.get(config.ENGINE, const.GATEWAY_ADDR)}
+                'addr': self._config.get(config.ENGINE, const.GATEWAY_ADDR),
+                'network_test': network_test,
+                'tcp_t_address': tcp_t_address,
+                'tcp_t_port': tcp_t_port,
+            }
         })
         req.append({
             'field': 'bridge',

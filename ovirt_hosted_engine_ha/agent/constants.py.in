@@ -1,6 +1,6 @@
 #
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-# Copyright (C) 2013 Red Hat, Inc.
+# Copyright (C) 2013-2019 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -53,7 +53,7 @@ METADATA_LOG_PERIOD_SECS = 600
 ENGINE_STARTING_TIMEOUT = 600
 
 BASE_SCORE = 3400
-GATEWAY_SCORE_PENALTY = 1600
+NETWORK_SCORE_PENALTY = 1600
 NOT_UPTODATE_CONFIG_PENALITY = 1000
 MGMT_BRIDGE_SCORE_PENALTY = 600
 FREE_MEMORY_SCORE_PENALTY = 400
