@@ -82,8 +82,8 @@ class EngineState(BaseState):
 
         The score is  based on a variety of factors each having different
         weights; they are scaled such that minor factors are not considered
-        at all unless major factors are equal.  For example, a host with an
-        unreachable gateway will never be chosen over one with the gateway
+        at all unless major factors are equal.  For example, a host with
+        unreachable network will never be chosen over one with the network
         up due to extra cpu/memory being available.
 
         Additional adjustments are made for the retry count of starting the
@@ -96,7 +96,7 @@ class EngineState(BaseState):
         host will again have an opportunity to run the engine VM.
 
         Score weights:
-        1600 - gateway address is pingable
+        1600 - network is up (gateway is pingable or DNS test or ...)
         1000 - host's cpu load is less than 90% of capacity
          600 - host's management network bridge is up
          400 - host has 4GB of memory free to run the engine VM
@@ -124,14 +124,14 @@ class EngineState(BaseState):
 
         # FIXME score needed for vdsm storage pool connection?
         # (depending on storage integration, may not be able to report...)
-        if lm['gateway'] < 1.0:
+        if lm['network'] < 1.0:
             penalty = int(
-                (1.0 - lm['gateway']) * score_cfg['gateway-score-penalty']
+                (1.0 - lm['network']) * score_cfg['network-score-penalty']
             )
 
-            logger.info("Penalizing score by %d due to gateway status",
+            logger.info("Penalizing score by %d due to network status",
                         penalty,
-                        extra=log_filter.lf_args('score-gateway',
+                        extra=log_filter.lf_args('score-network',
                                                  self.LF_PENALTY_INT))
             score -= penalty
         if not lm['bridge']:

@@ -1,6 +1,6 @@
 #
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-# Copyright (C) 2012-2013 Red Hat, Inc.
+# Copyright (C) 2012-2019 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -34,7 +34,7 @@ dist_brokersubmonitors_PYTHON = \
 	mem_free.py \
 	mem_load.py \
 	mgmt_bridge.py \
-	ping.py \
+	network.py \
 	storage_domain.py \
 	$(NULL)
 

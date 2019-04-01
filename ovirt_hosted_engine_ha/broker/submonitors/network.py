@@ -1,6 +1,6 @@
 #
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-# Copyright (C) 2013 Red Hat, Inc.
+# Copyright (C) 2013-2019 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -27,40 +27,70 @@ from ovirt_hosted_engine_ha.lib import log_filter
 
 
 def register():
-    return "ping"
+    return "network"
 
 
 class Submonitor(submonitor_base.SubmonitorBase):
+
     def setup(self, options):
-        self._log = logging.getLogger("%s.Ping" % __name__)
+        self._log = logging.getLogger("%s.Network" % __name__)
         self._log.addFilter(log_filter.get_intermittent_filter())
+        self._log.debug("options=%s", options)
+
+        self._tests = {
+            'ping': self._ping,
+            'dns': self._dns,
+            'tcp': self._tcp,
+            'none': self._none,
+        }
+
         self._addr = options.get('addr')
         self._timeout = str(options.get('timeout', 2))
         self._total = options.get('count', 5)
         self._delay = options.get('delay', 0.5)
-        if self._addr is None:
+        self._network_test = options.get('network_test', 'ping')
+        if not self._network_test:
+            self._network_test = 'ping'
+        if self._network_test not in self._tests:
+            raise Exception(
+                "{t}: invalid network test".format(
+                    t=self._network_test
+                )
+            )
+        self._tcp_t_address = options.get('tcp_t_address', None)
+        self._tcp_t_port = options.get('tcp_t_port', None)
+
+        if self._addr is None and self._network_test == 'ping':
             raise Exception("ping requires addr address")
-        self._log.debug("addr=%s, timeout=%s", self._addr, self._timeout)
+
+        if (
+            (self._tcp_t_address is None or self._tcp_t_port is None) and
+            self._network_test == 'tcp'
+        ):
+            raise Exception("tcp test requires tcp_t_address and tcp_t_port")
 
         # Set initial result to success instead of None
         self.update_result(1.0)
 
     def action(self, options):
         count = 0
+        test_function = self._tests[self._network_test]
         for i in range(self._total):
-            if self._ping():
+            if test_function():
                 count += 1
 
-            # wait between pings
+            # wait between tests
             if i < self._total - 1:
                 time.sleep(self._delay)
 
         if count == self._total:
-            self._log.info("Successfully pinged %s", self._addr,
+            self._log.info("Successfully verified network status",
                            extra=log_filter.lf_args('status', 60))
         else:
-            self._log.warning("Failed to ping %s, (%s out of %s)",
-                              self._addr, count, self._total)
+            self._log.warning(
+                "Failed to verify network status, (%s out of %s)",
+                count, self._total
+            )
 
         self.update_result(float(count) / float(self._total))
 
@@ -72,3 +102,29 @@ class Submonitor(submonitor_base.SubmonitorBase):
         with open(os.devnull, "w") as devnull:
             p = subprocess.Popen(ping_cmd, stdout=devnull, stderr=devnull)
             return p.wait() == 0
+
+    def _dns(self):
+        dns_cmd = [
+            'dig',
+            '+tries=1',
+            '+time={t}'.format(t=self._timeout)
+        ]
+        with open(os.devnull, "w") as devnull:
+            p = subprocess.Popen(dns_cmd, stdout=devnull, stderr=devnull)
+            return p.wait() == 0
+
+    def _tcp(self):
+        tcp_cmd = [
+            'nc',
+            '-w',
+            self._timeout,
+            '-z',
+            self._tcp_t_address,
+            self._tcp_t_port,
+        ]
+        with open(os.devnull, "w") as devnull:
+            p = subprocess.Popen(tcp_cmd, stdout=devnull, stderr=devnull)
+            return p.wait() == 0
+
+    def _none(self):
+        return True

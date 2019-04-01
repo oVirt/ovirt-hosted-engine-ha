@@ -34,9 +34,15 @@ ISCSI_USER = 'user'
 ISCSI_PASSWORD = 'password'
 ISCSI_PORT = 'port'
 ISCSI_MPATHS_BLACKLIST = 'iscsi_paths_blacklist'
+NETWORK_TEST = 'network_test'
+TCP_T_ADDRESS = 'tcp_t_address'
+TCP_T_PORT = 'tcp_t_port'
 
 ENGINE_OPTIONAL_KEYS = [
     ISCSI_MPATHS_BLACKLIST,
+    NETWORK_TEST,
+    TCP_T_ADDRESS,
+    TCP_T_PORT,
 ]
 
 # constants for vm.conf options

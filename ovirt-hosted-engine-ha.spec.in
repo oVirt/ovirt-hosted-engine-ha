@@ -1,6 +1,6 @@
 #
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-# Copyright (C) 2013-2018 Red Hat, Inc.
+# Copyright (C) 2013-2019 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -41,6 +41,8 @@ Group:          Applications/System
 
 BuildArch:      noarch
 
+Requires:       bind-utils
+Requires:       nmap-ncat
 Requires:       python
 Requires:       python-daemon
 Requires:       python-six
