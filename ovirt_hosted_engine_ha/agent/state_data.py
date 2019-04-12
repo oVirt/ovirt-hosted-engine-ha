@@ -26,10 +26,10 @@ HostedEngineData = collections.namedtuple("HostedEngineData", (
     "unexpected_shutdown_time",
     # Local timestamp of last metadata logging
     "last_metadata_log_time",
-    # Used by ON, MIGRATE_START, and MIGRATE_MONITOR states, tracks host
-    # to which the vm is migrating and the status
-    "migration_host_id",
-    "migration_result",
+    # Used by previous versions to track engine VM migrations,
+    # now deprecated
+    "deprecated_migration_host_id",
+    "deprecated_migration_result",
 
     # Score configuration
     "score_cfg",

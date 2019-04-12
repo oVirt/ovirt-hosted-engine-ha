@@ -21,7 +21,7 @@ class EngineState(BaseState):
     __slots__ = ["_score"]
 
     LF_PENALTY_INT = 60
-    MIGRATION_THRESHOLD_SCORE = 800
+    RESTART_THRESHOLD_SCORE = 800
     LF_ENGINE_HEALTH = 'LF_ENGINE_HEALTH'
     LF_ENGINE_HEALTH_INT = 60
 
@@ -327,7 +327,7 @@ class ReinitializeFSM(EngineState):
         # Cleanup some timers and counters
         data = data._replace(
             engine_vm_shutdown_time=None,
-            migration_host_id=None)
+        )
 
         # the engine might be just starting so if we go directly to EngineUp
         # we might end up in EngineUpBadHealth and killing the VM
@@ -339,41 +339,6 @@ class ReinitializeFSM(EngineState):
             return EngineDown(data)
 
 
-class LocalMaintenanceMigrateVm(LocalMaintenance):
-    """
-    This state is used in preparation of local maintenance
-    when the engine runs locally..
-    It tries to migrate it to the best remote host and
-    then moves to local maintenance state.
-
-    :transition GlobalMaintenance:
-    :transition UnknownLocalVmState:
-    :transition ReinitializeFSM:
-    :transition EngineStop:
-    :transition EngineMigratingAway:
-    """
-    @check_global_maintenance(GlobalMaintenance)
-    @check_local_vm_unknown(UnknownLocalVmState)
-    def consume(self, fsm, new_data, logger):
-        """
-        :type fsm: BaseFSM
-        :type new_data: HostedEngineData
-        :type logger: logging.Logger
-        """
-        if new_data.best_score_host:
-            destination = new_data.best_score_host["host-id"]
-        else:
-            return ReinitializeFSM(new_data)
-
-        if fsm.actions.MIGRATE(destination,
-                               new_data.best_score_host["hostname"]):
-            new_data = new_data._replace(migration_host_id=destination)
-            return EngineMigratingAway(new_data)
-        else:
-            # Migration failed to start
-            return EngineStop(new_data)
-
-
 class EngineUp(EngineState):
     """
     When the engine is up and running locally, this state is used
@@ -381,9 +346,7 @@ class EngineUp(EngineState):
 
     :transition GlobalMaintenance:
     :transition UnknownLocalVmState:
-    :transition LocalMaintenanceMigrateVm:
     :transition EngineMaybeAway:
-    :transition EngineMigratingAway:
     :transition EngineStop:
     :transition EngineUpBadHealth:
     :transition EngineDown:
@@ -395,7 +358,6 @@ class EngineUp(EngineState):
 
     @check_global_maintenance(GlobalMaintenance)
     @check_local_vm_unknown(UnknownLocalVmState)
-    @check_local_maintenance(LocalMaintenanceMigrateVm, BaseFSM.NOWAIT)
     def consume(self, fsm, new_data, logger):
         """
         :type fsm: BaseFSM
@@ -416,10 +378,6 @@ class EngineUp(EngineState):
             logger.info("Engine vm may be running on another host")
             return EngineMaybeAway(new_data), fsm.NOWAIT
 
-        if local_status["detail"] == vmstatus.MIGRATION_SOURCE:
-            logger.info("Engine VM found migrating away")
-            return EngineMigratingAway(new_data)
-
         if new_data.best_engine_host_id != new_data.host_id:
             logger.info("Engine vm unexpectedly running on host %d",
                         new_data.best_engine_host_id)
@@ -428,7 +386,7 @@ class EngineUp(EngineState):
         if (new_data.best_score_host and
                 new_data.best_score_host["host-id"] != new_data.host_id and
                 new_data.best_score_host["score"] >= self.score(logger) +
-                self.MIGRATION_THRESHOLD_SCORE):
+                self.RESTART_THRESHOLD_SCORE):
             logger.error("Host %s (id %d) score is significantly better"
                          " than local score, shutting down VM on this host",
                          new_data.best_score_host['hostname'],
@@ -784,65 +742,6 @@ class EngineStarting(EngineState):
 
         logger.info("VM is unexpectedly down.")
         return EngineMaybeAway(new_data), fsm.NOWAIT
-
-
-class EngineMigratingAway(EngineState):
-    """
-    This state is responsible for monitoring a migration of the engine
-    VM to some other machine.
-
-    :transition GlobalMaintenance:
-    :transition UnknownLocalVmState:
-    :transition:
-    :transition EngineDown:
-    :transition ReinitializeFSM:
-    """
-    def collect(self, fsm, new_data, logger):
-        """
-        :type fsm: BaseFSM
-        :type new_data: HostedEngineData
-        :type logger: logging.Logger
-        """
-        return new_data._replace(
-            migration_result=fsm.actions.MONITOR_MIGRATION()
-        )
-
-    @check_global_maintenance(GlobalMaintenance)
-    @check_local_vm_unknown(UnknownLocalVmState)
-    def consume(self, fsm, new_data, logger):
-        """
-        :type fsm: BaseFSM
-        :type new_data: HostedEngineData
-        :type logger: logging.Logger
-        """
-
-        local_state = new_data.stats.local["engine-health"]["vm"]
-        local_detail = new_data.stats.local["engine-health"]["detail"]
-
-        # If VM is UP but not in MIGRATION_SOURCE state, the migration failed
-        if ((local_state == engine.VMState.UP and
-             local_detail != vmstatus.MIGRATION_SOURCE) or
-                not new_data.migration_result or
-                'progress' not in new_data.migration_result):
-            logger.error("Migration failed: %s", new_data.migration_result)
-            return ReinitializeFSM(new_data), fsm.NOWAIT
-
-        if ('downtime' not in new_data.migration_result and
-                new_data.migration_result['progress'] < 100):
-            logger.info("Continuing to monitor migration")
-            return EngineMigratingAway(new_data), fsm.WAIT
-
-        if 'downtime' in new_data.migration_result:
-            logger.info("Migration to %s complete,"
-                        " no longer monitoring vm",
-                        new_data.migration_host_id)
-            new_data = new_data._replace(migration_result=None,
-                                         migration_host_id=None)
-            return EngineDown(new_data)
-
-        # Migration failed
-        logger.error("Migration failed: %s", new_data.migration_result)
-        return ReinitializeFSM(new_data), fsm.NOWAIT
 
 
 class EngineMaybeAway(EngineState):
