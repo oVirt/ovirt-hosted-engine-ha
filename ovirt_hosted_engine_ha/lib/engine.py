@@ -23,7 +23,6 @@ class VMState(object):
 
     # This state is used in case:
     # - When the broker starts and the VM is not running locally.
-    # - The VM has successfully migrated to another host.
     # - The VM is already running elsewhere and the storage is locked.
     DOWN = "down"
 

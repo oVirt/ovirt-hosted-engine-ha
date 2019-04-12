@@ -38,12 +38,14 @@
  * A copy of the latest diagram should be available at:
  *
  *   http://www.ovirt.org/Features/Self_Hosted_Engine#Agent_State_Diagram
+ *   TODO: update or remove this !
  */
 
 digraph finite_state_machine {
 ranksep = 0.5;
 node [shape = doublecircle]; StartState;
 node [shape = circle]; EngineMigratingAway LocalMaintenanceMigrateVm EngineStop EngineStart ReinitializeFSM GlobalMaintenance UnknownLocalVmState EngineUp EngineDown LocalMaintenance EngineUpBadHealth EngineUnexpectedlyDown EngineForceStop ;
+// TODO: remove this
 EngineMigratingAway -> EngineMigratingAway [ label = "" ];
 EngineMigratingAway -> EngineDown [ label = "" ];
 EngineMigratingAway -> GlobalMaintenance [ label = "" ];

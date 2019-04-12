@@ -126,15 +126,7 @@ class HostedEngine(object):
         START = 'START'
         ON = 'ON'
         STOP = 'STOP'
-        MIGRATE_START = 'MIGRATE_START'
-        MIGRATE_MONITOR = 'MIGRATE_MONITOR'
         MAINTENANCE = 'MAINTENANCE'
-
-    class MigrationStatus(object):
-        STARTED = 'STARTED'
-        IN_PROGRESS = 'IN_PROGRESS'
-        DONE = 'DONE'
-        FAILURE = 'FAILURE'
 
     class MaintenanceMode(object):
         NONE = 'NONE'
@@ -168,8 +160,6 @@ class HostedEngine(object):
         self._local_monitors = {}
         self.fsm = EngineStateMachine(self, self._log, actions={
             "START_VM": self._start_engine_vm,
-            "MIGRATE": self._start_migration,
-            "MONITOR_MIGRATION": self._monitor_migration,
             "STOP_VM": self._stop_engine_vm
         })
 
@@ -845,108 +835,6 @@ class HostedEngine(object):
                                              self.LF_GLOBAL_MD_ERROR_INT))
                 # Continue agent processing, ignoring the bad global metadata
         return md
-
-    def _start_migration(self, host_id, hostname):
-        vm_id = self._config.get(config.VM, const.VM_UUID)
-        self._log.debug("Initiating online migration of"
-                        " vm %s from localhost to %s",
-                        vm_id, hostname)
-        cli = util.connect_vdsm_json_rpc(
-            logger=self._log
-        )
-        try:
-            # Convergence schedule corresponding
-            # to the "Suspend workload if needed" migration policy
-            convergence_schedule = {
-                'init': [
-                    {"name": "setDowntime", "params": ["100"]}
-                ],
-                'stalling': [
-                    {"limit": 1, "action": {
-                        "name": "setDowntime", "params": ["150"]
-                    }},
-                    {"limit": 2, "action": {
-                        "name": "setDowntime", "params": ["200"]
-                    }},
-                    {"limit": 3, "action": {
-                        "name": "setDowntime", "params": ["300"]
-                    }},
-                    {"limit": 4, "action": {
-                        "name": "setDowntime", "params": ["400"]
-                    }},
-                    {"limit": 6, "action": {
-                        "name": "setDowntime", "params": ["500"]
-                    }},
-                    {"limit": -1, "action": {
-                        "name": "setDowntime", "params": ["5000"]
-                    }},
-                    {"limit": -1, "action": {
-                        "name": "abort", "params": []
-                    }},
-                ]
-            }
-
-            cli.VM.migrate(
-                vmID=vm_id,
-                params={
-                    'tunneled': False,
-                    'dstqemu': hostname,
-                    'autoConverge': True,
-                    'src': 'localhost',
-                    'enableGuestEvents': True,
-                    'dst': hostname,
-                    'vmId': vm_id,
-                    'abortOnError': True,
-                    'compressed': False,
-                    'method': 'online',
-                    'convergenceSchedule': convergence_schedule
-                }
-            )
-            return True
-
-        except ServerError as e:
-            self._log.error(
-                "Migration to host %s (id %d) failed to start: %s",
-                hostname,
-                host_id,
-                str(e)
-            )
-
-        return False
-
-    def _monitor_migration(self):
-        vm_id = self._config.get(config.VM, const.VM_UUID)
-        self._log.debug("Monitoring migration of vm %s", vm_id)
-        cli = util.connect_vdsm_json_rpc(
-            logger=self._log
-        )
-
-        try:
-            return cli.VM.getMigrationStatus(vmID=vm_id)
-
-        except ServerError as e:
-            # As VDSM could return either
-            # {u'downtime': 156, u'progress': 100,
-            # u'status': {'code': 0, 'message': 'Done'}}
-            # or
-            # {'status':
-            #   {'message': u'Virtual machine does not exist', 'code': 1}
-            # }
-            # depending or how lucky we are
-            # (and this is clearly a race condition)
-            # we consider both as a mark of successful migration completion.
-            #
-            # In case of 'does not exist' reply we re-write status,
-            # so i looks good enough.
-            if e.code == vdsm_exception.NoSuchVM.code:
-                self._log.info(
-                    "VM not found, assuming that migration is complete"
-                )
-                return {'progress': 100, 'downtime': 1}
-
-            self._log.error("Failed to get migration status", exc_info=True)
-            self._log.error(e)
-            return None
 
     def _start_engine_vm(self):
         try:
