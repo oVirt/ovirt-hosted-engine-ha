@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!@PYTHON@
 
 #
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
@@ -19,8 +19,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
-from ovirt_hosted_engine_ha.broker import broker
+from ovirt_hosted_engine_ha.agent import agent
 
 if __name__ == '__main__':
-    broker.Broker().run()
+    agent.Agent().run()
 

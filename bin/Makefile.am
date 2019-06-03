@@ -22,6 +22,8 @@ MAINTAINERCLEANFILES = \
 	$(NULL)
 
 EXTRA_DIST = \
+	ovirt-ha-agent.in \
+	ovirt-ha-broker.in \
 	$(NULL)
 
 scriptsdir = $(engine_ha_bindir)
