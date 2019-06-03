@@ -400,7 +400,7 @@ class HostedEngine(object):
             else:
                 self._log.error("Cannot clean unclean metadata block."
                                 " Consider --force-clean.")
-        except (ValueError, KeyError) as e:
+        except (ValueError, KeyError):
             self._log.error("Metadata for current host missing.")
 
         # Free lockspace
@@ -479,7 +479,7 @@ class HostedEngine(object):
                                             old_state.__class__.__name__,
                                             state.__class__.__name__),
                                         hostname=socket.gethostname())
-                except Exception as e:
+                except Exception:
                     self._log.warning("Could not send notification. Ignoring"
                                       "the error and continuing.",
                                       extra=log_filter.lf_args(

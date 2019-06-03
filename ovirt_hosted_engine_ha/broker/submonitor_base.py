@@ -113,7 +113,7 @@ class SubmonitorBase(object):
             next_execution = monotonic.time() + self._interval
             try:
                 self.action(self._options)
-            except Exception as e:
+            except Exception:
                 # Don't let the submonitor thread die, just retry later
                 self._baselog.error("Error executing submonitor %s, args %r",
                                     self._name, self._options, exc_info=True)

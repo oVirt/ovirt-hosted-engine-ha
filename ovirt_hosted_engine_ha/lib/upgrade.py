@@ -293,7 +293,7 @@ class Upgrade(object):
     def _safeConnectStoragePool(self, master, dom_dict):
         try:
             self._connectStoragePool(master, dom_dict)
-        except RuntimeError, err:
+        except RuntimeError as err:
             if err.args > 1 and err.args[1] == 324:
                 # 324 means that the master storage domain is not what we
                 # expect, since the hosted-engine bootstrap storage pools

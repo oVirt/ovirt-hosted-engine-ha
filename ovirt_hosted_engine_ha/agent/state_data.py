@@ -1,4 +1,5 @@
 import collections
+import functools
 
 __author__ = 'msivak'
 
@@ -109,9 +110,9 @@ def load_factor(he_data):
         else:
             return area, time, cur_load, cur_time
 
-    load_area, load_time = reduce(trapezoid,
-                                  he_data.history,
-                                  (0, 0, None, None))[:2]
+    load_area, load_time = functools.reduce(trapezoid,
+                                            he_data.history,
+                                            (0, 0, None, None))[:2]
     if load_time == 0:
         return 0.0
     else:
