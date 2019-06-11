@@ -199,6 +199,9 @@ fi
 
 
 %changelog
+* Tue Jun 11 2019 Simone Tiraboschi <stirabos@redhat.com> - 2.3.3-0.0.master
+- 2.3.3-0.0.master
+
 * Tue Jun 11 2019 Simone Tiraboschi <stirabos@redhat.com> - 2.3.2-1
 - 2.3.2-1
 
