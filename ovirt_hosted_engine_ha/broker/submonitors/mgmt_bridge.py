@@ -44,25 +44,28 @@ class Submonitor(submonitor_base.SubmonitorBase):
             logger=self._log
         )
         try:
-            caps = cli.Host.getCapabilities()
+            stats = cli.Host.getStats()
         except ServerError as e:
             self._log.error(e)
             self.update_result(None)
             return
 
-        if 'bridges' not in caps:
-            self._log.error("Failed to getVdsCapabilities: "
-                            "No 'bridges' in result")
+        if 'network' not in stats:
+            self._log.error("Failed to getVdsStats: "
+                            "No 'network' in result")
             self.update_result(None)
             return
 
-        if self._bridge in caps['bridges']:
-            if 'ports' in caps['bridges'][self._bridge]:
-                self._log.info("Found bridge %s with ports", self._bridge,
+        if self._bridge in stats['network']:
+            if (
+                'state' in stats['network'][self._bridge] and
+                stats['network'][self._bridge]['state'] == 'up'
+            ):
+                self._log.info("Found bridge %s in up state", self._bridge,
                                extra=log_filter.lf_args('status', 60))
                 self.update_result(True)
             else:
-                self._log.info("Found bridge %s with no ports", self._bridge,
+                self._log.info("Found bridge %s not in up state", self._bridge,
                                extra=log_filter.lf_args('status', 60))
                 self.update_result(False)
         else:
