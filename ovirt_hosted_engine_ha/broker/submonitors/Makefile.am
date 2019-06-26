@@ -32,7 +32,6 @@ dist_brokersubmonitors_PYTHON = \
 	cpu_load_no_engine.py \
 	engine_health.py \
 	mem_free.py \
-	mem_load.py \
 	mgmt_bridge.py \
 	network.py \
 	storage_domain.py \
