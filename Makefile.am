@@ -79,7 +79,7 @@ rpm:	srpm
 	@echo
 
 test:
-	nosetests .
+	$(PYNOSE) .
 
 clean-local:
 	rm -fr "$(TMPREPOS)"

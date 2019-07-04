@@ -30,6 +30,16 @@
 %global         vdsm_group @VDSM_GROUP@
 %global         vdsm_version 4.40.0
 
+%if 0%{?fedora} >= 30 || 0%{?rhel} >= 8
+%global     python_interpreter %{__python3}
+%global     python_target_version python3
+%global     python_sitelib %{python3_sitelib}
+%else
+%global     python_interpreter %{__python2}
+%global     python_target_version python2
+%global     python_sitelib %{python2_sitelib}
+%endif
+
 Summary:        oVirt Hosted Engine High Availability Manager
 Name:           @PACKAGE_NAME@
 Version:        @PACKAGE_RPM_VERSION@
@@ -41,47 +51,59 @@ Group:          Applications/System
 
 BuildArch:      noarch
 
-Requires:       bind-utils
-Requires:       nmap-ncat
-Requires:       python
-Requires:       python-daemon
-Requires:       python-six
-Requires:       sanlock >= 2.8
+# Python dependencies
+
+Requires:       %{python_target_version}
+Requires:       %{python_target_version}-six
+# Otopi is needed for the cli client
+Requires:       %{python_target_version}-otopi >= 1.9.0
+
+%if %{python_target_version} == python2
 Requires:       sanlock-python >= 2.8
-Requires:       sudo
-Requires(pre):  vdsm >= %{vdsm_version}
-Requires(post):  vdsm >= %{vdsm_version}
-Requires:       vdsm >= %{vdsm_version}
-Requires:       vdsm-client >= %{vdsm_version}
-Requires:       vdsm-python >= %{vdsm_version}
-Conflicts:      ovirt-hosted-engine-setup < 2.3
+%else
+Requires:       %{python_target_version}-sanlock >= 2.8
+%endif
 
 %if 0%{?rhel} > 0 && 0%{?rhel} <= 7
 Requires:       python-lxml
+Requires:       python-daemon
 %else
-Requires:       python2-lxml
+Requires:       %{python_target_version}-lxml
+# TODO: check it onel8
+Requires:       %{python_target_version}-daemon
 %endif
 
-# Otopi is needed for the cli client
-Requires:       otopi >= 1.8.0
-
-BuildRequires:  python
-BuildRequires:  python2-devel
-BuildRequires:  python-nose
-BuildRequires:  python-mock
-BuildRequires:  vdsm >= %{vdsm_version}
-BuildRequires:  vdsm-client >= %{vdsm_version}
-BuildRequires:  vdsm-python >= %{vdsm_version}
+BuildRequires:  %{python_target_version}
+BuildRequires:  %{python_target_version}-devel
+BuildRequires:  %{python_target_version}-mock
 
 %if 0%{?rhel} > 0 && 0%{?rhel} <= 7
 BuildRequires:  python-lxml
+BuildRequires:  python-nose
 %else
-BuildRequires:  python2-lxml
+BuildRequires:  %{python_target_version}-lxml
+BuildRequires:  %{python_target_version}-nose
 %endif
+
+# Non Python dependencies
+
+Requires:       bind-utils
+Requires:       nmap-ncat
+Requires:       sanlock >= 2.8
+Requires:       sudo
+Requires(pre):  vdsm >= %{vdsm_version}
+Requires(post): vdsm >= %{vdsm_version}
+Requires:       vdsm >= %{vdsm_version}
+Requires:       vdsm-client >= %{vdsm_version}
+Requires:       vdsm-python >= %{vdsm_version}
+Conflicts:      ovirt-hosted-engine-setup < 2.4
+
+BuildRequires:  vdsm-client >= %{vdsm_version}
+BuildRequires:  vdsm-python >= %{vdsm_version}
+BuildRequires:  vdsm-jsonrpc >= %{vdsm_version}
 
 %{?systemd_requires}
 BuildRequires:  systemd
-
 
 
 %description
