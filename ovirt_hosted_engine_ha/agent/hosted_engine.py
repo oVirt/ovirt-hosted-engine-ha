@@ -20,7 +20,7 @@
 try:
     import configparser
 except ImportError:
-    import configparser as configparser
+    import ConfigParser as configparser
 import json
 import logging
 import os
@@ -683,7 +683,7 @@ class HostedEngine(object):
         tokens.append(self._config.vm_conf_refresh_time)
 
         data = ("|".join(str(t) for t in tokens)).encode()
-        crc32 = metadata.CRC32_FORMAT.format(binascii.crc32(data) & 0xffffffff)
+        crc32 = metadata.CRC32_FORMAT % (binascii.crc32(data) & 0xffffffff)
         tokens[9] = crc32
         data = "|".join(str(t) for t in tokens)
 

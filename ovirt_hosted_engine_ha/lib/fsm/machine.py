@@ -142,6 +142,9 @@ class BaseFSM(object):
 
         return old_state, self._state, sleep_time
 
+    def next(self):
+        return self.__next__()
+
     @staticmethod
     def decode_consume(consume_return):
         try:

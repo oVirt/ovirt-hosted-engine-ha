@@ -22,6 +22,7 @@ try:
     _use_importlib = True
 except ImportError:
     import imp
+    _use_importlib = False
 import logging
 import os
 import sys
