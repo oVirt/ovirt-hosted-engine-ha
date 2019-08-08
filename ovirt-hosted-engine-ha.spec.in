@@ -46,8 +46,8 @@ Requires:       nmap-ncat
 Requires:       python
 Requires:       python-daemon
 Requires:       python-six
-Requires:       sanlock >= 2.8
-Requires:       sanlock-python >= 2.8
+Requires:       sanlock >= 3.7.3
+Requires:       sanlock-python >= 3.7.3
 Requires:       sudo
 Requires(pre):  vdsm >= %{vdsm_version}
 Requires(post):  vdsm >= %{vdsm_version}
