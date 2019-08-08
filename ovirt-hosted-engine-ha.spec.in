@@ -59,9 +59,9 @@ Requires:       %{python_target_version}-six
 Requires:       %{python_target_version}-otopi >= 1.9.0
 
 %if %{python_target_version} == python2
-Requires:       sanlock-python >= 2.8
+Requires:       sanlock-python >= 3.7.3
 %else
-Requires:       %{python_target_version}-sanlock >= 2.8
+Requires:       %{python_target_version}-sanlock >= 3.7.3
 %endif
 
 %if 0%{?rhel} > 0 && 0%{?rhel} <= 7
@@ -89,7 +89,7 @@ BuildRequires:  %{python_target_version}-nose
 
 Requires:       bind-utils
 Requires:       nmap-ncat
-Requires:       sanlock >= 2.8
+Requires:       sanlock >= 3.7.3
 Requires:       sudo
 Requires(pre):  vdsm >= %{vdsm_version}
 Requires(post): vdsm >= %{vdsm_version}

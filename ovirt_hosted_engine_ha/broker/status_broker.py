@@ -106,6 +106,8 @@ class StatusBroker(object):
         self._lease_file = storage_broker.get_image_path(
             broker_constants.LOCKSPACE_IMAGE)
 
+        self._sector_size = storage_broker.get_sector_size()
+
         self._host_id = None
         self._current_state = {}
 
@@ -162,9 +164,12 @@ class StatusBroker(object):
 
     def reset_lockspace(self):
         if os.path.exists(self._lease_file):
-            sanlock.write_lockspace(lockspace=broker_constants.LOCKSPACE_NAME,
-                                    path=self._lease_file,
-                                    offset=0)
+            sanlock.write_lockspace(
+                lockspace=broker_constants.LOCKSPACE_NAME,
+                path=self._lease_file,
+                offset=0,
+                sector=self._sector_size,
+            )
 
     def get_stats(self):
         """

@@ -35,8 +35,6 @@ class StorageBackend(with_metaclass(ABCMeta, object)):
     """
 
     def __init__(self):
-        # the atomic block size of the underlying storage
-        self._blocksize = constants.METADATA_BLOCK_BYTES
         self._logger = logger
 
     @property
@@ -61,9 +59,9 @@ class StorageBackend(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError()
 
-    @property
-    def blocksize(self):
-        return self._blocksize
+    @abstractmethod
+    def sector_size(self):
+        raise NotImplementedError()
 
     @abstractmethod
     def create(self, service_map, force_new=False):
@@ -178,6 +176,7 @@ class VdsmBackend(StorageBackend):
         self._sp_uuid = sp_uuid
         self._sd_uuid = sd_uuid
         self._dom_type = dom_type
+        self._sector_size = None
 
     def _get_volume_path(self, connection, spUUID, sdUUID, imgUUID, volUUID):
         retval = namedtuple('retval', ['status_code', 'path', 'message'])
@@ -195,6 +194,26 @@ class VdsmBackend(StorageBackend):
         path = result['path']
         self._logger.debug("Image.prepare: returned '%s' as path", path)
         return retval(0, path, "")
+
+    def _get_sector_size(self, connection, sdUUID):
+        retval = namedtuple(
+            'retval',
+            ['status_code', 'sector_size', 'message']
+        )
+        try:
+            result = connection.StorageDomain.getInfo(
+                storagedomainID=sdUUID,
+            )
+        except ServerError as e:
+            self._logger.debug(e)
+            return retval(e.code, None, str(e))
+
+        if 'block_size' not in result:
+            e = 'Failed fetching block_size'
+            self._logger.error(e)
+            return retval(e.code, None, e)
+
+        return retval(0, result['block_size'], "")
 
     def create_volume(self, service_name, service_size,
                       volume_uuid, image_uuid):
@@ -278,6 +297,15 @@ class VdsmBackend(StorageBackend):
 
         self._logger.info("Image for '%s' created successfully", service_name)
 
+        if self._sector_size is None:
+            response = self._get_sector_size(
+                connection,
+                sdUUID=self._sd_uuid,
+            )
+            if response.status_code != 0:
+                raise RuntimeError(response.message)
+            self._sector_size = response.sector_size
+
         response = self._get_volume_path(
             connection, sdUUID=self._sd_uuid,
             spUUID='00000000-0000-0000-0000-000000000000',
@@ -351,6 +379,14 @@ class VdsmBackend(StorageBackend):
         self._storage_path = os.path.join(base_path,
                                           constants.SD_METADATA_DIR)
 
+        response = self._get_sector_size(
+            connection,
+            sdUUID=self._sd_uuid,
+        )
+        if response.status_code != 0:
+            raise RuntimeError(response.message)
+        self._sector_size = response.sector_size
+
         for service, volume in self._services.items():
             # Activate volumes and set the volume.path to proper path
             response = self._get_volume_path(
@@ -388,6 +424,11 @@ class VdsmBackend(StorageBackend):
         to get to the metadata structures.
         """
         return self._services[service].path, 0
+
+    def sector_size(self):
+        if self._sector_size is None:
+            raise RuntimeError("Unconnected backend")
+        return self._sector_size
 
 
 class FilesystemBackend(StorageBackend):
@@ -596,3 +637,11 @@ class FilesystemBackend(StorageBackend):
                 new_set.add(service)
 
         return new_set
+
+    def sector_size(self):
+        # to keep the compatibility with environments deployed
+        # at 3.3 time on
+        # hosted-engine --reinitialize-lockspace
+        # new (>= 3.4) deployments are always going to rely on
+        # VdsmBackend
+        return constants.METADATA_BLOCK_BYTES

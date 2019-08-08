@@ -229,6 +229,9 @@ class StorageBroker(object):
         """
         return self._backend.filename(service)[0]
 
+    def get_sector_size(self):
+        return self._backend.sector_size()
+
     def start_domain_monitor(self, host_id):
         dm_status = self._get_domain_monitor_status()
         if dm_status == self.DomainMonitorStatus.NONE:
