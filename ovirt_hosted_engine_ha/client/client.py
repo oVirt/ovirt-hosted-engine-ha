@@ -82,7 +82,7 @@ class HAClient(object):
                 continue
             self._check_liveness_metadata(stats[host_id], broker)
 
-    def get_all_stats(self, mode=StatModes.ALL):
+    def get_all_stats(self, mode=StatModes.ALL, timeout=None):
         """
         Connects to HA broker to get global md and/or host stats, based on
         mode (member of StatModes class).  Returns the stats in a dictionary
@@ -90,7 +90,7 @@ class HAClient(object):
         """
         if self._config is None:
             self._config = config.Config()
-        broker = brokerlink.BrokerLink()
+        broker = brokerlink.BrokerLink(timeout=timeout)
         stats = broker.get_stats_from_storage()
 
         stats = self._parse_stats(stats, mode)
@@ -138,12 +138,12 @@ class HAClient(object):
                 continue
         return output
 
-    def get_all_host_stats(self):
+    def get_all_host_stats(self, timeout=None):
         """
         Connects to HA broker, reads stats for all hosts, and returns
         them in a dictionary as {host_id: = {key: value, ...}}
         """
-        return self.get_all_stats(self.StatModes.HOST)
+        return self.get_all_stats(self.StatModes.HOST, timeout)
 
     def get_all_host_stats_direct(self):
         """
@@ -152,7 +152,7 @@ class HAClient(object):
         """
         return self.get_all_stats_direct(self.StatModes.HOST)
 
-    def set_global_md_flag(self, flag, value):
+    def set_global_md_flag(self, flag, value, timeout=None):
         """
         Connects to HA broker and sets flags in global metadata, leaving
         any other flags unaltered.  On error, exceptions will be propagated
@@ -170,7 +170,7 @@ class HAClient(object):
         else:
             put_val = value
 
-        broker = brokerlink.BrokerLink()
+        broker = brokerlink.BrokerLink(timeout=timeout)
         all_stats = broker.get_stats_from_storage()
 
         global_stats = all_stats.get(0)
@@ -195,13 +195,13 @@ class HAClient(object):
         host_id = self._config.get(config.ENGINE, config_constants.HOST_ID)
         return int(host_id) if host_id else None
 
-    def get_local_host_score(self):
+    def get_local_host_score(self, timeout=None):
         if self._config is None:
             self._config = config.Config()
 
         host_id = int(self._config.get(config.ENGINE,
                                        config_constants.HOST_ID))
-        broker = brokerlink.BrokerLink()
+        broker = brokerlink.BrokerLink(timeout=timeout)
         stats = broker.get_stats_from_storage()
 
         score = 0
@@ -218,7 +218,7 @@ class HAClient(object):
 
         return score
 
-    def set_maintenance_mode(self, mode, value):
+    def set_maintenance_mode(self, mode, value, timeout=None):
         """
         Set maintenance to the specified mode.
         global - Disable/Enable the agents from monitoring the state
@@ -228,8 +228,11 @@ class HAClient(object):
         when set/unset, local mode should have the same value.
         """
         if mode == self.MaintenanceMode.GLOBAL:
-            self.set_global_md_flag(self.GlobalMdFlags.MAINTENANCE,
-                                    str(value))
+            self.set_global_md_flag(
+                self.GlobalMdFlags.MAINTENANCE,
+                str(value),
+                timeout
+            )
 
         elif mode == self.MaintenanceMode.LOCAL:
             if self._config is None:
@@ -265,7 +268,7 @@ class HAClient(object):
             self._config = config.Config()
         return self._config.get_all_shared_keys(config_type)
 
-    def reset_lockspace(self, force=False):
+    def reset_lockspace(self, force=False, timeout=None):
         if self._config is None:
             self._config = config.Config()
 
@@ -278,7 +281,7 @@ class HAClient(object):
             return
 
         # Connect to a broker and read all stats
-        broker = brokerlink.BrokerLink()
+        broker = brokerlink.BrokerLink(timeout=timeout)
 
         stats = broker.get_stats_from_storage()
 
