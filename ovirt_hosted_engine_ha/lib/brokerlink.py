@@ -52,9 +52,12 @@ class NotifyEvents(object):
 
 
 class BrokerLink(object):
-    def __init__(self):
+    def __init__(self, timeout=None):
         self._log = logging.getLogger("%s.BrokerLink" % __name__)
-        self._proxy = unixrpc.UnixXmlRpcClient(constants.BROKER_SOCKET_FILE)
+        self._proxy = unixrpc.UnixXmlRpcClient(
+            constants.BROKER_SOCKET_FILE,
+            timeout=timeout,
+        )
 
     def notify(self, event_type, detail, **options):
         try:

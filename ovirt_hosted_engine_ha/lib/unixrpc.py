@@ -33,20 +33,30 @@ class UnixXmlRpcServer(SocketServer.UnixStreamServer,
 # This class implements a XML-RPC client that connects to a UNIX socket. The
 # path to the UNIX socket to create must be provided.
 class UnixXmlRpcClient(ServerProxy):
-    def __init__(self, sock_path):
+    def __init__(self, sock_path, timeout=None):
         # We can't pass funny characters in the host part of a URL, so we
         # encode the socket path in base16.
         ServerProxy.__init__(self, 'http://' + base64.b16encode(sock_path),
-                             transport=UnixXmlRpcTransport(),
+                             transport=UnixXmlRpcTransport(timeout=timeout),
                              allow_none=1)
 
 
 class UnixXmlRpcTransport(Transport):
+    def __init__(self, timeout=None, *args, **kwargs):
+        Transport.__init__(self, *args, **kwargs)
+        self.timeout = timeout
+
     def make_connection(self, host):
-        return UnixXmlRpcHttpConnection(host)
+        return UnixXmlRpcHttpConnection(host=host, timeout=self.timeout)
 
 
 class UnixXmlRpcHttpConnection(httplib.HTTPConnection):
+    def __init__(self, timeout=None, *args, **kwargs):
+        httplib.HTTPConnection.__init__(self, *args, **kwargs)
+        self.timeout = timeout
+
     def connect(self):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.connect(base64.b16decode(self.host))
+        if self.timeout is not None:
+            self.sock.settimeout(self.timeout)
