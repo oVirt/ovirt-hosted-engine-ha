@@ -7,6 +7,10 @@
 
 rm -rf output
 
+if [ -x /usr/bin/python3 ] ; then
+export PYTHON=/usr/bin/python3
+fi
+
 ./autogen.sh --system
 ./configure
 

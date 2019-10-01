@@ -7,6 +7,10 @@
 
 SUFFIX=".$(date -u +%Y%m%d%H%M%S).git$(git rev-parse --short HEAD)"
 
+if [ -x /usr/bin/python3 ] ; then
+export PYTHON=/usr/bin/python3
+fi
+
 ./autogen.sh --system
 make dist
 yum-builddep ovirt-hosted-engine-ha.spec

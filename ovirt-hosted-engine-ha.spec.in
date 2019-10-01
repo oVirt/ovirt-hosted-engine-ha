@@ -116,6 +116,7 @@ Hosted engine manager for oVirt project.
 
 
 %build
+PYTHON=%{python_interpreter}
 %configure \
         --docdir="%{_docdir}/%{name}-%{version}" \
         --disable-python-syntax-check \

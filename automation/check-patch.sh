@@ -1,4 +1,8 @@
 #!/bin/bash -e
+if [ -x /usr/bin/python3 ] ; then
+export PYTHON=/usr/bin/python3
+fi
+
 ./autogen.sh --system
 
 # make distcheck skipped due to bug afflicting automake.
