@@ -228,7 +228,11 @@ def toDict(ovf):
     # use libvirt XML if present in OVF
     engine_xml = tree.xpath("//EngineXml/text()")
     if engine_xml:
-        engine_xml_tree = ovfenvelope.etree_.fromstring(engine_xml[0])
+        engine_xml_tree = ovfenvelope.etree_.fromstring(
+            # this should match the encoding specified
+            # in the XML header of the nested elment
+            engine_xml[0].encode('utf-8')
+        )
         lease = engine_xml_tree.xpath("//devices/lease")
         exclusive = engine_xml_tree.xpath(
             "//ovirt-vm:device[@devtype='disk']/ovirt-vm:shared/text()",
