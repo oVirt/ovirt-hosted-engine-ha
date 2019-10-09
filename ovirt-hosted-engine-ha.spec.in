@@ -21,7 +21,6 @@
 %global         package_name @PACKAGE_NAME@
 %global         engine_ha_bindir  @ENGINE_HA_BINDIR@
 %global         engine_ha_confdir @ENGINE_HA_CONFDIR@
-%global         engine_ha_libdir  %{python_sitelib}/ovirt_hosted_engine_ha
 %global         engine_ha_logdir  @ENGINE_HA_LOGDIR@
 %global         engine_ha_rundir  @ENGINE_HA_RUNDIR@
 %global         engine_ha_statedir @ENGINE_HA_STATEDIR@
@@ -31,14 +30,16 @@
 %global         vdsm_version 4.40.0
 
 %if 0%{?fedora} >= 30 || 0%{?rhel} >= 8
-%global     python_interpreter %{__python3}
-%global     python_target_version python3
-%global     python_sitelib %{python3_sitelib}
+%global         python_interpreter %{__python3}
+%global         python_target_version python3
+%global         python_sitelib %{python3_sitelib}
 %else
-%global     python_interpreter %{__python2}
-%global     python_target_version python2
-%global     python_sitelib %{python2_sitelib}
+%global         python_interpreter %{__python2}
+%global         python_target_version python2
+%global         python_sitelib %{python2_sitelib}
 %endif
+
+%global         engine_ha_libdir  %{python_sitelib}/ovirt_hosted_engine_ha
 
 Summary:        oVirt Hosted Engine High Availability Manager
 Name:           @PACKAGE_NAME@
