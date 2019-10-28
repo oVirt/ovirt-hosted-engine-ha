@@ -28,7 +28,6 @@ except ImportError:
 from ..env import constants
 from ..lib.exceptions import RequestError
 from ..lib import unixrpc
-from types import IntType, LongType
 
 
 def big_int_marshaller(m, value, writer):
@@ -43,8 +42,8 @@ def enable_i8():
     Enable i8 extension
     Python 2.7 knows how to read it, but sending needs to be configured
     """
-    Marshaller.dispatch[IntType] = big_int_marshaller
-    Marshaller.dispatch[LongType] = big_int_marshaller
+    for inttype in six.integer_types:
+        Marshaller.dispatch[inttype] = big_int_marshaller
 
 
 enable_i8()
