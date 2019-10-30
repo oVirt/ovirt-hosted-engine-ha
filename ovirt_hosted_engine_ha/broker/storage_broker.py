@@ -155,9 +155,18 @@ class StorageBroker(object):
                 f = os.open(path, direct_flag | os.O_RDONLY | os.O_SYNC)
                 os.lseek(f, offset, os.SEEK_SET)
 
-                fin = os.fdopen(f, 'r', 0)  # 0 disables unneeded buffer
+                fin = os.fdopen(f, 'rb', 0)  # 0 disables unneeded buffer
                 fin.readinto(direct_io_buffer)
-                data = direct_io_buffer.read(read_size)
+                # due to direct IO we can only read as bytes
+                bdata = direct_io_buffer.read(read_size)
+                # TODO: fix for IDNA hostnames
+                data = bdata.decode()
+
+            except UnicodeDecodeError as e:
+                self._log.error("Corrupted metadata from %s",
+                                path, exc_info=True)
+                raise ex.RequestError("Corrupted read metadata: {0}"
+                                      .format(str(e)))
 
             except EnvironmentError as e:
                 self._log.error("Failed to read metadata from %s",
@@ -169,7 +178,7 @@ class StorageBroker(object):
                 if fin:
                     fin.close()
 
-        return dict(((i / bs, data[i:i + bs])
+        return dict(((i // bs, data[i:i + bs])
                      for i in range(0, len(data), bs)
                      if data[i] != '\0'))
 

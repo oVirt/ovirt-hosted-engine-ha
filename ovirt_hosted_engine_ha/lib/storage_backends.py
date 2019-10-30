@@ -488,7 +488,9 @@ class FilesystemBackend(StorageBackend):
                     stderr=subprocess.PIPE,
                     args=["lvs", "--rows", "--units", "B", "-o", "lv_size",
                           "/".join([vg_uuid, lv_name])])
-        stdout, stderr = lvc.communicate()
+        output = lvc.communicate()
+        stdout = output[0].decode()
+        stderr = output[1].decode()
         lvc.wait()
 
         if lvc.returncode == 0:
@@ -531,7 +533,9 @@ class FilesystemBackend(StorageBackend):
                     stderr=subprocess.PIPE,
                     args=["lvm", "lvcreate", "-L", str(size_bytes) + "B",
                           "-n", lv_name, vg_uuid])
-        stdout, stderr = lvc.communicate()
+        output = lvc.communicate()
+        stdout = output[0].decode()
+        stderr = output[1].decode()
         lvc.wait()
         if lvc.returncode == 0:
             self._logger.info(

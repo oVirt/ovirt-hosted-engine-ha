@@ -195,7 +195,9 @@ class StorageServer(object):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        stdout, stderr = command.communicate()
+        output = command.communicate()
+        stdout = output[0].decode()
+        stderr = output[1].decode()
         rc = command.wait()
         self._log.debug('rc:\n' + str(rc))
         self._log.debug('stdout:\n' + str(stdout))

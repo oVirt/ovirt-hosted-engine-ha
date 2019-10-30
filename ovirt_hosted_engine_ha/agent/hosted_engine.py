@@ -224,14 +224,16 @@ class HostedEngine(object):
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
         output = p.communicate()
+        stdout = output[0].decode()
+        stderr = output[1].decode()
 
         if p.returncode != 0:
             self._log.info("Certificate not available (%s),"
-                           " using hostname to identify host", output[1])
+                           " using hostname to identify host", stderr)
             return socket.gethostname()
 
-        self._log.debug("Certificate subject: %s", output[0])
-        res = re.findall(r'/CN=([A-Za-z0-9-_\.]+)', output[0])
+        self._log.debug("Certificate subject: %s", stdout)
+        res = re.findall(r'/CN=([A-Za-z0-9-_\.]+)', stdout)
 
         if len(res) and len(res[0]):
             self._log.info("Found certificate common name: %s", res[0])
@@ -855,18 +857,20 @@ class HostedEngine(object):
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE)
             output = p.communicate()
-            self._log.info("stdout: %s", output[0])
-            self._log.info("stderr: %s", output[1])
+            stdout = output[0].decode()
+            stderr = output[1].decode()
+            self._log.info("stdout: %s", stdout)
+            self._log.info("stderr: %s", stderr)
             if p.returncode != 0:
                 # FIXME consider removing, we can get vm status from sanlock,
                 # if still an issue then the alternative tracking the time we
                 # started the engine might be better than parsing this output
-                if output[0].startswith("Virtual machine already exists"):
+                if stdout.startswith("Virtual machine already exists"):
                     self._log.warning("Failed to start engine VM,"
                                       " already running according to VDSM")
                     return True
 
-                raise Exception(output[1])
+                raise Exception(stderr)
 
             self._log.info("Engine VM started on localhost")
             return True
@@ -932,14 +936,16 @@ class HostedEngine(object):
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE)
             output = p.communicate()
-            self._log.info("stdout: %s", output[0])
-            self._log.info("stderr: %s", output[1])
+            stdout = output[0].decode()
+            stderr = output[1].decode()
+            self._log.info("stdout: %s", stdout)
+            self._log.info("stderr: %s", stderr)
             if (p.returncode != 0 and
-                    not output[0].startswith(
+                    not stdout.startswith(
                     "Virtual machine does not exist")):
                 self._log.error("Failed to stop engine vm with %s %s: %s",
-                                constants.HOSTED_ENGINE_BINARY, cmd, output[1])
-                raise Exception(output[1])
+                                constants.HOSTED_ENGINE_BINARY, cmd, stderr)
+                raise Exception(stderr)
 
             self._log.error("Engine VM stopped on localhost")
             return True

@@ -165,7 +165,7 @@ class StatusBroker(object):
     def reset_lockspace(self):
         if os.path.exists(self._lease_file):
             sanlock.write_lockspace(
-                lockspace=broker_constants.LOCKSPACE_NAME,
+                lockspace=broker_constants.LOCKSPACE_NAME.encode(),
                 path=self._lease_file,
                 offset=0,
                 sector=self._sector_size,

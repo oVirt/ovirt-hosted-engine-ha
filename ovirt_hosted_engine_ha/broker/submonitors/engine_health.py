@@ -230,8 +230,9 @@ class Submonitor(submonitor_base.SubmonitorBase):
                               '--check-liveliness'],
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output = p.communicate()
+        stdout = output[0].decode()
         if p.returncode != 0:
-            self._log.warning("bad health status: %s", output[0])
+            self._log.warning("bad health status: %s", stdout)
             self._vm_state = engine.VMState.UP
             return {'vm': self._vm_state,
                     'health': engine.Health.BAD,

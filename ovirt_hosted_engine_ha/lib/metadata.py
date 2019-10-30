@@ -60,9 +60,14 @@ def parse_global_metadata_to_dict(log, data):
     ret = {}
     tokens = data[:constants.HOST_SEGMENT_BYTES].rstrip('\0').split('\n')
     for token in tokens:
-        k, v = token.split('=')
-        if k == 'maintenance':
-            ret['maintenance'] = util.to_bool(v)
+        s = token.split('=', 1)
+        if len(s) > 1:
+            k = s[0]
+            v = s[1]
+            if k == 'maintenance':
+                ret['maintenance'] = util.to_bool(v)
+            else:
+                log.error("Invalid global metadata key: {0}".format(token))
         else:
             log.error("Invalid global metadata key: {0}".format(token))
 

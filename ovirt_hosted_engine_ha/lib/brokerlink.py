@@ -115,7 +115,7 @@ class BrokerLink(object):
         """
         self._log.debug("Storing blocks on storage")
         # broker expects blocks in hex format
-        self._proxy.put_stats(host_id, xmlrpc_client.Binary(data))
+        self._proxy.put_stats(host_id, xmlrpc_client.Binary(data.encode()))
 
     def put_hosts_state_on_storage(self, host_id, alive_hosts):
         """

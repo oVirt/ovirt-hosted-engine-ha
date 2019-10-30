@@ -34,13 +34,13 @@ class Submonitor(submonitor_base.SubmonitorBase):
         """
         load_per_thread = 1.0
         p = subprocess.Popen(['cat', '/proc/cpuinfo'], stdout=subprocess.PIPE)
-        out = p.communicate()[0]
+        out = p.communicate()[0].decode()
         if p.returncode == 0:
             ncpus = len([True for c in out.split("\n")
                          if len(c.split()) and c.split()[0] == 'processor'])
             p = subprocess.Popen(['cat', '/proc/loadavg'],
                                  stdout=subprocess.PIPE)
-            out = p.communicate()[0]
+            out = p.communicate()[0].decode()
             if p.returncode == 0:
                 load_avg = float(out.split()[0])
                 load_per_thread = load_avg / ncpus

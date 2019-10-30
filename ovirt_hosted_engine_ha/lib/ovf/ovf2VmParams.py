@@ -211,7 +211,7 @@ def toDict(ovf):
              - See vdsCli#create
     """
     global OVF_NS
-    tree = ovfenvelope.etree_.fromstring(ovf)
+    tree = ovfenvelope.etree_.fromstring(ovf.encode())
 
     # Detect the OVF namespace, it will never change as long
     # as the engine is not upgraded

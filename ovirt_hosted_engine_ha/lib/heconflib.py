@@ -88,7 +88,9 @@ def _dd_pipe_tar(logger, path, tar_parameters):
     )
     # Allow dd_pipe to receive a SIGPIPE if tar_pipe exits.
     dd_pipe.stdout.close()
-    stdout, stderr = tar_pipe.communicate()
+    output = tar_pipe.communicate()
+    stdout = output[0].decode()
+    stderr = output[1].decode()
     tar_pipe.wait()
     if logger:
         logger.debug('stdout: ' + str(stdout))
@@ -158,7 +160,9 @@ def get_conf_archive_MD5(imagepath):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    stdout, stderr = md5_pipe.communicate()
+    output = md5_pipe.communicate()
+    stdout = output[0].decode()
+    stderr = output[1].decode()
     md5_pipe.wait()
     md5_pipe.stdout.close()
     return stdout.split()[0]
@@ -243,7 +247,9 @@ def _save_configuration_archive(logger, temp_archive, dest):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
-    stdout, stderr = pipe.communicate()
+    output = pipe.communicate()
+    stdout = output[0].decode()
+    stderr = output[1].decode()
     pipe.wait()
     if logger:
         logger.debug('stdout: ' + str(stdout))
