@@ -191,8 +191,11 @@ class StatusBroker(object):
         self._state_update_thread.post(host_id, data)
 
     def _inquire_whiteboard_lock(self):
-        return sanlock.inq_lockspace(broker_constants.LOCKSPACE_NAME,
-                                     self.host_id, self._lease_file)
+        return sanlock.inq_lockspace(
+            broker_constants.LOCKSPACE_NAME.encode(),
+            self.host_id,
+            self._lease_file
+        )
 
     def _acquire_whiteboard_lock(self):
         self._log.log(logging.DEBUG,
@@ -203,8 +206,11 @@ class StatusBroker(object):
 
         for attempt in range(broker_constants.WAIT_FOR_STORAGE_RETRY):
             try:
-                sanlock.add_lockspace(broker_constants.LOCKSPACE_NAME,
-                                      self.host_id, self._lease_file)
+                sanlock.add_lockspace(
+                    broker_constants.LOCKSPACE_NAME.encode(),
+                    self.host_id,
+                    self._lease_file
+                )
             except sanlock.SanlockException as e:
                 if hasattr(e, 'errno'):
                     if e.errno == errno.EEXIST:
@@ -251,5 +257,8 @@ class StatusBroker(object):
         return True
 
     def _release_whiteboard_lock(self):
-        sanlock.rem_lockspace(broker_constants.LOCKSPACE_NAME,
-                              self.host_id, self._lease_file)
+        sanlock.rem_lockspace(
+            broker_constants.LOCKSPACE_NAME.encode(),
+            self.host_id,
+            self._lease_file
+        )

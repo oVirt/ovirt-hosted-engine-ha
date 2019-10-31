@@ -147,7 +147,7 @@ class ActionsHandler(object):
         # As raw binary data can not be transferred via xmlrpc link,
         # we need to wrap state's contents into Binary wrapper.
         for k, v in six.iteritems(state):
-            result[k] = xmlrpc_client.Binary(v)
+            result[k] = xmlrpc_client.Binary(v.encode())
         return result
 
     @logged

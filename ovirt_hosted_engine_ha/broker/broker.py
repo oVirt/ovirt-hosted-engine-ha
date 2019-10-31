@@ -26,6 +26,7 @@ import signal
 import sys
 import threading
 import time
+import traceback
 
 from . import constants
 from . import listener
@@ -51,10 +52,25 @@ class Broker(object):
         monitor manager, storage broker, and request listener.
         """
         self._log.debug("Running broker")
-        self._monitor_instance = self._get_monitor()
-        self._storage_broker_instance = self._get_storage_broker()
-        self._status_broker_instance = self._get_status_broker()
-        self._listener = self._get_listener()
+        # due to a suspicious race condition
+        # it seams that systemd doesn't always
+        # creates RuntimeDirectory quickly enough
+        # for now let's simply delay this, but
+        # investigate ASAP
+        # see: https://bugzilla.redhat.com/1768511
+        time.sleep(2)
+        try:
+            self._monitor_instance = self._get_monitor()
+            self._storage_broker_instance = self._get_storage_broker()
+            self._status_broker_instance = self._get_status_broker()
+            self._listener = self._get_listener()
+        except Exception as e:
+            self._log.error(
+                "Failed initializing the broker: {e}".format(e=e)
+            )
+            self._log.error(traceback.format_exc())
+            self._log.error("Trying to restart the broker")
+            os.kill(os.getpid(), signal.SIGTERM)
         self._listener.listen()
 
         # Server shutdown...

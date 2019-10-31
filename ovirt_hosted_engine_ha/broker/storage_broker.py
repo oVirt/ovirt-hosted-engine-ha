@@ -202,7 +202,7 @@ class StorageBroker(object):
                         self._service_space, host_id, path, offset)
 
         byte_data = data.data
-        byte_data = byte_data.ljust(constants.HOST_SEGMENT_BYTES, '\0')
+        byte_data = byte_data.ljust(constants.HOST_SEGMENT_BYTES, b'\0')
 
         with self._storage_access_lock,\
                 aligned_buffer(len(byte_data)) as direct_io_buffer:

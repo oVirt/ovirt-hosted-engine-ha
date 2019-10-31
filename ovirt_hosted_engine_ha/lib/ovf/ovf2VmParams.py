@@ -254,7 +254,7 @@ def toDict(ovf):
                     xml_declaration=True,
                     encoding='UTF-8',
                 )
-            )
+            ).decode()
 
     # general
     vmParams['vmId'] = tree.xpath(

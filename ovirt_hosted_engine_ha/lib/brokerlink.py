@@ -148,7 +148,7 @@ class BrokerLink(object):
         result = self._proxy.get_stats()
         ret = {}
         for host_id, data in six.iteritems(result):
-            ret[int(host_id)] = data.data
+            ret[int(host_id)] = data.data.decode()
 
         return ret
 
