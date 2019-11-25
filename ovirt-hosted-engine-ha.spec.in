@@ -223,6 +223,9 @@ fi
 
 
 %changelog
+* Mon Nov 25 2019 Evgeny Slutsky <eslutsky@redhat.com> - 2.4.1-0.0.master
+- 2.4.1-0.0.master
+
 * Mon Nov 25 2019 Evgeny Slutsky <eslutsky@redhat.com> - 2.4.0-1
 - 2.4.0-1
 
