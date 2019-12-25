@@ -58,7 +58,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
 
         # Using two timestamps, because VDSM uses different method
         # to generate timestamp, with different arbitrary starting point
-        self._stats_local_timestamp = None
+        self._stats_local_timestamp = 0
         self._stats_vdsm_timestamp = None
 
         self._event_name = "virt|VM_status|%s" % str(self._vm_uuid)
