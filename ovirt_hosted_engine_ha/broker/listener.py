@@ -138,6 +138,16 @@ class ActionsHandler(object):
             status = self._listener.monitor_instance.get_value(id)
         return str(status)
 
+    def _encode(self, s):
+        _log = logging.getLogger("{}._encode".format(__name__))
+        try:
+            result = s.encode()
+            _log.debug('Encoded successfully: {}'.format(result))
+        except AttributeError:
+            result = s
+            _log.warn('Failed to encode: {}'.format(str(s)))
+        return result
+
     @logged
     def get_stats(self):
         result = {}
@@ -147,7 +157,7 @@ class ActionsHandler(object):
         # As raw binary data can not be transferred via xmlrpc link,
         # we need to wrap state's contents into Binary wrapper.
         for k, v in six.iteritems(state):
-            result[k] = xmlrpc_client.Binary(v.encode())
+            result[k] = xmlrpc_client.Binary(self._encode(v))
         return result
 
     @logged
