@@ -19,6 +19,7 @@
 
 import json
 import logging
+import re
 import subprocess
 import threading
 from six.moves import queue
@@ -38,6 +39,11 @@ from vdsm.virt import vmexitreason
 
 def register():
     return "engine-health"
+
+
+FAILED_TO_ACQUIRE_LOCK_PATTERN = re.compile(
+    r"Is another process using the image \[.*\]\?$"
+)
 
 
 class Submonitor(submonitor_base.SubmonitorBase):
@@ -164,12 +170,9 @@ class Submonitor(submonitor_base.SubmonitorBase):
 
         # Check if another host was faster in acquiring the storage lock
         exit_message = stats.get('exitMessage', "")
-        if vm_status == vmstatus.DOWN and (
-            exit_message.endswith('Failed to acquire lock: error -243') or
-            exit_message.endswith(
-                'Failed to acquire lock: Lease is held by another host'
-            ) or
-            exit_message.endswith('Is another process using the image?')
+        if (
+            vm_status == vmstatus.DOWN and
+            self._failed_to_acquire_lock(exit_message)
         ):
             self._log.info(
                 "VM storage is already locked.",
@@ -247,6 +250,14 @@ class Submonitor(submonitor_base.SubmonitorBase):
                 'detail': vm_status}
 
         # FIXME remote db down status
+
+    def _failed_to_acquire_lock(self, exit_message):
+        return (
+            exit_message.endswith('Failed to acquire lock: error -243') or
+            exit_message.endswith('Failed to acquire lock: Lease is held by another host') or
+            exit_message.endswith('Is another process using the image?') or
+            FAILED_TO_ACQUIRE_LOCK_PATTERN.search(exit_message) is not None
+        )
 
     def _handle_events(self):
         while True:
