@@ -223,6 +223,9 @@ fi
 
 
 %changelog
+* Thu Jan 30 2020 - Yedidyah Bar David <didi@redhat.com> - 2.4.2-1
+- 2.4.2-1
+
 * Tue Jan 21 2020 Evgeny Slutsky <eslutsky@redhat.com> - 2.4.2-0.0.master
 - 2.4.2-0.0.master
 
