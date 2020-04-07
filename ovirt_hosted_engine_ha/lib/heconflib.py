@@ -162,7 +162,6 @@ def get_conf_archive_MD5(imagepath):
     )
     output = md5_pipe.communicate()
     stdout = output[0].decode()
-    stderr = output[1].decode()
     md5_pipe.wait()
     md5_pipe.stdout.close()
     return stdout.split()[0]

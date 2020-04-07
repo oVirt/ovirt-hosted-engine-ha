@@ -490,7 +490,6 @@ class FilesystemBackend(StorageBackend):
                           "/".join([vg_uuid, lv_name])])
         output = lvc.communicate()
         stdout = output[0].decode()
-        stderr = output[1].decode()
         lvc.wait()
 
         if lvc.returncode == 0:
@@ -534,7 +533,6 @@ class FilesystemBackend(StorageBackend):
                     args=["lvm", "lvcreate", "-L", str(size_bytes) + "B",
                           "-n", lv_name, vg_uuid])
         output = lvc.communicate()
-        stdout = output[0].decode()
         stderr = output[1].decode()
         lvc.wait()
         if lvc.returncode == 0:
