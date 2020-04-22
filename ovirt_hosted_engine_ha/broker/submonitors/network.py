@@ -45,7 +45,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
         }
 
         self._addr = options.get('addr')
-        self._timeout = str(options.get('timeout', 2))
+        self._timeout = str(options.get('timeout', 5))
         self._total = options.get('count', 5)
         self._delay = options.get('delay', 0.5)
         self._network_test = options.get('network_test', 'ping')
