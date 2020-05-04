@@ -109,9 +109,16 @@ class Submonitor(submonitor_base.SubmonitorBase):
             '+tries=1',
             '+time={t}'.format(t=self._timeout)
         ]
-        with open(os.devnull, "w") as devnull:
-            p = subprocess.Popen(dns_cmd, stdout=devnull, stderr=devnull)
-            return p.wait() == 0
+        p = subprocess.Popen(dns_cmd, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+        output = p.communicate()
+        stdout = output[0].decode()
+        stderr = output[1].decode()
+        if p.returncode == 0:
+            self._log.debug("DNS query succeeded")
+        else:
+            self._log.warning("DNS query failed: %s %s", stdout, stderr)
+        return p.returncode == 0
 
     def _tcp(self):
         tcp_cmd = [
