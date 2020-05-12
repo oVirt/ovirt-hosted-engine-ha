@@ -223,6 +223,9 @@ fi
 
 
 %changelog
+* Tue May 12 2020 Asaf Rachmani <arachman@redhat.com> - 2.4.3-1
+- 2.4.3-1
+
 * Thu Jan 30 2020 - Yedidyah Bar David <didi@redhat.com> - 2.4.2-1
 - 2.4.2-1
 
