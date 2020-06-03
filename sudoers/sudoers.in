@@ -1,6 +1,4 @@
 Cmnd_Alias OVIRT_HA = \
-    @SERVICE_PATH@ vdsmd *, \
-    @SERVICE_PATH@ sanlock *, \
     /sbin/losetup --find --show --sizelimit=* @ENGINE_HA_STATEDIR@/*, \
     /sbin/losetup --detach /dev/loop*, \
     /sbin/mkfs -t * /dev/loop*, \
