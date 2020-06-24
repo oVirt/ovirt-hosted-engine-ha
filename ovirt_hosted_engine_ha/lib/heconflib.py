@@ -49,7 +49,7 @@ _CONF_FILES = [
 
 
 def _add_to_tar(tar, fname, content):
-    value = StringIO(str(content))
+    value = BytesIO(content.encode())
     info = tarfile.TarInfo(name=fname)
     value.seek(0, os.SEEK_END)
     info.size = value.tell()
