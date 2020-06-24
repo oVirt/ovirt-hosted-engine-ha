@@ -4,3 +4,4 @@ dnf-utils
 gettext-devel
 git
 python3-devel
+systemd

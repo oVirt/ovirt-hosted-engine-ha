@@ -1,6 +1,7 @@
 autoconf
 automake
+dnf-utils
 gettext-devel
 git
 python3-devel
-dnf-utils
+systemd
