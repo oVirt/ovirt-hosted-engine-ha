@@ -30,7 +30,7 @@ import tarfile
 import tempfile
 import time
 
-from io import StringIO
+from io import BytesIO
 
 from ovirt_hosted_engine_ha.agent import constants as agentconst
 from ovirt_hosted_engine_ha.env import constants as envconst
