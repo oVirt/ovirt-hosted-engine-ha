@@ -865,7 +865,7 @@ class HostedEngine(object):
                 # FIXME consider removing, we can get vm status from sanlock,
                 # if still an issue then the alternative tracking the time we
                 # started the engine might be better than parsing this output
-                if stdout.startswith("Virtual machine already exists"):
+                if stdout.startswith("VM exists"):
                     self._log.warning("Failed to start engine VM,"
                                       " already running according to VDSM")
                     return True
