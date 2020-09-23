@@ -266,6 +266,11 @@ class GlobalMaintenance(EngineState):
     :transition LocalMaintenance:
     :transition ReinitializeFSM:
     """
+
+    def _penalize_memory(self, vm_mem, lm, logger, score, score_cfg):
+        # Cluster is in global maintenance, do not check memory usage
+        return score
+
     @check_global_maintenance(None)
     @check_local_maintenance(LocalMaintenance)
     def consume(self, fsm, data, logger):
