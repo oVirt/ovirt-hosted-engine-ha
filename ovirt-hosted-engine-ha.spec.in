@@ -223,6 +223,9 @@ fi
 
 
 %changelog
+* Tue Oct 06 2020 Asaf Rachmani <arachman@redhat.com> - 2.4.5-1
+- 2.4.5-1
+
 * Tue Jun 30 2020 Asaf Rachmani <arachman@redhat.com> - 2.4.5-0.0.master
 - 2.4.5-0.0.master
 
