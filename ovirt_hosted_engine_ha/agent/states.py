@@ -372,8 +372,8 @@ class EngineUp(EngineState):
 
         local_status = new_data.stats.local["engine-health"]
         if local_status["vm"] == engine.VMState.DOWN:
-            logger.info("Engine vm is running on another host")
-            return EngineDown(new_data)
+            logger.info("Engine vm is down, probably running on another host")
+            return EngineMaybeAway(new_data)
 
         if local_status["vm"] == engine.VMState.DOWN_UNEXPECTED:
             logger.info("Engine vm was unexpectedly shut down")
