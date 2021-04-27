@@ -249,34 +249,91 @@ class StorageServer(object):
         storageType = constants.STORAGE_TYPE_ISCSI
         conList = []
         _iscsi_bond_ifaces = self._get_iscsi_ifaces()
-        ip_port_list = [
-            {'ip': x[0], 'port': x[1]} for x in zip(
-                self._storage.split(','),
-                self._port.split(',')
-            )
-        ]
-        for i in _iscsi_bond_ifaces:
-            for x in ip_port_list:
-                con = {
-                    'connection': x['ip'],
-                    'iqn': self._iqn,
-                    'tpgt': self._portal,
-                    'user': self._user,
-                    'password': self._password,
-                    'id': str(uuid.uuid4()),
-                    'port': x['port'],
-                }
-                if (
-                    i['netIfaceName'] is not None and
-                    i['ifaceName'] is not None
-                ):
-                    con['netIfaceName'] = i['netIfaceName']
-                    con['ifaceName'] = i['ifaceName']
+        # When we originally added support for iscsi multipath,
+        # we allowed multiple IP addresses and ports, but only
+        # a single iqn. The IP addresses and ports were "zipped"
+        # together - first IP + first port, then second IP + second
+        # port, etc., and not a full cartesian product.
+        # For backwards compatibility, I separate two cases:
+        # 1. Only a single iqn is provided (meaning, no commas).
+        # In this case, old behavior is retained.
+        # 2. Multiple iqns are provided, separated by commas.
+        # Then, we zip also the iqns - again, not a full cartesian product,
+        # and also expect command-separated, multiple tpgt, user, password
+        # values, and zip them.
+        # Please note that on multiple-iqn, this means we also split the
+        # password on commas - this means that the individual passwords
+        # can't include commas, or the split will get them wrong.
+        if ',' in self._iqn:
+            ip_port_iqn_list = [
+                {
+                    'ip': x[0],
+                    'port': x[1],
+                    'iqn': x[2],
+                    'tpgt': x[3],
+                    'user': x[4],
+                    'password': x[5],
+                } for x in zip(
+                    self._storage.split(','),
+                    self._port.split(','),
+                    self._iqn.split(','),
+                    self._portal.split(','),
+                    self._user.split(','),
+                    self._password.split(','),
+                )
+            ]
+            for i in _iscsi_bond_ifaces:
+                for x in ip_port_iqn_list:
+                    con = {
+                        'connection': x['ip'],
+                        'iqn': x['iqn'],
+                        'tpgt': x['tpgt'],
+                        'user': x['user'],
+                        'password': x['password'],
+                        'id': str(uuid.uuid4()),
+                        'port': x['port'],
+                    }
                     if (
-                        con['ifaceName'], con['connection']
-                    ) in self._iscsi_paths_blacklist:
-                        continue
-                conList.append(con)
+                        i['netIfaceName'] is not None and
+                        i['ifaceName'] is not None
+                    ):
+                        con['netIfaceName'] = i['netIfaceName']
+                        con['ifaceName'] = i['ifaceName']
+                        if (
+                            con['ifaceName'], con['connection']
+                        ) in self._iscsi_paths_blacklist:
+                            continue
+                    conList.append(con)
+        else:
+            # Just a single iqn provided
+            ip_port_list = [
+                {'ip': x[0], 'port': x[1]} for x in zip(
+                    self._storage.split(','),
+                    self._port.split(',')
+                )
+            ]
+            for i in _iscsi_bond_ifaces:
+                for x in ip_port_list:
+                    con = {
+                        'connection': x['ip'],
+                        'iqn': self._iqn,
+                        'tpgt': self._portal,
+                        'user': self._user,
+                        'password': self._password,
+                        'id': str(uuid.uuid4()),
+                        'port': x['port'],
+                    }
+                    if (
+                        i['netIfaceName'] is not None and
+                        i['ifaceName'] is not None
+                    ):
+                        con['netIfaceName'] = i['netIfaceName']
+                        con['ifaceName'] = i['ifaceName']
+                        if (
+                            con['ifaceName'], con['connection']
+                        ) in self._iscsi_paths_blacklist:
+                            continue
+                    conList.append(con)
         return conList, storageType
 
     def _get_conlist_fc(self):
