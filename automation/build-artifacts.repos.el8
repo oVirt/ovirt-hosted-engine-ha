@@ -1,10 +1,5 @@
 # Provides vdsm packages
-ovirt-master-tested,https://resources.ovirt.org/repos/ovirt/tested/master/rpm/$distro
+ovirt-master-tested,https://resources.ovirt.org/repos/ovirt/tested/master/rpm/el8
 # Provides openvswitch
 el8collection,https://copr-be.cloud.fedoraproject.org/results/sbonazzo/EL8_collection/epel-8-x86_64/
-# Copied from vdsm:
-# TODO: get rid of nmstate / networkmanager once centOS 8.2 is out
-nmstate,https://copr-be.cloud.fedoraproject.org/results/nmstate/nmstate-0.2/epel-8-$basearch/
-networkmanager,https://copr-be.cloud.fedoraproject.org/results/networkmanager/NetworkManager-1.22/epel-8-$basearch/
 ovirt-master-centos-ovirt44-el8,https://buildlogs.centos.org/centos/8/virt/$basearch/ovirt-44/
-
