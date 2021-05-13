@@ -59,7 +59,7 @@ Requires:       %{python_target_version}-six
 # Otopi is needed for the cli client
 Requires:       %{python_target_version}-otopi >= 1.9.0
 
-%if %{python_target_version} == python2
+%if "%{python_target_version}" == "python2"
 Requires:       sanlock-python >= 3.7.3
 %else
 Requires:       %{python_target_version}-sanlock >= 3.7.3
