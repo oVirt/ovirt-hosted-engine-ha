@@ -223,6 +223,9 @@ fi
 
 
 %changelog
+* Thu May 13 2021 Asaf Rachmani <arachman@redhat.com> - 2.4.7-1
+- 2.4.7-1
+
 * Wed Feb 03 2021 Asaf Rachmani <arachman@redhat.com> - 2.4.7-0.0.master
 - 2.4.7-0.0.master
 
