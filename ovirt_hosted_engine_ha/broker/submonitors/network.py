@@ -107,7 +107,8 @@ class Submonitor(submonitor_base.SubmonitorBase):
         dns_cmd = [
             'dig',
             '+tries=1',
-            '+time={t}'.format(t=self._timeout)
+            '+time={t}'.format(t=self._timeout),
+            '+tcp',
         ]
         p = subprocess.Popen(dns_cmd, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
