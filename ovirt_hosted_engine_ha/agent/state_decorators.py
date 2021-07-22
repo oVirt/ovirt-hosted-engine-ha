@@ -80,6 +80,9 @@ def check_timeout(destination, timeout, wait=BaseFSM.WAIT):
             now = state_data.time(data)
             if (data.timeout_start_time is not None and
                     data.timeout_start_time + timeout < now):
+                logger.info("Timeout on transitioning from %s, moving to %s",
+                            self.__class__,
+                            destination)
                 data = data._replace(timeout_start_time=None)
                 return destination(data), wait
 
