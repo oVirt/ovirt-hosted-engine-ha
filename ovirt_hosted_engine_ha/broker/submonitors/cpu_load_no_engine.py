@@ -49,6 +49,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
 
         self.system = {'prev': None, 'cur': None}
         self.latest_report_ts = None
+        self.latest_real_stats_ts = None
         self.load = 0.0
 
     def action(self, options):
@@ -99,15 +100,29 @@ class Submonitor(submonitor_base.SubmonitorBase):
         )
 
         engine_load = 0.0
+        cpu_data_is_real = False
         try:
             stats = cli.VM.getStats(vmID=self._vm_uuid)[0]
             vm_cpu_total = float(stats["cpuUser"]) + float(stats["cpuSys"])
             cpu_count = multiprocessing.cpu_count()
             engine_load = (vm_cpu_total / cpu_count) / 100.0
+            # This is a hack. vdsm initializes cpuUsage to 0.00, and when it
+            # gets a result from libvirt (as 'cpu.user', 'cpu.system'), sets
+            # it to libvirt's value. cpuUser and cpuSystem are also initialized
+            # to '0.00', but can also have '0.00' as a legit value afterwards.
+            # But cpuUsage, if it has a value from libvirt, is always an
+            # integer. Actually, AFAICT, initializing it to '0.00' might be
+            # considered a bug. Anyway, rely on this for deciding whether
+            # cpuUser/cpuSystem are real or init values.
+            # TODO: Extend VDSM's API to include this information explicitly,
+            # e.g. by adding a new field, say 'stats_from_libvirt' which is
+            # True or False, and base the decision on this.
+            cpu_data_is_real = stats['cpuUsage'] != '0.00'
         except ServerError as e:
             if e.code == vdsm_exception.NoSuchVM.code:
                 self._log.info("VM not on this host",
                                extra=log_filter.lf_args('vm', 60))
+                self.latest_real_stats_ts = None
             else:
                 self._log.error(e, extra=log_filter.lf_args('vm', 60))
         except KeyError:
@@ -121,7 +136,36 @@ class Submonitor(submonitor_base.SubmonitorBase):
         load_no_engine = load - engine_load
         load_no_engine = max(load_no_engine, 0.0)
 
-        self._log.info("System load"
-                       " total={0:.4f}, engine={1:.4f}, non-engine={2:.4f}"
-                       .format(load, engine_load, load_no_engine))
-        self.load = load_no_engine
+        if cpu_data_is_real:
+            self._log.info("System load"
+                           " total={0:.4f}, engine={1:.4f}, non-engine={2:.4f}"
+                           .format(load, engine_load, load_no_engine))
+            self.load = load_no_engine
+            self.latest_real_stats_ts = time.time()
+        else:
+            # In certain cases, we got cpuUser=0.00 for up to around
+            # 90 seconds after a VM was up, causing what seems like
+            # a "general" high cpu load unrelated to that VM.
+            # This caused problems with hosted-engine HA daemons,
+            # which lower the score of that host due to that load.
+            # Rely on cpuUsage value instead. See also:
+            # https://lists.ovirt.org/archives/list/devel@ovirt.org/thread/\
+            # 7HNIFCW4NENG4ADZ5ROT43TCDXDURRJB/
+            if self.latest_real_stats_ts is None:
+                # Just ignore, but start counting
+                self.latest_real_stats_ts = time.time()
+            elif not util.has_elapsed(self.latest_real_stats_ts, 300):
+                self._log.info("Ignoring cpuUser/cpuSys, init values")
+            else:
+                # No real data, and for more than 5 minutes.
+                # It's probably bad enough that we should just
+                # not ignore - so if cpu load is high, just report
+                # that, and if as a result the score will be low
+                # and the VM will be shut down - so be it.
+                self._log.info(
+                    "System load"
+                    " total={0:.4f}, engine={1:.4f}, non-engine={2:.4f}"
+                    .format(load, engine_load, load_no_engine))
+                self._log.info("engine VM cpu usage is not up-to-date")
+                self.load = load_no_engine
+                # Do not update self.latest_real_stats_ts, keep counting
