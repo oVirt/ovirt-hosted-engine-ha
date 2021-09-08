@@ -1,3 +1,5 @@
-ovirt-master-snapshot,http://resources.ovirt.org/pub/ovirt-master-snapshot/rpm/el8
-ovirt-master-snapshot-static,http://resources.ovirt.org/pub/ovirt-master-snapshot-static/rpm/el8
-networkmanager,https://copr-be.cloud.fedoraproject.org/results/networkmanager/NetworkManager-1.20/fedora-$releasever-$basearch/
+ovirt-4.4-snapshot,http://resources.ovirt.org/pub/ovirt-4.4-snapshot/rpm/el8
+# openvswitch2
+nfv-openvswitch-2,https://buildlogs.centos.org/centos/8-stream/nfv/x86_64/openvswitch-2/
+# while waiting for all the project to enable 4.4 pipeline, consume released repo as well
+ovirt-4.4,http://resources.ovirt.org/pub/ovirt-4.4/rpm/el8
