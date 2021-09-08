@@ -1,5 +1,0 @@
-# Provides vdsm packages
-ovirt-master-tested,https://resources.ovirt.org/repos/ovirt/tested/master/rpm/el8
-# Provides openvswitch
-el8collection,https://copr-be.cloud.fedoraproject.org/results/sbonazzo/EL8_collection/epel-8-x86_64/
-ovirt-master-centos-ovirt44-el8,https://buildlogs.centos.org/centos/8/virt/$basearch/ovirt-44/
