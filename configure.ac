@@ -58,7 +58,7 @@ AC_CHECK_PROGS([PYNOSE], [nosetests nosetests-3])
 AC_ARG_VAR([RPMBUILD], [path to rpmbuild utility])
 AC_CHECK_PROGS([RPMBUILD], [rpmbuild])
 
-AM_PATH_PYTHON([2.6],, [AC_MSG_ERROR([Cannot find python])])
+AM_PATH_PYTHON([3.6],, [AC_MSG_ERROR([Cannot find python])])
 
 AC_PATH_PROG([SERVICE_PATH], [service], [/sbin/service])
 

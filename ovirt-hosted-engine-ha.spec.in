@@ -1,6 +1,6 @@
 #
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
-# Copyright (C) 2013-2019 Red Hat, Inc.
+# Copyright (C) 2013-2021 Red Hat, Inc.
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -29,17 +29,7 @@
 %global         vdsm_group @VDSM_GROUP@
 %global         vdsm_version 4.40.0
 
-%if 0%{?fedora} >= 30 || 0%{?rhel} >= 8
-%global         python_interpreter %{__python3}
-%global         python_target_version python3
-%global         python_sitelib %{python3_sitelib}
-%else
-%global         python_interpreter %{__python2}
-%global         python_target_version python2
-%global         python_sitelib %{python2_sitelib}
-%endif
-
-%global         engine_ha_libdir  %{python_sitelib}/ovirt_hosted_engine_ha
+%global         engine_ha_libdir  %{python3_sitelib}/ovirt_hosted_engine_ha
 
 Summary:        oVirt Hosted Engine High Availability Manager
 Name:           @PACKAGE_NAME@
@@ -53,41 +43,25 @@ Group:          Applications/System
 BuildArch:      noarch
 
 # Python dependencies
+Requires:       python3
+Requires:       python3-six
 
-Requires:       %{python_target_version}
-Requires:       %{python_target_version}-six
-# Otopi is needed for the cli client
-Requires:       %{python_target_version}-otopi >= 1.9.0
+# OTOPI is needed for the cli client
+Requires:       python3-otopi >= 1.9.0
+Requires:       python3-sanlock >= 3.7.3
 
-%if %{python_target_version} == python2
-Requires:       sanlock-python >= 3.7.3
-%else
-Requires:       %{python_target_version}-sanlock >= 3.7.3
-%endif
+Requires:       python3-lxml
+# TODO: check it on el8
+Requires:       python3-daemon
 
-%if 0%{?rhel} > 0 && 0%{?rhel} <= 7
-Requires:       python-lxml
-Requires:       python-daemon
-%else
-Requires:       %{python_target_version}-lxml
-# TODO: check it onel8
-Requires:       %{python_target_version}-daemon
-%endif
+BuildRequires:  python3
+BuildRequires:  python3-devel
+BuildRequires:  python3-mock
 
-BuildRequires:  %{python_target_version}
-BuildRequires:  %{python_target_version}-devel
-BuildRequires:  %{python_target_version}-mock
-
-%if 0%{?rhel} > 0 && 0%{?rhel} <= 7
-BuildRequires:  python-lxml
-BuildRequires:  python-nose
-%else
-BuildRequires:  %{python_target_version}-lxml
-BuildRequires:  %{python_target_version}-nose
-%endif
+BuildRequires:  python3-lxml
+BuildRequires:  python3-nose
 
 # Non Python dependencies
-
 Requires:       bind-utils
 Requires:       nmap-ncat
 Requires:       sanlock >= 3.7.3
@@ -116,7 +90,6 @@ Hosted engine manager for oVirt project.
 
 
 %build
-PYTHON=%{python_interpreter}
 %configure \
         --docdir="%{_docdir}/%{name}-%{version}" \
         --disable-python-syntax-check \
