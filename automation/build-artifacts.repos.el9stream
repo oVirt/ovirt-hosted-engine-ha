@@ -1,0 +1,3 @@
+ovirt-master-snapshot,https://resources.ovirt.org/pub/ovirt-master-snapshot/rpm/el9/
+# openvswitch2
+nfv-openvswitch-2,https://buildlogs.centos.org/centos/9-stream/nfv/x86_64/openvswitch-2/
