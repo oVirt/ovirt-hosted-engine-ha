@@ -11,6 +11,11 @@ if [ -x /usr/bin/python3 ] ; then
 export PYTHON=/usr/bin/python3
 fi
 
+# mock runner is not setting up the system correctly
+# https://issues.redhat.com/browse/CPDEVOPS-242
+readarray -t pkgs < automation/build-artifacts.packages
+dnf install -y "${pkgs[@]}"
+
 ./autogen.sh --system
 ./configure
 
