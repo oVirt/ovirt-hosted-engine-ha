@@ -59,7 +59,6 @@ BuildRequires:  python3-devel
 BuildRequires:  python3-mock
 
 BuildRequires:  python3-lxml
-BuildRequires:  python3-nose
 
 # Non Python dependencies
 Requires:       bind-utils

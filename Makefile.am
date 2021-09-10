@@ -79,7 +79,7 @@ rpm:	srpm
 	@echo
 
 test:
-	$(PYNOSE) .
+	$(PYTHON) -m unittest discover -p "*_test.py"
 
 clean-local:
 	rm -fr "$(TMPREPOS)"
