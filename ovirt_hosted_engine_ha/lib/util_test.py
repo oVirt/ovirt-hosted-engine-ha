@@ -1,5 +1,5 @@
 
-import mock
+from unittest import mock
 from six.moves import queue
 import threading
 from unittest import TestCase

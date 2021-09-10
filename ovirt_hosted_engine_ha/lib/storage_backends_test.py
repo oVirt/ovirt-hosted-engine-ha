@@ -1,6 +1,6 @@
 import unittest
 
-from mock import Mock, call
+from unittest.mock import Mock, call
 
 from .storage_backends import FilesystemBackend, BackendFailureException
 from ..env import constants

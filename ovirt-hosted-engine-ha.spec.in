@@ -56,7 +56,6 @@ Requires:       python3-daemon
 
 BuildRequires:  python3
 BuildRequires:  python3-devel
-BuildRequires:  python3-mock
 
 BuildRequires:  python3-lxml
 
