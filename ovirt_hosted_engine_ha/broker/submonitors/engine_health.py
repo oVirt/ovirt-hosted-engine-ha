@@ -254,7 +254,8 @@ class Submonitor(submonitor_base.SubmonitorBase):
     def _failed_to_acquire_lock(self, exit_message):
         return (
             exit_message.endswith('Failed to acquire lock: error -243') or
-            exit_message.endswith('Failed to acquire lock: Lease is held by another host') or
+            exit_message.endswith(
+                'Failed to acquire lock: Lease is held by another host') or
             exit_message.endswith('Is another process using the image?') or
             FAILED_TO_ACQUIRE_LOCK_PATTERN.search(exit_message) is not None
         )
