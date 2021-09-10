@@ -452,7 +452,7 @@ class HostedEngine(object):
 
         try:
             self._monitoring_loop()
-        except:
+        except Exception:
             self._log.error("Unhandled monitoring loop exception",
                             exc_info=True)
         finally:

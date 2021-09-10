@@ -85,7 +85,7 @@ class StatusBroker(object):
                                 entry.host_id,
                                 entry.data
                             )
-                    except:
+                    except Exception:
                         self._log.error("Failed to update state.",
                                         exc_info=True)
                         self.trigger_restart()
@@ -93,7 +93,7 @@ class StatusBroker(object):
                     self._raw_state.append(
                         self._storage_broker.get_raw_stats()
                     )
-                except:
+                except Exception:
                     self._log.error("Failed to read state.",
                                     exc_info=True)
                     self.trigger_restart()
@@ -154,7 +154,7 @@ class StatusBroker(object):
             if not self._inquire_whiteboard_lock():
                 self._log.warn("Host id is not locked, trying to lock")
                 return self._acquire_whiteboard_lock()
-        except:
+        except Exception:
             self.host_id = None
             return False
 
