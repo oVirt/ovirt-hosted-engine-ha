@@ -25,7 +25,7 @@ if PYTHON_SYNTAX_CHECK
 		$(PYFLAKES) $(PYTHON_SYNTAX_CHECK_FILES); \
 	fi
 	if [ -n "$(PEP8)" ]; then \
-		$(PEP8) --ignore=W503,E402 $(PYTHON_SYNTAX_CHECK_FILES); \
+		$(PEP8) --ignore=W503,W504,E402 $(PYTHON_SYNTAX_CHECK_FILES); \
 	fi
 endif
 
