@@ -79,7 +79,11 @@ rpm:	srpm
 	@echo
 
 test:
-	$(PYTHON) -m unittest discover -p "*_test.py"
+	if [ -n "$(COVERAGE)" ]; then \
+		$(COVERAGE) run -m unittest discover -p "*_test.py" ; \
+	else \
+		$(PYTHON) -m unittest discover -p "*_test.py" ; \
+	fi
 
 clean-local:
 	rm -fr "$(TMPREPOS)"

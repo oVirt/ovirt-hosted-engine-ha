@@ -1,0 +1,35 @@
+# .coveragerc to control coverage.py
+[run]
+branch = True
+
+omit =
+    /usr/lib/python3*/site-packages/dateutil/*
+    /usr/lib/python3*/site-packages/dateutil/tz/*
+    /usr/lib/python3*/site-packages/decorator.py
+    /usr/lib/python3*/site-packages/six.py
+    /usr/lib/python3*/site-packages/pkg_resources/*
+    /usr/lib/python3*/site-packages/vdsm/*
+    /usr/lib/python3*/site-packages/vdsm/api/*
+    /usr/lib/python3*/site-packages/vdsm/common/*
+    /usr/lib/python3*/site-packages/vdsm/virt/*
+    /usr/lib/python3*/site-packages/yajsonrpc/*
+
+[report]
+# Regexes for lines to exclude from consideration
+exclude_lines =
+    # Don't complain if non-runnable code isn't run:
+    if __name__ == .__main__.:
+
+ignore_errors = True
+
+omit =
+    /usr/lib/python3*/site-packages/dateutil/*
+    /usr/lib/python3*/site-packages/dateutil/tz/*
+    /usr/lib/python3*/site-packages/decorator.py
+    /usr/lib/python3*/site-packages/six.py
+    /usr/lib/python3*/site-packages/pkg_resources/*
+    /usr/lib/python3*/site-packages/vdsm/*
+    /usr/lib/python3*/site-packages/vdsm/api/*
+    /usr/lib/python3*/site-packages/vdsm/common/*
+    /usr/lib/python3*/site-packages/vdsm/virt/*
+    /usr/lib/python3*/site-packages/yajsonrpc/*

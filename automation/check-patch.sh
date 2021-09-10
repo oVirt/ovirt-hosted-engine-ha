@@ -22,6 +22,8 @@ dnf reinstall -y system-release dnf dnf-conf
 sed -i -re 's#^(reposdir *= *).*$#\1/etc/yum.repos.d#' '/etc/dnf/dnf.conf'
 echo "deltarpm=False" >> /etc/dnf/dnf.conf
 rm -f /etc/yum/yum.conf
+# remove python-coverage if already there.
+dnf remove -y platform-python-coverage || true
 
 # test dependencies
 dnf install -y https://resources.ovirt.org/pub/yum-repo/ovirt-release-master.rpm
@@ -37,3 +39,6 @@ dnf install -y "${pkgs[@]}"
 ./autogen.sh --system
 make check
 make test
+
+coverage html -d exported-artifacts/coverage_html_report --rcfile="${PWD}/automation/coverage.rc"
+cp automation/index.html exported-artifacts/
