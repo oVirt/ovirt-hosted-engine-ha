@@ -20,6 +20,7 @@ class Timespec(ctypes.Structure):
         ('tv_nsec', ctypes.c_long)
     ]
 
+
 _have_monotonic = False
 
 try:

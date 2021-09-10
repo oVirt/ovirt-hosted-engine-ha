@@ -38,5 +38,6 @@ def main():
     log.info("Got result: {0}".format(m.get_value(sm_id)))
     m.stop_submonitor(sm_id)
 
+
 if __name__ == '__main__':
     main()
