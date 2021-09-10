@@ -223,6 +223,9 @@ fi
 
 
 %changelog
+* Fri Sep 10 2021 Sandro Bonazzola <sbonazzo@redhat.com> - 2.4.10-0.0.master
+- 2.4.10-0.0.master
+
 * Fri Sep 10 2021 Sandro Bonazzola <sbonazzo@redhat.com> - 2.4.9-1
 - 2.4.9-1
 
