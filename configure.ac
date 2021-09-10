@@ -52,7 +52,7 @@ AC_PROG_LN_S
 AC_ARG_VAR([PYFLAKES], [path to pyflakes utility])
 AC_CHECK_PROGS([PYFLAKES], [pyflakes])
 AC_ARG_VAR([PEP8], [path to pep8 utility])
-AC_CHECK_PROGS([PEP8], [pep8])
+AC_CHECK_PROGS([PEP8], [pycodestyle-3 pep8])
 AC_ARG_VAR([RPMBUILD], [path to rpmbuild utility])
 AC_CHECK_PROGS([RPMBUILD], [rpmbuild])
 

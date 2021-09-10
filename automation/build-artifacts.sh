@@ -24,7 +24,7 @@ rpmbuild \
     -D "release_suffix ${SUFFIX}" \
     -ta ovirt-hosted-engine-ha-*.tar.gz
 
-mv *.tar.gz exported-artifacts
+mv ./*.tar.gz exported-artifacts
 find \
     "$PWD/tmp.repos" \
     -iname \*.rpm \
