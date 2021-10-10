@@ -139,13 +139,11 @@ class ActionsHandler(object):
         return str(status)
 
     def _encode(self, s):
-        _log = logging.getLogger("{}._encode".format(__name__))
         try:
             result = s.encode()
-            _log.debug('Encoded successfully: {}'.format(result))
         except AttributeError:
+            # Most likely it was already a binary bytes object, just return it
             result = s
-            _log.warn('Failed to encode: {}'.format(str(s)))
         return result
 
     @logged
