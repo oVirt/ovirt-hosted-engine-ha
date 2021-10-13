@@ -26,7 +26,7 @@ rm -f /etc/yum/yum.conf
 dnf remove -y platform-python-coverage || true
 
 # test dependencies
-dnf install -y https://resources.ovirt.org/pub/yum-repo/ovirt-release-master.rpm
+dnf install -y https://resources.ovirt.org/pub/yum-repo/ovirt-release-master-tested.rpm
 dnf install --downloadonly ./exported-artifacts/*noarch.rpm
 
 echo -e "\n\n----  Test code   ----\n"
