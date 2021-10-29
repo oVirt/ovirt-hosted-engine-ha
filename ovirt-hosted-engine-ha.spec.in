@@ -71,10 +71,6 @@ Requires:       vdsm-client >= %{vdsm_version}
 Requires:       vdsm-python >= %{vdsm_version}
 Conflicts:      ovirt-hosted-engine-setup < 2.4
 
-BuildRequires:  vdsm-client >= %{vdsm_version}
-BuildRequires:  vdsm-python >= %{vdsm_version}
-BuildRequires:  vdsm-jsonrpc >= %{vdsm_version}
-
 %{?systemd_requires}
 BuildRequires:  systemd
 
@@ -93,9 +89,6 @@ Hosted engine manager for oVirt project.
         --disable-python-syntax-check \
         %{?conf}
 make %{?_smp_mflags}
-
-%check
-make test
 
 %install
 make %{?_smp_mflags} install DESTDIR="%{buildroot}"

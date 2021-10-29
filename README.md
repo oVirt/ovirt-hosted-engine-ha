@@ -1,5 +1,7 @@
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
 
+[![Copr build status](https://copr.fedorainfracloud.org/coprs/ovirt/ovirt-master-snapshot/package/ovirt-hosted-engine-ha/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/ovirt/ovirt-master-snapshot/package/ovirt-hosted-engine-ha/)
+
 Copyright (C) 2013 Red Hat, Inc.
 
 In order to build the project, the following dependencies are needed:

@@ -36,6 +36,9 @@ echo -e "\n\n----  Test code   ----\n"
 readarray -t pkgs < automation/check-patch.packages
 dnf install -y "${pkgs[@]}"
 
+# test dependencies
+dnf install -y vdsm-client vdsm-python vdsm-jsonrpc
+
 ./autogen.sh --system
 make check
 make test
