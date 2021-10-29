@@ -1,4 +1,5 @@
-ovirt-hosted-engine-ha -- ovirt hosted engine high availability
+# ovirt-hosted-engine-ha -- ovirt hosted engine high availability
+
 Copyright (C) 2013 Red Hat, Inc.
 
 In order to build the project, the following dependencies are needed:
@@ -7,21 +8,30 @@ In order to build the project, the following dependencies are needed:
  - all dependencies in .spec file's BuildRequires section
 
 To build:
+```bash
  $ ./autogen.sh --system
+```
 
  Then choose one of the following:
+ ```bash
  $ make         # compile only
  $ make install # compile and install
  $ make dist    # compile and create distribution tarball
  $ make rpm     # compile and create rpm
+```
 
 Cleanup:
+```bash
  $ make distclean  # clean files from compilation and automake
+```
  -or-
+```bash
  $ make clean      # clean only files from compilation
-
+```
 Patches are welcome: gerrit.ovirt.org/ovirt-hosted-engine-ha
 
 Before sending one, please configure the commit template:
- <from project root directory>
+```bash
+ # from project root directory
  $ git config commit.template commit-template.txt
+```

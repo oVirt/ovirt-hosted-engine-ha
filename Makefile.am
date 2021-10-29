@@ -44,6 +44,7 @@ CLEANFILES = \
 
 EXTRA_DIST = \
 	ovirt-hosted-engine-ha.spec.in \
+	README.md \
 	$(NULL)
 
 SUBDIRS = \
