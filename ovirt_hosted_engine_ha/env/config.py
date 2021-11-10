@@ -20,12 +20,14 @@
 import logging
 
 from ovirt_hosted_engine_ha.env.config_ini import SharedIniFile
+from ovirt_hosted_engine_ha.lib import util
 from .config_file import ConfigFile
 from .config_ovf import OvfConfigFile
 from .config_shared import SharedConfigFile
 from . import constants
 from .config_constants import ENGINE, CONF_FILE, BROKER, HE_CONF, VM, HA,\
-    LEGACY_VM_CONF, ENGINE_OPTIONAL_KEYS
+    LEGACY_VM_CONF, ENGINE_OPTIONAL_KEYS, LOCAL_MAINTENANCE,\
+    LOCAL_MAINTENANCE_MANUAL
 
 
 class Config(object):
@@ -214,3 +216,12 @@ class Config(object):
         self._config_map[cfg].download()
         self._config_map[cfg].load()
         return self._config_map[cfg].path
+
+    # Copied and amended from collect_stats in the agent. TODO: Unite?
+    def get_local_maintenance(self):
+        self.refresh_local_conf_file(HA)
+        manual_maintenance = util.to_bool(
+            self.get(HA, LOCAL_MAINTENANCE_MANUAL)
+        )
+        local_maintenance = util.to_bool(self.get(HA, LOCAL_MAINTENANCE))
+        return manual_maintenance or local_maintenance

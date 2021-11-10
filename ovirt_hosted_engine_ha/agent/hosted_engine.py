@@ -425,6 +425,22 @@ class HostedEngine(object):
             self._log.error("Hosted Engine is not configured. Shutting down.")
             return -1
 
+        last_local_maintenance_update = monotonic.time()
+        while self._config.get_local_maintenance():
+            # HA used to continue operating as normal during local maintenance
+            # state, handling it as one of the states in the agent state
+            # machine, including updating status on the shared storage.
+            # vdsm recently started actively disconnecting shared storage in
+            # local maintenance, which prevents this.
+            # So: Right on start, before activating shared storage, check for
+            # local maintenance, and if so, do nothing, basically.
+            # TODO: Make numbers configurable?
+            now = monotonic.time()
+            if now - last_local_maintenance_update > 30:
+                last_local_maintenance_update = now
+                self._log.info("Local maintenance set")
+            time.sleep(2)
+
         # make sure everything is initialized
         # VDSM has to be initialized first, because it's needed to prepare the
         # storage domain connection. Then the storage.
