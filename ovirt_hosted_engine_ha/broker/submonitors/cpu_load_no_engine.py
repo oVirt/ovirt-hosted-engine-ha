@@ -101,8 +101,10 @@ class Submonitor(submonitor_base.SubmonitorBase):
 
         engine_load = 0.0
         cpu_data_is_real = False
+        vm_on_this_host = False
         try:
             stats = cli.VM.getStats(vmID=self._vm_uuid)[0]
+            vm_on_this_host = True
             vm_cpu_total = float(stats["cpuUser"]) + float(stats["cpuSys"])
             cpu_count = multiprocessing.cpu_count()
             engine_load = (vm_cpu_total / cpu_count) / 100.0
@@ -136,7 +138,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
         load_no_engine = load - engine_load
         load_no_engine = max(load_no_engine, 0.0)
 
-        if cpu_data_is_real:
+        if cpu_data_is_real or not vm_on_this_host:
             self._log.info("System load"
                            " total={0:.4f}, engine={1:.4f}, non-engine={2:.4f}"
                            .format(load, engine_load, load_no_engine))
