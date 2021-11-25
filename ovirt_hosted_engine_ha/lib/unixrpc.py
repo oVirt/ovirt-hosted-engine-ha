@@ -71,6 +71,6 @@ class UnixXmlRpcHttpConnection(http_client.HTTPConnection):
 
     def connect(self):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.sock.connect(base64.b16decode(self.host))
         if self.timeout is not None:
             self.sock.settimeout(self.timeout)
+        self.sock.connect(base64.b16decode(self.host))
