@@ -108,18 +108,15 @@ class Submonitor(submonitor_base.SubmonitorBase):
             vm_cpu_total = float(stats["cpuUser"]) + float(stats["cpuSys"])
             cpu_count = multiprocessing.cpu_count()
             engine_load = (vm_cpu_total / cpu_count) / 100.0
-            # This is a hack. vdsm initializes cpuUsage to 0.00, and when it
-            # gets a result from libvirt (as 'cpu.user', 'cpu.system'), sets
-            # it to libvirt's value. cpuUser and cpuSystem are also initialized
-            # to '0.00', but can also have '0.00' as a legit value afterwards.
-            # But cpuUsage, if it has a value from libvirt, is always an
-            # integer. Actually, AFAICT, initializing it to '0.00' might be
-            # considered a bug. Anyway, rely on this for deciding whether
-            # cpuUser/cpuSystem are real or init values.
-            # TODO: Extend VDSM's API to include this information explicitly,
-            # e.g. by adding a new field, say 'stats_from_libvirt' which is
-            # True or False, and base the decision on this.
-            cpu_data_is_real = stats['cpuUsage'] != '0.00'
+            if 'cpuActual' in stats:
+                cpu_data_is_real = stats['cpuActual']
+            else:
+                # Older vdsm didn't have 'cpuActual', but did have cpuUsage
+                # initialized to '0.00', which was never an actual value
+                # returned based on real data from libvirt.
+                self._log.debug(
+                    'cpuActual missing in stats, checking cpuUsage')
+                cpu_data_is_real = stats['cpuUsage'] != '0.00'
         except ServerError as e:
             if e.code == vdsm_exception.NoSuchVM.code:
                 self._log.info("VM not on this host",
@@ -134,6 +131,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
             )
         except ValueError as e:
             self._log.error("Error getting cpuUser: %s", str(e))
+        self._log.debug(f'cpu_data_is_real: {cpu_data_is_real}')
 
         load_no_engine = load - engine_load
         load_no_engine = max(load_no_engine, 0.0)
@@ -150,7 +148,7 @@ class Submonitor(submonitor_base.SubmonitorBase):
             # a "general" high cpu load unrelated to that VM.
             # This caused problems with hosted-engine HA daemons,
             # which lower the score of that host due to that load.
-            # Rely on cpuUsage value instead. See also:
+            # See also:
             # https://lists.ovirt.org/archives/list/devel@ovirt.org/thread/\
             # 7HNIFCW4NENG4ADZ5ROT43TCDXDURRJB/
             if self.latest_real_stats_ts is None:
