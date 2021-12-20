@@ -30,7 +30,7 @@ Cleanup:
 ```bash
  $ make clean      # clean only files from compilation
 ```
-Patches are welcome: gerrit.ovirt.org/ovirt-hosted-engine-ha
+Patches are welcome: https://github.com/oVirt/ovirt-hosted-engine-ha/
 
 Before sending one, please configure the commit template:
 ```bash
