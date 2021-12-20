@@ -18,7 +18,7 @@ fi
 
 ./autogen.sh --system
 make dist
-yum-builddep ovirt-hosted-engine-ha.spec
+dnf builddep -y ovirt-hosted-engine-ha.spec
 rpmbuild \
     -D "_topdir $PWD/tmp.repos" \
     -D "release_suffix ${SUFFIX}" \
