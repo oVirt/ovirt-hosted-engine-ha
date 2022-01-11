@@ -2,9 +2,9 @@ name: Check patch
 
 on:
   push:
-    branches: [master]
+    branches: [ovirt-4.4]
   pull_request:
-    branches: [master]
+    branches: [ovirt-4.4]
 
 jobs:
   build-el8:
@@ -14,11 +14,11 @@ jobs:
       image: quay.io/centos/centos:stream8
 
     steps:
-    - name: Import ovirt-master-snapshot key
-      run: rpm --import https://download.copr.fedorainfracloud.org/results/ovirt/ovirt-master-snapshot/pubkey.gpg
+    - name: Import ovirt-4.4-snapshot key
+      run: rpm --import https://download.copr.fedorainfracloud.org/results/ovirt/ovirt-4.4-snapshot/pubkey.gpg
 
-    - name: Install ovirt-release-master
-      run: dnf --repofrompath=ovirt-master-snapshot,https://download.copr.fedorainfracloud.org/results/ovirt/ovirt-master-snapshot/centos-stream-8-x86_64/ install -y ovirt-release-master
+    - name: Install ovirt-release4.4
+      run: dnf --repofrompath=ovirt-4.4-snapshot,https://download.copr.fedorainfracloud.org/results/ovirt/ovirt-4.4-snapshot/centos-stream-8-x86_64/ install -y ovirt-release44
 
     - name: Install dependencies
       run: dnf install -y --setopt=tsflags=nodocs autoconf automake createrepo_c dnf dnf-plugins-core dnf-plugin-versionlock dnf-utils gettext-devel git make python3-coverage python3-pycodestyle python3-pyflakes rpm-build gettext python3-devel gcc
