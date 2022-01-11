@@ -223,6 +223,9 @@ fi
 
 
 %changelog
+* Tue Jan 11 2022 Asaf Rachmani <arachman@redhat.com> - 2.4.11-0.0.master
+- 2.4.11-0.0.master
+
 * Tue Jan 11 2022 Asaf Rachmani <arachman@redhat.com> - 2.4.10-1
 - 2.4.10-1
 
