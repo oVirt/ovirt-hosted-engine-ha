@@ -66,7 +66,7 @@ AC_PATH_PROG([SERVICE_PATH], [service], [/sbin/service])
 AC_SUBST([VDSM_USER], [vdsm])
 AC_SUBST([VDSM_GROUP], [kvm])
 
-AC_SUBST([engine_ha_bindir], ['${pkgdatadir}'])
+AC_SUBST([engine_ha_bindir], ['${exec_prefix}/libexec/${PACKAGE_NAME}'])
 AC_SUBST([engine_ha_confdir], ['${sysconfdir}/${PACKAGE_NAME}'])
 AC_SUBST([engine_ha_libdir], ['${pythondir}/ovirt_hosted_engine_ha'])
 AC_SUBST([engine_ha_logdir], ['${localstatedir}/log/${PACKAGE_NAME}'])
