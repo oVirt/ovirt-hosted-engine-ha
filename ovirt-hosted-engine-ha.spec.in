@@ -187,6 +187,9 @@ fi
 
 
 %changelog
+* Sun Mar 06 2022 Asaf Rachmani <arachman@redhat.com> - 2.5.0-1
+- 2.5.0-1
+
 * Fri Sep 10 2021 Sandro Bonazzola <sbonazzo@redhat.com> - 2.5.0-0.0.master
 - 2.5.0-0.0.master
 
