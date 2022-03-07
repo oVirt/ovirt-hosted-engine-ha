@@ -187,6 +187,9 @@ fi
 
 
 %changelog
+* Mon Mar 07 2022 Asaf Rachmani <arachman@redhat.com> - 2.5.1-0.0.master
+- 2.5.1-0.0.master
+
 * Sun Mar 06 2022 Asaf Rachmani <arachman@redhat.com> - 2.5.0-1
 - 2.5.0-1
 
