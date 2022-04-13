@@ -1,36 +1,86 @@
+---
 name: Check patch
 
 on:
   push:
-    branches: [master]
   pull_request:
-    branches: [master]
+  workflow_dispatch:
 
 jobs:
-  build-el8:
-
+  build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: centos-stream-8
+            shortcut: cs8
+            container-name: el8stream
+          - name: centos-stream-9
+            shortcut: cs9
+            container-name: el9stream
+    name: ${{ matrix.name }}
     container:
-      image: quay.io/centos/centos:stream8
+      image: quay.io/ovirt/buildcontainer:${{ matrix.container-name }}
 
     steps:
-    - name: Import ovirt-master-snapshot key
-      run: rpm --import https://download.copr.fedorainfracloud.org/results/ovirt/ovirt-master-snapshot/pubkey.gpg
+      # Requried for python3-isort on cs8
+      - name: Prepare CentOS Stream 8 environment
+        if: ${{ matrix.shortcut == 'cs8' }}
+        run: |
+          dnf copr enable -y sbonazzo/EL8_collection
 
-    - name: Install ovirt-release-master
-      run: dnf --repofrompath=ovirt-master-snapshot,https://download.copr.fedorainfracloud.org/results/ovirt/ovirt-master-snapshot/centos-stream-8-x86_64/ install -y ovirt-release-master
+      # Requried for python3-isort on cs9
+      - name: Prepare CentOS Stream 9 environment
+        if: ${{ matrix.shortcut == 'cs9' }}
+        run: |
+          dnf copr enable -y sbonazzo/EL9Collection
 
-    - name: Install dependencies
-      run: dnf install -y --setopt=tsflags=nodocs autoconf automake createrepo_c dnf dnf-plugins-core dnf-plugin-versionlock dnf-utils gettext-devel git make python3-coverage python3-pycodestyle python3-pyflakes rpm-build gettext python3-devel gcc
+      - name: Install dependencies
+        run: |
+          dnf install -y --setopt=tsflags=nodocs \
+            python3-coverage \
+            python3-isort \
+            python3-pycodestyle \
+            python3-pyflakes
 
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
 
-    - run: automation/check-patch.sh
-      # TODO: Split to separate steps?
+      - name: Test packaging and RPM building
+        run: |
+          mkdir -p exported-artifacts
+          mkdir -p tmp.repos
+          SUFFIX=".$(date -u +%Y%m%d%H%M%S).git$(git rev-parse --short HEAD)"
+          ./autogen.sh --system
+          make dist
+          dnf builddep -y ovirt-hosted-engine-ha.spec
+          rpmbuild \
+              -D "_topdir $PWD/tmp.repos" \
+              -D "release_suffix ${SUFFIX}" \
+              -ta ovirt-hosted-engine-ha-*.tar.gz
+          mv ./*.tar.gz exported-artifacts
+          find \
+              "$PWD/tmp.repos" \
+              -iname \*.rpm \
+              -exec mv {} exported-artifacts/ \;
 
-    - name: Upload artifacts
-      uses: ovirt/upload-rpms-action@v2
-      with:
-        directory: exported-artifacts
+      - name: Test RPM dependencies
+        run: |
+          dnf install -y --downloadonly ./exported-artifacts/*noarch.rpm
+
+      - name: Test code
+        run: |
+          dnf install -y vdsm-client vdsm-python vdsm-jsonrpc
+          make check
+          make test
+          coverage html \
+            -d exported-artifacts/coverage_html_report \
+            --rcfile="${PWD}/automation/coverage.rc"
+          cp automation/index.html exported-artifacts/
+
+      - name: Upload artifacts
+        uses: ovirt/upload-rpms-action@v2
+        with:
+          directory: exported-artifacts
