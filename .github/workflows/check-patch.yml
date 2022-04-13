@@ -84,3 +84,15 @@ jobs:
         uses: ovirt/upload-rpms-action@v2
         with:
           directory: exported-artifacts
+
+      - name: Comment PR with coverage data
+        run: |
+          dnf install -y epel-release
+          dnf install -y python3-html2text
+          html2text --ignore-images --ignore-links -b 0 exported-artifacts/coverage_html_report/index.html |\
+          sed "s:# Coverage report:# Coverage report for ${{ matrix.container-name }}:" > pr_comment
+          MESSAGE="$(cat pr_comment)"
+          gh pr comment "${{ github.event.pull_request.number }}" --body "${MESSAGE}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: github.event_name == 'pull_request'
