@@ -3,8 +3,16 @@ name: Check patch
 
 on:
   push:
-  pull_request:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
   workflow_dispatch:
+
+permissions:
+  # https://github.community/t/permissions-nesecary-to-comment-on-a-pr/179047/5
+  pull-requests: write
 
 jobs:
   build:
