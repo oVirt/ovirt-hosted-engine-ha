@@ -1,10 +1,16 @@
 ---
-name: Check patch
+name: Report coverage
 
 on:
-  push:
-  pull_request:
-  workflow_dispatch:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  # https://github.community/t/permissions-nesecary-to-comment-on-a-pr/179047/5
+  pull-requests: write
 
 jobs:
   build:
@@ -38,41 +44,26 @@ jobs:
 
       - name: Install dependencies
         run: |
+          dnf install -y epel-release
           dnf install -y --setopt=tsflags=nodocs \
             python3-coverage \
+            python3-html2text \
             python3-isort \
             python3-pycodestyle \
-            python3-pyflakes
+            python3-pyflakes \
+            vdsm-client \
+            vdsm-jsonrpc \
+            vdsm-python
 
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
 
-      - name: Test packaging and RPM building
+      - name: Test code
         run: |
           mkdir -p exported-artifacts
           mkdir -p tmp.repos
-          SUFFIX=".$(date -u +%Y%m%d%H%M%S).git$(git rev-parse --short HEAD)"
           ./autogen.sh --system
-          make dist
-          dnf builddep -y ovirt-hosted-engine-ha.spec
-          rpmbuild \
-              -D "_topdir $PWD/tmp.repos" \
-              -D "release_suffix ${SUFFIX}" \
-              -ta ovirt-hosted-engine-ha-*.tar.gz
-          mv ./*.tar.gz exported-artifacts
-          find \
-              "$PWD/tmp.repos" \
-              -iname \*.rpm \
-              -exec mv {} exported-artifacts/ \;
-
-      - name: Test RPM dependencies
-        run: |
-          dnf install -y --downloadonly ./exported-artifacts/*noarch.rpm
-
-      - name: Test code
-        run: |
-          dnf install -y vdsm-client vdsm-python vdsm-jsonrpc
           make check
           make test
           coverage html \
@@ -80,7 +71,11 @@ jobs:
             --rcfile="${PWD}/automation/coverage.rc"
           cp automation/index.html exported-artifacts/
 
-      - name: Upload artifacts
-        uses: ovirt/upload-rpms-action@v2
-        with:
-          directory: exported-artifacts
+      - name: Comment PR with coverage data
+        run: |
+          html2text --ignore-images --ignore-links -b 0 exported-artifacts/coverage_html_report/index.html |\
+          sed "s:# Coverage report:# Coverage report for ${{ matrix.container-name }}:" > pr_comment
+          MESSAGE="$(cat pr_comment)"
+          gh pr comment "${{ github.event.pull_request.number }}" --body "${MESSAGE}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
