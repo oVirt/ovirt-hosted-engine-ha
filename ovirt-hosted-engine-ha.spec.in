@@ -35,9 +35,9 @@ Summary:        oVirt Hosted Engine High Availability Manager
 Name:           @PACKAGE_NAME@
 Version:        @PACKAGE_RPM_VERSION@
 Release:        @PACKAGE_RPM_RELEASE@%{?release_suffix}%{?dist}
-License:        LGPLv2+
-URL:            http://www.ovirt.org
-Source:         http://resources.ovirt.org/pub/src/%{name}/%{name}-%{package_version}.tar.gz
+License:        LGPL-2.0-or-later
+URL:            https://www.ovirt.org/
+Source:         https://resources.ovirt.org/pub/src/%{name}/%{name}-%{package_version}.tar.gz
 Group:          Applications/System
 
 BuildArch:      noarch
@@ -76,7 +76,7 @@ BuildRequires:  systemd
 
 
 %description
-Hosted engine manager for oVirt project.
+Hosted Engine High Availability Manager for the oVirt project.
 
 
 %prep
@@ -187,6 +187,9 @@ fi
 
 
 %changelog
+* Wed Nov 29 2023 Sandro Bonazzola <sandro.bonazzola@gmail.com> - 2.5.1-1
+- 2.5.1-1
+
 * Mon Mar 07 2022 Asaf Rachmani <arachman@redhat.com> - 2.5.1-0.0.master
 - 2.5.1-0.0.master
 
