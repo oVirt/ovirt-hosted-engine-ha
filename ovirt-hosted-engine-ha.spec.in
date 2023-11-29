@@ -187,6 +187,9 @@ fi
 
 
 %changelog
+* Wed Nov 29 2023 Sandro Bonazzola <sandro.bonazzola@gmail.com> - 2.5.2-0.0.master
+- 2.5.2-0.0.master
+
 * Wed Nov 29 2023 Sandro Bonazzola <sandro.bonazzola@gmail.com> - 2.5.1-1
 - 2.5.1-1
 
