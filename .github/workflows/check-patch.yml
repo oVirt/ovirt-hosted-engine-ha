@@ -34,7 +34,7 @@ jobs:
       - name: Prepare CentOS Stream 9 environment
         if: ${{ matrix.shortcut == 'cs9' }}
         run: |
-          dnf copr enable -y sbonazzo/EL9Collection
+          dnf copr enable -y sbonazzo/EL9Collection centos-stream-9
 
       - name: Install dependencies
         run: |
@@ -44,12 +44,13 @@ jobs:
             python3-pycodestyle \
             python3-pyflakes
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Test packaging and RPM building
         run: |
+          git config --global --add safe.directory "$PWD"
           mkdir -p exported-artifacts
           mkdir -p tmp.repos
           SUFFIX=".$(date -u +%Y%m%d%H%M%S).git$(git rev-parse --short HEAD)"

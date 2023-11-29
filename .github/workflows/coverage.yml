@@ -40,7 +40,7 @@ jobs:
       - name: Prepare CentOS Stream 9 environment
         if: ${{ matrix.shortcut == 'cs9' }}
         run: |
-          dnf copr enable -y sbonazzo/EL9Collection
+          dnf copr enable -y sbonazzo/EL9Collection centos-stream-9
 
       - name: Install dependencies
         run: |
@@ -61,6 +61,7 @@ jobs:
 
       - name: Test code
         run: |
+          git config --global --add safe.directory "$PWD"
           mkdir -p exported-artifacts
           mkdir -p tmp.repos
           ./autogen.sh --system
