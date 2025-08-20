@@ -18,13 +18,9 @@
 #
 
 import logging
-import six
-try:
-    import xmlrpc.client as xmlrpc_client
-    from xmlrpc.client import Marshaller
-except ImportError:
-    import xmlrpclib as xmlrpc_client
-    from xmlrpclib import Marshaller
+import xmlrpc.client as xmlrpc_client
+from xmlrpc.client import Marshaller
+
 from ..env import constants
 from ..lib.exceptions import RequestError
 from ..lib import unixrpc
@@ -42,8 +38,7 @@ def enable_i8():
     Enable i8 extension
     Python 2.7 knows how to read it, but sending needs to be configured
     """
-    for inttype in six.integer_types:
-        Marshaller.dispatch[inttype] = big_int_marshaller
+    Marshaller.dispatch[int] = big_int_marshaller
 
 
 enable_i8()
@@ -147,7 +142,7 @@ class BrokerLink(object):
         """
         result = self._proxy.get_stats()
         ret = {}
-        for host_id, data in six.iteritems(result):
+        for host_id, data in result.items():
             ret[int(host_id)] = data.data.decode()
 
         return ret
