@@ -44,7 +44,6 @@ BuildArch:      noarch
 
 # Python dependencies
 Requires:       python3
-Requires:       python3-six
 
 # OTOPI is needed for the cli client
 Requires:       python3-otopi >= 1.9.0

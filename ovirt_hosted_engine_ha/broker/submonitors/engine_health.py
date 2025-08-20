@@ -22,7 +22,7 @@ import logging
 import re
 import subprocess
 import threading
-from six.moves import queue
+import queue
 
 from ovirt_hosted_engine_ha.broker import constants
 from ovirt_hosted_engine_ha.broker import submonitor_base

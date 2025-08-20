@@ -1,4 +1,3 @@
-from six import with_metaclass
 import logging
 import abc
 from abc import abstractmethod
@@ -32,7 +31,7 @@ class FSMLoggerAdapter(logging.LoggerAdapter):
         return msg, kwargs
 
 
-class BaseState(with_metaclass(abc.ABCMeta, object)):
+class BaseState(object, metaclass=abc.ABCMeta):
     __slots__ = ["_data"]
 
     def __init__(self, data):

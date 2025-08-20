@@ -32,7 +32,7 @@ import time
 import mmap
 import weakref
 from contextlib import contextmanager, closing
-from six.moves import queue
+import queue
 
 from yajsonrpc import stomp
 

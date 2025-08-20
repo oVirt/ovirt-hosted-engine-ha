@@ -1,4 +1,3 @@
-from six import with_metaclass
 import os
 import errno
 from abc import ABCMeta, abstractmethod
@@ -29,7 +28,7 @@ StorageBackendTypes = _StorageBackendTypesTuple(
 )
 
 
-class StorageBackend(with_metaclass(ABCMeta, object)):
+class StorageBackend(object, metaclass=ABCMeta):
     """
     The base template for Storage backend classes.
     """
