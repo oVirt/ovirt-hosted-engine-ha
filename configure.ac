@@ -79,8 +79,6 @@ AM_CONDITIONAL([PYTHON_SYNTAX_CHECK], [test "${enable_python_syntax_check}" = "y
 AC_CONFIG_FILES([
 	Makefile
 	bin/Makefile
-	bin/ovirt-ha-agent
-	bin/ovirt-ha-broker
 	build/Makefile
 	doc/Makefile
 	initscripts/Makefile

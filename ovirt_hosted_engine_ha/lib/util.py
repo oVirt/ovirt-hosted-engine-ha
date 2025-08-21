@@ -463,7 +463,6 @@ def connect_vdsm_json_rpc(logger=None,
     A reconnect attempt is made if the connection is not valid.
     """
 
-    global _vdsm_json_rpc
     # Currently vdsm.client doesn't implement any keep-alive or
     # reconnection mechanism so the connection status has to be checked each
     # time. This could be removed once rhbz#1376843 get fixed.
@@ -481,7 +480,6 @@ def get_vdsm_json_rpc_wo_reconnect(logger=None):
     Get the current jsonrpc connection or None if the connection
     is not valid. This method does not try to reconnect.
     """
-    global _vdsm_json_rpc
 
     # Check if VDSM connection is ready
     with _vdsm_json_rpc_lock:
