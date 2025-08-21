@@ -1,6 +1,4 @@
-#!@PYTHON@
-
-#
+#!/usr/bin/python3
 # ovirt-hosted-engine-ha -- ovirt hosted engine high availability
 # Copyright (C) 2013 Red Hat, Inc.
 #
@@ -23,4 +21,3 @@ from ovirt_hosted_engine_ha.agent import agent
 
 if __name__ == '__main__':
     agent.Agent().run()
-

@@ -50,8 +50,6 @@ Requires:       python3-otopi >= 1.9.0
 Requires:       python3-sanlock >= 3.7.3
 
 Requires:       python3-lxml
-# TODO: check it on el8
-Requires:       python3-daemon
 
 BuildRequires:  python3
 BuildRequires:  python3-devel

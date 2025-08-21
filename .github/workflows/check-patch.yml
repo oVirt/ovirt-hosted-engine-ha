@@ -13,44 +13,33 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: centos-stream-8
-            shortcut: cs8
-            container-name: el8stream
           - name: centos-stream-9
             shortcut: cs9
             container-name: el9stream
+          - name: centos-stream-10
+            shortcut: cs10
+            container-name: el10stream
+
     name: ${{ matrix.name }}
     container:
       image: quay.io/ovirt/buildcontainer:${{ matrix.container-name }}
 
     steps:
-      # Requried for python3-isort on cs8
-      - name: Prepare CentOS Stream 8 environment
-        if: ${{ matrix.shortcut == 'cs8' }}
-        run: |
-          dnf copr enable -y sbonazzo/EL8_collection
 
-      # Requried for python3-isort on cs9
-      - name: Prepare CentOS Stream 9 environment
-        if: ${{ matrix.shortcut == 'cs9' }}
-        run: |
-          dnf copr enable -y sbonazzo/EL9Collection centos-stream-9
+      - name: Mark repository as safe
+        run: git config --global --add safe.directory "$(pwd)"
 
-      - name: Install dependencies
-        run: |
-          dnf install -y --setopt=tsflags=nodocs \
-            python3-coverage \
-            python3-isort \
-            python3-pycodestyle \
-            python3-pyflakes
+      - name: Checkout sources
+        uses: ovirt/checkout-action@main
 
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Install dnf dependencies
+        run: dnf install -y python3-pip python
+
+      - name: Install Python dependencies
+        run: pip install coverage isort pycodestyle pyflakes
 
       - name: Test packaging and RPM building
         run: |
-          git config --global --add safe.directory "$PWD"
           mkdir -p exported-artifacts
           mkdir -p tmp.repos
           SUFFIX=".$(date -u +%Y%m%d%H%M%S).git$(git rev-parse --short HEAD)"
@@ -82,6 +71,6 @@ jobs:
           cp automation/index.html exported-artifacts/
 
       - name: Upload artifacts
-        uses: ovirt/upload-rpms-action@v2
+        uses: ovirt/upload-rpms-action@main
         with:
           directory: exported-artifacts
