@@ -48,6 +48,8 @@ jobs:
         run: |
           mkdir -p exported-artifacts
           mkdir -p tmp.repos
+          make check
+          make test
           ./autogen.sh --system
           coverage html \
             -d exported-artifacts/coverage_html_report \
