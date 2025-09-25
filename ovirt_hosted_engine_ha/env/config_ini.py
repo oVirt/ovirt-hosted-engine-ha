@@ -1,7 +1,4 @@
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
+import configparser
 
 from ovirt_hosted_engine_ha.env.config_shared import SharedConfigFile
 
@@ -17,7 +14,7 @@ class SharedIniFile(SharedConfigFile):
             writable=writable,
             rawonly=False,
             logger=logger)
-        self._conf = configparser.SafeConfigParser()
+        self._conf = configparser.ConfigParser()
 
     def _prepare_key(self, key):
         if "." not in key:

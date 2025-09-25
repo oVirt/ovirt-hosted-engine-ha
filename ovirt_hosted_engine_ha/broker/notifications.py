@@ -3,10 +3,7 @@ from email.utils import formatdate
 import socket
 
 import smtplib
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
+import configparser
 import re
 import os
 import logging
@@ -54,7 +51,7 @@ def notify(type, detail, options):
 
     heconf = config.Config(logger=logger)
     path = heconf.refresh_local_conf_file(config.BROKER)
-    cfg = configparser.SafeConfigParser()
+    cfg = configparser.ConfigParser()
     cfg.read(path)
 
     try:
