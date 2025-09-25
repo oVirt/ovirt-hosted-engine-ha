@@ -195,7 +195,7 @@ class HostedEngine(object):
             'cpu-load-penalty-max'
         ))
 
-        cfg = configparser.SafeConfigParser()
+        cfg = configparser.ConfigParser()
         cfg.read(constants.AGENT_CONF_FILE)
         try:
             score.update(cfg.items('score'))
