@@ -22,12 +22,15 @@ define([VERSION_MAJOR], [2])
 define([VERSION_MINOR], [5])
 define([VERSION_FIX], [3])
 define([VERSION_NUMBER], VERSION_MAJOR[.]VERSION_MINOR[.]VERSION_FIX)
-define([VERSION_RELEASE], [0.0])
-define([VERSION_SUFFIX], [master.][m4_esyscmd([date -u +%Y%m%d%H%M%S | tr -d '\n'])])
 
-AC_INIT([ovirt-hosted-engine-ha], VERSION_NUMBER[-]VERSION_RELEASE[.]VERSION_SUFFIX)
+AC_INIT([ovirt-hosted-engine-ha], VERSION_NUMBER)
 PACKAGE_RPM_VERSION="VERSION_NUMBER"
-PACKAGE_RPM_RELEASE="VERSION_RELEASE.VERSION_SUFFIX"
+
+AC_ARG_VAR([PACKAGE_RPM_RELEASE],
+    [RPM release field (default: 0.master for development, release number for release builds)])
+AS_IF([test -z "$PACKAGE_RPM_RELEASE"],
+    [PACKAGE_RPM_RELEASE="0.master"])
+
 AC_SUBST([PACKAGE_RPM_VERSION])
 AC_SUBST([PACKAGE_RPM_RELEASE])
 
